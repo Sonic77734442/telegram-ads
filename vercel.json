@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/((?!asset/|img/).*)",
+      "destination": "/"
+    }
+  ]
+}

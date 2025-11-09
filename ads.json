@@ -1,0 +1,14 @@
+[
+  {
+    "id": "ads1",
+    "title": "CityPay UZ",
+    "views": 3876399,
+    "actions": 14032,
+    "cpm": 0.22,
+    "budget": 60,
+    "target": "Uzbekistan",
+    "status": "Stopped",
+    "createdAt": "2025-07-17T08:35:00Z"
+  },
+  ...
+]
