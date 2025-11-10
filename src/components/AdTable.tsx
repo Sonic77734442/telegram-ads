@@ -33,10 +33,11 @@ export default function AdTable() {
 
     // Клиент -> читаем готовые данные с маркапом и совместимыми именами
     // Агентство/админ -> без маркапа
-    const source =
-      role === "client"
-        ? "v_adcampaigns_client_compat"
-        : "v_adcampaigns_agency"; // можешь вернуть "ad_campaigns", если так удобнее
+	const source =
+	  role === "client"
+		? "v_adcampaigns_client_compat"
+		: "ad_campaigns";
+
 
     let query = supabase.from(source).select("*");
 
