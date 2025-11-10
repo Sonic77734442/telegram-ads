@@ -188,7 +188,7 @@ setStatsData(normalized);
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10"> 
 
         {/* ========== Card with preview & meta ========== */}
         <div className="grid grid-cols-1 md:grid-cols-[320px,1fr] gap-6">
