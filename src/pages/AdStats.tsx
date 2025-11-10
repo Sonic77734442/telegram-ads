@@ -1,9 +1,6 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
-import Header from "../components/Header";
-import Container from "../components/Container";
-import TabBar from "../components/TabBar";
 import { AdIdContext } from "./AdPageLayout";
 import {
   LineChart,
@@ -13,173 +10,460 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
+
+type Range = "days" | "5min";
+
+type StatPointDay = { date: string; views: number; clicks: number; video_opens: number };
+type StatPoint5m = { ts: string; views: number; clicks: number; video_opens: number };
+
+type BudgetPointDay = { date: string; amount: number };
+type BudgetPoint5m = { ts: string; amount: number };
+
+type ReportRow = { day: string; views: number; amount: number };
 
 export default function AdStats() {
   const adId = useContext(AdIdContext);
-  const [ad, setAd] = useState<any>(null);
-  const [range, setRange] = useState<"5min" | "days">("days");
-  const [activeTab, setActiveTab] = useState<"edit" | "stats">("stats");
-  const [statsData, setStatsData] = useState<any[]>([]);
 
+  // meta
+  const [ad, setAd] = useState<any>(null);
+
+  // top chart (Statistics)
+  const [statsRange, setStatsRange] = useState<Range>("days");
+  const [statsData, setStatsData] = useState<(StatPointDay | StatPoint5m)[]>([]);
+
+  // second chart (Spent budget)
+  const [budgetRange, setBudgetRange] = useState<Range>("days");
+  const [budgetData, setBudgetData] = useState<(BudgetPointDay | BudgetPoint5m)[]>([]);
+
+  // reports
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  });
+  const monthTabs = useMemo(() => {
+    // три вкладки как на скрине: текущий и два предыдущих месяца
+    const base = new Date();
+    base.setUTCDate(1);
+    const arr: string[] = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 1));
+      arr.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+    }
+    return arr;
+  }, []);
+  const [reports, setReports] = useState<ReportRow[]>([]);
+  const reportsTotal = useMemo(
+    () => ({
+      views: reports.reduce((s, r) => s + (r.views || 0), 0),
+      amount: reports.reduce((s, r) => s + (r.amount || 0), 0),
+    }),
+    [reports]
+  );
+
+  // load ad meta
   useEffect(() => {
     if (!adId) return;
-
-    const fetchAd = async () => {
+    (async () => {
       const { data, error } = await supabase
         .from("ad_campaigns")
         .select("*")
         .eq("id", adId)
         .single();
-
       if (error) {
-        console.error("Ошибка загрузки кампании:", error);
+        console.error("load ad error:", error);
         return;
       }
-
-      if (data) {
-        const parsed = data.raw ? (() => {
-          try {
-            return JSON.parse(data.raw);
-          } catch (e) {
-            console.warn("❗ Ошибка парсинга raw:", e);
-            return {};
-          }
-        })() : {};
-
-        setAd({
-          ...parsed,
-          title: data.title,
-          text: data.text,
-          url: data.url,
-          button: data.button,
-          mediaUrl: data.media_url,
-          mediaType: data.media_type,
-          cpm: data.cpm,
-          budget: data.budget,
-          views: data.views,
-          createdAt: data.created_at,
-        });
-      }
-    };
-
-const fetchStats = async () => {
-  const { data, error } = await supabase.rpc("get_daily_ad_stats", {
-    input_ad_id: adId,
-  });
-
-  if (error) {
-    console.error("Ошибка загрузки статистики:", error);
-    return;
-  }
-
-  setStatsData(data);
-};
-
-
-
-    fetchAd();
-    fetchStats();
+      let parsed: any = {};
+      try {
+        parsed = data.raw ? JSON.parse(data.raw) : {};
+      } catch {}
+      setAd({
+        ...parsed,
+        title: data.title,
+        text: data.text,
+        url: data.url,
+        button: data.button,
+        mediaUrl: data.media_url,
+        mediaType: data.media_type,
+        cpm: data.cpm,
+        budget: data.budget,
+        views: data.views,
+        createdAt: data.created_at,
+      });
+    })();
   }, [adId]);
+
+  // load statistics chart
+  useEffect(() => {
+    if (!adId) return;
+    (async () => {
+      const fn = statsRange === "days" ? "get_daily_ad_stats" : "get_5min_ad_stats";
+      const { data, error } = await supabase.rpc(fn, { input_ad_id: adId });
+      if (error) {
+        console.error("stats rpc error:", error);
+        setStatsData([]);
+        return;
+      }
+      const normalized = (data || []).map((r: any) => ({
+  ...(statsRange === "days" ? { date: r.date } : { ts: r.ts }),
+  views: Number(r.views ?? 0),
+  clicks: Number(r.clicks ?? 0),
+  video_opens: Number(r.video_opens ?? 0),
+}));
+setStatsData(normalized);
+    })();
+  }, [adId, statsRange]);
+
+  // load budget chart
+  useEffect(() => {
+    if (!adId) return;
+    (async () => {
+      const fn =
+        budgetRange === "days" ? "get_budget_stats_daily" : "get_budget_stats_5min";
+      const { data, error } = await supabase.rpc(fn, { input_ad_id: adId });
+      if (error) {
+        console.error("budget rpc error:", error);
+        setBudgetData([]);
+        return;
+      }
+      const normalized = (data || []).map((r: any) => ({
+  ...(budgetRange === "days" ? { date: r.date } : { ts: r.ts }),
+		  amount: Number(r.amount ?? 0),
+		}));
+		setBudgetData(normalized);
+
+    })();
+  }, [adId, budgetRange]);
+
+  // load reports (table)
+  useEffect(() => {
+    if (!adId || !selectedMonth) return;
+    (async () => {
+      const { data, error } = await supabase.rpc("get_reports_for_month", {
+        input_ad_id: adId,
+        ym: selectedMonth, // 'YYYY-MM'
+      });
+      if (error) {
+        console.error("reports rpc error:", error);
+        setReports([]);
+        return;
+      }
+      setReports(
+        (data || []).map((r: any) => ({
+          day: r.day, // 'YYYY-MM-DD'
+          views: Number(r.views || 0),
+          amount: Number(r.amount || 0),
+        }))
+      );
+    })();
+  }, [adId, selectedMonth]);
+
+  // csv helpers
+  const downloadCSV = (rows: any[], fileName: string) => {
+    if (!rows?.length) return;
+    const headers = Object.keys(rows[0]);
+    const csv =
+      [headers.join(",")]
+        .concat(
+          rows.map((r) =>
+            headers
+              .map((h) => JSON.stringify(r[h] ?? ""))
+              .join(",")
+          )
+        )
+        .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!adId) return <div className="p-4">⚠️ No ad ID</div>;
   if (!ad) return <div className="p-4">Loading…</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex flex-col items-center justify-center gap-6 py-8 text-center">
-        {/* Preview + meta */}
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="w-[280px]">
-            <TelegramAdPreview
-              title={ad.title}
-              text={ad.text}
-              mediaUrl={ad.mediaUrl}
-              mediaType={ad.mediaType}
-              button={ad.button}
-            />
-          </div>
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
 
-          <div className="flex flex-col text-sm items-start">
-            <div>
-              <div className="text-gray-500">Link</div>
-			  <a
-			  href={ad.url.startsWith("http") ? ad.url : `https://${ad.url}`}
-			  className="text-blue-600 hover:underline"
-			  target="_blank"
-			  rel="noopener noreferrer"
-			   >
-			  {ad.url}
-			</a>
+        {/* ========== Card with preview & meta ========== */}
+        <div className="grid grid-cols-1 md:grid-cols-[320px,1fr] gap-6">
+          <div className="justify-self-center md:justify-self-start">
+            <div className="w-[280px]">
+              <TelegramAdPreview
+                title={ad.title}
+                text={ad.text}
+                mediaUrl={ad.mediaUrl}
+                mediaType={ad.mediaType}
+                button={ad.button}
+              />
             </div>
-            <div>
-              <div className="text-gray-500">Date created</div>
-              <div>{ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}</div>
-            </div>
-            <div>
-              <div className="text-gray-500">CPM</div>
-              <div>⋯ {ad.cpm}</div>
-            </div>
-            <div>
-              <div className="text-gray-500">Budget</div>
-              <div>⋯ {ad.budget}</div>
-            </div>
-            <div>
-              <div className="text-gray-500">Views</div>
-              <div>{ad.views}</div>
-            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            <Meta label="Link">
+              <a
+                href={ad.url?.startsWith("http") ? ad.url : `https://${ad.url}`}
+                className="text-blue-600 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {ad.url}
+              </a>
+            </Meta>
+            <Meta label="Date created">
+              {ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}
+            </Meta>
+            <Meta label="CPM">€ {ad.cpm}</Meta>
+            <Meta label="Budget">€ {ad.budget}</Meta>
+            <Meta label="Views">{ad.views}</Meta>
           </div>
         </div>
 
-        {/* Диапазон времени */}
-        <div className="flex items-center justify-between mt-6 w-full max-w-3xl">
-          <div className="text-lg font-semibold">Statistics</div>
-          <div className="flex gap-2 text-sm">
-            <button
-              onClick={() => setRange("5min")}
-              className={`px-3 py-1 rounded-full ${
-                range === "5min" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
-              }`}
-            >
-              5 min
-            </button>
-            <button
-              onClick={() => setRange("days")}
-              className={`px-3 py-1 rounded-full ${
-                range === "days" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
-              }`}
-            >
-              Days
-            </button>
-          </div>
+        {/* ========== STATISTICS (top chart) ========== */}
+        <SectionHeader
+          title="Statistics"
+          right={
+            <RangeToggle value={statsRange} onChange={setStatsRange} />
+          }
+          periodLabel={periodLabel()}
+        />
+        <ChartContainer>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={statsData as any[]}>
+              <CartesianGrid stroke="#e5e7eb" />
+              <XAxis
+                dataKey={statsRange === "days" ? "date" : "ts"}
+                tickFormatter={(v: string) =>
+                  statsRange === "days"
+                    ? v.slice(5, 10)
+                    : new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                }
+              />
+              <YAxis />
+              <Tooltip
+                formatter={(v: number, name: string) => [v.toLocaleString(), name]}
+                labelFormatter={(v) =>
+                  statsRange === "days" ? v : new Date(v).toLocaleString()
+                }
+              />
+              <Legend />
+              <Line type="monotone" dataKey="views" stroke="#007bff" name="Views" dot={false} />
+              <Line type="monotone" dataKey="video_opens" stroke="#34d399" name="Opened video" dot={false} />
+              <Line type="monotone" dataKey="clicks" stroke="#10b981" name="Clicks" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+        <UnderChartBar
+          leftBadges={["Views", "Opened video", "Clicks"]}
+          onCSV={() => downloadCSV(statsData as any[], `stats_${statsRange}.csv`)}
+        />
+        <div className="text-xs text-gray-500 leading-tight">
+          * Time and date shown in UTC.<br />
+          ** Click statistics are available as of August 8, 2023.<br />
+          *** Video open statistics are available as of October 7, 2023.
         </div>
 
-        {/* График */}
-			<div className="h-[300px] w-full max-w-3xl">
-			  {statsData.length > 0 ? (
-				<ResponsiveContainer width="100%" height="100%">
-				  <LineChart data={statsData}>
-					<CartesianGrid stroke="#ccc" />
-					<XAxis dataKey="date" tickFormatter={(date) => date.slice(5, 10)} />
-					<YAxis />
-					<Tooltip />
-					<Line type="monotone" dataKey="daily_views" stroke="#ff7300" name="Views per Day" />
-					<Line type="monotone" dataKey="daily_clicks" stroke="#00c49f" name="Clicks per Day" />
-				  </LineChart>
-				</ResponsiveContainer>
-			  ) : (
-				<div className="flex justify-center items-center h-full text-sm text-gray-400">
-				  Not enough data to display.
-				</div>
-			  )}
-			</div>
+        {/* ========== SPENT BUDGET (second chart) ========== */}
+        <SectionHeader
+          title=""
+          right={<span />}
+          periodLabel={periodLabel()}
+        />
+        <ChartContainer>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={budgetData as any[]}>
+              <CartesianGrid stroke="#e5e7eb" />
+              <XAxis
+                dataKey={budgetRange === "days" ? "date" : "ts"}
+                tickFormatter={(v: string) =>
+                  budgetRange === "days"
+                    ? v.slice(5, 10)
+                    : new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                }
+              />
+              <YAxis tickFormatter={(n) => `€ ${n}`} />
+              <Tooltip
+                formatter={(v: number) => [`€ ${Number(v).toFixed(2)}`, "Amount"]}
+                labelFormatter={(v) =>
+                  budgetRange === "days" ? v : new Date(v).toLocaleString()
+                }
+              />
+              <Line type="monotone" dataKey="amount" stroke="#007bff" name="Spent budget" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+        <UnderChartBar
+          leftButtonLabel="Spent budget"
+          onCSV={() => downloadCSV(budgetData as any[], `budget_${budgetRange}.csv`)}
+          extraRight={<RangeToggle value={budgetRange} onChange={setBudgetRange} />}
+        />
+        <div className="text-xs text-gray-500 leading-tight">* Time and date shown in UTC.</div>
 
-        {/* Подсказки */}
-        <div className="text-xs text-gray-500 leading-tight mt-2 max-w-3xl text-left">
-          <p>* Time and date shown in local format.</p>
-          <p>** Stats are synced from your admin dashboard.</p>
+        {/* ========== REPORTS TABLE ========== */}
+        <div className="flex items-center gap-3 justify-end">
+          {monthTabs.map((m) => {
+            const label = new Date(m + "-01").toLocaleString("en-US", {
+              month: "short",
+              year: "2-digit",
+              timeZone: "UTC",
+            });
+            return (
+              <button
+                key={m}
+                onClick={() => setSelectedMonth(m)}
+                className={`px-3 py-1 rounded-full ${
+                  selectedMonth === m ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-gray-200">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500">
+              <tr>
+                <th className="px-4 py-2 text-left">DAY</th>
+                <th className="px-4 py-2 text-right">VIEWS</th>
+                <th className="px-4 py-2 text-right">AMOUNT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map((r) => (
+                <tr key={r.day} className="border-t">
+                  <td className="px-4 py-2">
+                    {new Date(r.day).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                  </td>
+                  <td className="px-4 py-2 text-right">{(r.views ?? 0).toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right">€ {(r.amount ?? 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t bg-gray-50 font-semibold">
+                <td className="px-4 py-2">
+                  Total in {new Date(selectedMonth + "-01").toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}
+                </td>
+                <td className="px-4 py-2 text-right">{reportsTotal.views.toLocaleString()}</td>
+                <td className="px-4 py-2 text-right">€ {reportsTotal.amount.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={() => downloadCSV(reports as any[], `reports_${selectedMonth}.csv`)}
+            className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
+          >
+            CSV
+          </button>
         </div>
       </div>
     </div>
   );
+}
+
+/* ========= small UI helpers ========= */
+
+function Meta({ label, children }: { label: string; children: any }) {
+  return (
+    <div className="text-left">
+      <div className="text-gray-500">{label}</div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  right,
+  periodLabel,
+}: {
+  title: string;
+  right?: React.ReactNode;
+  periodLabel?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {title && <div className="text-lg font-semibold">{title}</div>}
+        <div className="hidden md:block text-sm text-gray-500">{periodLabel}</div>
+      </div>
+      <div className="flex items-center gap-3">{right}</div>
+    </div>
+  );
+}
+
+function ChartContainer({ children }: { children: React.ReactNode }) {
+  return <div className="h-[300px] w-full">{children}</div>;
+}
+
+function RangeToggle({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
+  return (
+    <div className="flex gap-2 text-sm">
+      <button
+        onClick={() => onChange("5min")}
+        className={`px-3 py-1 rounded-full ${
+          value === "5min" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+        }`}
+      >
+        5 min
+      </button>
+      <button
+        onClick={() => onChange("days")}
+        className={`px-3 py-1 rounded-full ${
+          value === "days" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+        }`}
+      >
+        Days
+      </button>
+    </div>
+  );
+}
+
+function UnderChartBar({
+  leftBadges,
+  leftButtonLabel,
+  extraRight,
+  onCSV,
+}: {
+  leftBadges?: string[];
+  leftButtonLabel?: string;
+  extraRight?: React.ReactNode;
+  onCSV: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex gap-2">
+        {leftBadges?.map((b) => (
+          <span key={b} className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">{b}</span>
+        ))}
+        {leftButtonLabel && (
+          <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">{leftButtonLabel}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        {extraRight}
+        <button onClick={onCSV} className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm">
+          CSV
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function periodLabel() {
+  // декоративная подпись "7 November 2025 – 10 November 2025"
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - 3);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return `${fmt(start)} – ${fmt(end)}`;
 }
