@@ -29,6 +29,9 @@ export default function AdStats() {
   // meta
   const [ad, setAd] = useState<any>(null);
 
+  // markup (для клиента)
+  const [markupPercent, setMarkupPercent] = useState<number>(0);
+
   // top chart (Statistics)
   const [statsRange, setStatsRange] = useState<Range>("days");
   const [statsData, setStatsData] = useState<(StatPointDay | StatPoint5m)[]>([]);
@@ -43,7 +46,7 @@ export default function AdStats() {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
   });
   const monthTabs = useMemo(() => {
-    // три вкладки как на скрине: текущий и два предыдущих месяца
+    // три вкладки: текущий и два предыдущих месяца
     const base = new Date();
     base.setUTCDate(1);
     const arr: string[] = [];
@@ -62,6 +65,35 @@ export default function AdStats() {
     [reports]
   );
 
+  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+
+// если клиент и markupPercent уже загружен — умножаем на (1 + markup/100)
+// для агентства и админа множитель = 1 (без наценки)
+const multiplier =
+  role === "client" && typeof markupPercent === "number"
+    ? 1 + markupPercent / 100
+    : 1;
+
+
+  // грузим markupPercent для клиента
+  useEffect(() => {
+    const loadMarkup = async () => {
+      const roleLocal = localStorage.getItem("role");
+      const userId = localStorage.getItem("user_id");
+      if (roleLocal === "client" && userId) {
+        const { data, error } = await supabase
+          .from("client_balances")
+          .select("markup_percent")
+          .eq("client_id", userId)
+          .maybeSingle();
+        if (!error && data && typeof data.markup_percent === "number") {
+          setMarkupPercent(data.markup_percent);
+        }
+      }
+    };
+    loadMarkup();
+  }, []);
+
   // load ad meta
   useEffect(() => {
     if (!adId) return;
@@ -77,7 +109,7 @@ export default function AdStats() {
       }
       let parsed: any = {};
       try {
-        parsed = data.raw ? JSON.parse(data.raw) : {};
+        parsed = (data as any).raw ? JSON.parse((data as any).raw) : {};
       } catch {}
       setAd({
         ...parsed,
@@ -107,12 +139,12 @@ export default function AdStats() {
         return;
       }
       const normalized = (data || []).map((r: any) => ({
-  ...(statsRange === "days" ? { date: r.date } : { ts: r.ts }),
-  views: Number(r.views ?? 0),
-  clicks: Number(r.clicks ?? 0),
-  video_opens: Number(r.video_opens ?? 0),
-}));
-setStatsData(normalized);
+        ...(statsRange === "days" ? { date: r.date } : { ts: r.ts }),
+        views: Number(r.views ?? 0),
+        clicks: Number(r.clicks ?? 0),
+        video_opens: Number(r.video_opens ?? 0),
+      }));
+      setStatsData(normalized);
     })();
   }, [adId, statsRange]);
 
@@ -128,14 +160,16 @@ setStatsData(normalized);
         setBudgetData([]);
         return;
       }
-      const normalized = (data || []).map((r: any) => ({
-  ...(budgetRange === "days" ? { date: r.date } : { ts: r.ts }),
-		  amount: Number(r.amount ?? 0),
-		}));
-		setBudgetData(normalized);
-
+      const normalized = (data || []).map((r: any) => {
+        const base = Number(r.amount ?? 0);
+        return {
+          ...(budgetRange === "days" ? { date: r.date } : { ts: r.ts }),
+          amount: base * multiplier, // на стороне клиента с маркапом
+        };
+      });
+      setBudgetData(normalized);
     })();
-  }, [adId, budgetRange]);
+  }, [adId, budgetRange, multiplier]);
 
   // load reports (table)
   useEffect(() => {
@@ -151,45 +185,91 @@ setStatsData(normalized);
         return;
       }
       setReports(
-        (data || []).map((r: any) => ({
-          day: r.day, // 'YYYY-MM-DD'
-          views: Number(r.views || 0),
-          amount: Number(r.amount || 0),
-        }))
+        (data || []).map((r: any) => {
+          const baseAmount = Number(r.amount || 0);
+          return {
+            day: r.day, // 'YYYY-MM-DD'
+            views: Number(r.views || 0),
+            amount: baseAmount * multiplier, // с маркапом для клиента
+          };
+        })
       );
     })();
-  }, [adId, selectedMonth]);
+  }, [adId, selectedMonth, multiplier]);
 
   // csv helpers
   const downloadCSV = (rows: any[], fileName: string) => {
-    if (!rows?.length) return;
-    const headers = Object.keys(rows[0]);
-    const csv =
-      [headers.join(",")]
-        .concat(
-          rows.map((r) =>
-            headers
-              .map((h) => JSON.stringify(r[h] ?? ""))
-              .join(",")
-          )
-        )
-        .join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
+  if (!rows?.length) return;
+
+  const separator = ";"; // под Windows/Excel на русском нужен ;
+
+  const headers = Object.keys(rows[0]);
+
+  const csvLines: string[] = [];
+
+  // заголовок
+  csvLines.push(headers.join(separator));
+
+  // строки
+  for (const row of rows) {
+    const line = headers
+      .map((h) => {
+        const raw = row[h] ?? "";
+        const value = String(raw).replace(/"/g, '""'); // эскейпим кавычки
+        return `"${value}"`; // каждое значение в кавычках
+      })
+      .join(separator);
+    csvLines.push(line);
+  }
+
+  const csv = csvLines.join("\n");
+
+  const blob = new Blob(["\uFEFF" + csv], {
+    // BOM чтобы Excel нормально понял UTF-8
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+
+  // экспорт для клиента из v_ad_export_client_flat
+  const exportClientReport = async () => {
+    if (!adId) return;
+    const { data, error } = await supabase
+      .from("v_ad_export_client_flat")
+      .select(
+        `"Ad ID","Title","Date","Views","Opens","Clicks","Joins","CPC","CTR","CPA","CPO","Spent Budget"`
+      )
+      .eq("ad_id", adId); // служебная колонка из view
+
+    if (error) {
+      console.error("client export error:", error.message);
+      return;
+    }
+    if (!data || !data.length) {
+      alert("Нет данных для экспорта");
+      return;
+    }
+    downloadCSV(data as any[], `ad_${adId}_client_report.csv`);
   };
 
   if (!adId) return <div className="p-4">⚠️ No ad ID</div>;
   if (!ad) return <div className="p-4">Loading…</div>;
 
+  const displayBudget = (() => {
+    const base = Number(ad.budget ?? 0);
+    if (!base) return "0.00";
+    return (base * multiplier).toFixed(2);
+  })();
+
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10"> 
-
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
         {/* ========== Card with preview & meta ========== */}
         <div className="grid grid-cols-1 md:grid-cols-[320px,1fr] gap-6">
           <div className="justify-self-center md:justify-self-start">
@@ -218,7 +298,7 @@ setStatsData(normalized);
               {ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}
             </Meta>
             <Meta label="CPM">€ {ad.cpm}</Meta>
-            <Meta label="Budget">€ {ad.budget}</Meta>
+            <Meta label="Budget">€ {displayBudget}</Meta>
             <Meta label="Views">{ad.views}</Meta>
           </div>
         </div>
@@ -226,9 +306,7 @@ setStatsData(normalized);
         {/* ========== STATISTICS (top chart) ========== */}
         <SectionHeader
           title="Statistics"
-          right={
-            <RangeToggle value={statsRange} onChange={setStatsRange} />
-          }
+          right={<RangeToggle value={statsRange} onChange={setStatsRange} />}
           periodLabel={periodLabel()}
         />
         <ChartContainer>
@@ -252,8 +330,20 @@ setStatsData(normalized);
               />
               <Legend />
               <Line type="monotone" dataKey="views" stroke="#007bff" name="Views" dot={false} />
-              <Line type="monotone" dataKey="video_opens" stroke="#34d399" name="Opened video" dot={false} />
-              <Line type="monotone" dataKey="clicks" stroke="#10b981" name="Clicks" dot={false} />
+              <Line
+                type="monotone"
+                dataKey="video_opens"
+                stroke="#34d399"
+                name="Opened video"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="clicks"
+                stroke="#10b981"
+                name="Clicks"
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -262,17 +352,15 @@ setStatsData(normalized);
           onCSV={() => downloadCSV(statsData as any[], `stats_${statsRange}.csv`)}
         />
         <div className="text-xs text-gray-500 leading-tight">
-          * Time and date shown in UTC.<br />
-          ** Click statistics are available as of August 8, 2023.<br />
+          * Time and date shown in UTC.
+          <br />
+          ** Click statistics are available as of August 8, 2023.
+          <br />
           *** Video open statistics are available as of October 7, 2023.
         </div>
 
         {/* ========== SPENT BUDGET (second chart) ========== */}
-        <SectionHeader
-          title=""
-          right={<span />}
-          periodLabel={periodLabel()}
-        />
+        <SectionHeader title="" right={<span />} periodLabel={periodLabel()} />
         <ChartContainer>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={budgetData as any[]}>
@@ -292,7 +380,13 @@ setStatsData(normalized);
                   budgetRange === "days" ? v : new Date(v).toLocaleString()
                 }
               />
-              <Line type="monotone" dataKey="amount" stroke="#007bff" name="Spent budget" dot={false} />
+              <Line
+                type="monotone"
+                dataKey="amount"
+                stroke="#007bff"
+                name="Spent budget"
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
@@ -301,7 +395,9 @@ setStatsData(normalized);
           onCSV={() => downloadCSV(budgetData as any[], `budget_${budgetRange}.csv`)}
           extraRight={<RangeToggle value={budgetRange} onChange={setBudgetRange} />}
         />
-        <div className="text-xs text-gray-500 leading-tight">* Time and date shown in UTC.</div>
+        <div className="text-xs text-gray-500 leading-tight">
+          * Time and date shown in UTC.
+        </div>
 
         {/* ========== REPORTS TABLE ========== */}
         <div className="flex items-center gap-3 justify-end">
@@ -316,7 +412,9 @@ setStatsData(normalized);
                 key={m}
                 onClick={() => setSelectedMonth(m)}
                 className={`px-3 py-1 rounded-full ${
-                  selectedMonth === m ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+                  selectedMonth === m
+                    ? "bg-blue-500 text-white"
+                    : "text-blue-700 hover:bg-blue-100"
                 }`}
               >
                 {label}
@@ -338,27 +436,48 @@ setStatsData(normalized);
               {reports.map((r) => (
                 <tr key={r.day} className="border-t">
                   <td className="px-4 py-2">
-                    {new Date(r.day).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                    {new Date(r.day).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
                   </td>
-                  <td className="px-4 py-2 text-right">{(r.views ?? 0).toLocaleString()}</td>
-                  <td className="px-4 py-2 text-right">€ {(r.amount ?? 0).toFixed(2)}</td>
+                  <td className="px-4 py-2 text-right">
+                    {(r.views ?? 0).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    € {(r.amount ?? 0).toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="border-t bg-gray-50 font-semibold">
                 <td className="px-4 py-2">
-                  Total in {new Date(selectedMonth + "-01").toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })}
+                  Total in{" "}
+                  {new Date(selectedMonth + "-01").toLocaleString("en-US", {
+                    month: "short",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
                 </td>
-                <td className="px-4 py-2 text-right">{reportsTotal.views.toLocaleString()}</td>
-                <td className="px-4 py-2 text-right">€ {reportsTotal.amount.toFixed(2)}</td>
+                <td className="px-4 py-2 text-right">
+                  {reportsTotal.views.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  € {reportsTotal.amount.toFixed(2)}
+                </td>
               </tr>
             </tfoot>
           </table>
         </div>
         <div className="flex justify-end">
           <button
-            onClick={() => downloadCSV(reports as any[], `reports_${selectedMonth}.csv`)}
+            onClick={
+              role === "client"
+                ? exportClientReport
+                : () => downloadCSV(reports as any[], `reports_${selectedMonth}.csv`)
+            }
             className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
           >
             CSV
@@ -442,15 +561,25 @@ function UnderChartBar({
     <div className="flex items-center justify-between">
       <div className="flex gap-2">
         {leftBadges?.map((b) => (
-          <span key={b} className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">{b}</span>
+          <span
+            key={b}
+            className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700"
+          >
+            {b}
+          </span>
         ))}
         {leftButtonLabel && (
-          <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">{leftButtonLabel}</span>
+          <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">
+            {leftButtonLabel}
+          </span>
         )}
       </div>
       <div className="flex items-center gap-3">
         {extraRight}
-        <button onClick={onCSV} className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm">
+        <button
+          onClick={onCSV}
+          className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
+        >
           CSV
         </button>
       </div>
@@ -464,6 +593,10 @@ function periodLabel() {
   const start = new Date(end);
   start.setDate(end.getDate() - 3);
   const fmt = (d: Date) =>
-    d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   return `${fmt(start)} – ${fmt(end)}`;
 }

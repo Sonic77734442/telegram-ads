@@ -48,20 +48,21 @@ const users = [
     user_id: "00000000-0000-0000-0000-000000000001",
     agency_id: null,
   },
-  {
-    username: "Nirvana123",
-    password: "Residence2900011",
-    role: "client",
-    user_id: "ab55fe71-1f6d-47b0-b5e8-77d7293b9fcb",
-    agency_id: "f22126bc-3b8a-4e91-9cfd-c7d07bd746b9",
-  },
-  {
-    username: "NirvanaAgency",
-    password: "Residence2900022",
-    role: "agency",
-    user_id: "f22126bc-3b8a-4e91-9cfd-c7d07bd746b9",
-    agency_id: "f22126bc-3b8a-4e91-9cfd-c7d07bd746b9",
-  },
+{
+  username: "HonorAgency",
+  password: "123HonorAgency!2025",
+  role: "agency",
+  user_id: "d3f6a9c2-4b2e-4f8a-9e1b-2c7a5f6d8b11",
+  agency_id: "d3f6a9c2-4b2e-4f8a-9e1b-2c7a5f6d8b11"
+},
+{
+  username: "Honor",
+  password: "123Honor123!2025",
+  role: "client",
+  user_id: "a7c1e2b3-9d4f-41f2-8c3d-6e7f8a9b0c22",
+  agency_id: "d3f6a9c2-4b2e-4f8a-9e1b-2c7a5f6d8b11"
+}
+
   {
     username: "JDE Agency",
     password: "JDEAgency123!",
