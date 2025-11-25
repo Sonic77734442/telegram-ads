@@ -1,3 +1,65 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* ==========================
+   Telegram Ads Base Styles
+   ========================== */
+
+html, body {
+  font-family: Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  background-color: #fff;
+  color: #222;
+}
+
+/* Класс-обёртка для таблицы Telegram Ads */
+.tg-root {
+  font-family: Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Мягкие цифры */
+.tg-numbers {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Title / URL с обрезкой */
+.tg-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Цвета Telegram */
+.tg-link {
+  color: #2481cc;
+}
+.tg-link:hover {
+  color: #1a69a5;
+  text-decoration: underline;
+}
+
+.tg-muted {
+  color: #7d7f81;
+}
+.tg-root table td,
+.tg-root table th {
+  color: #000 !important;
+}
+
+/* ссылки остаются синими */
+.tg-root a {
+  color: #2481cc !important;
+}
+.tg-root a:hover {
+  color: #1a69a5 !important;
+  text-decoration: underline;
+}

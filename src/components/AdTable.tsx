@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Link } from "react-router-dom";
+
+const GEAR_ICON_SRC =
+  "data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJtOS40MyA0Yy40NyAwIC44Ni4zNi45My44NC4wMy4yNS4wNy40Ni4xMS42NC4wMS4wNC4wOC4wOS4yLjE2bC4wNS4wMy4wNi4wMy4wNy4wNC4wNy4wMy4wOC4wMy4wOC4wNC4wOS4wNGMuMDIgMCAuMDMuMDEuMDUuMDIuMTMtLjA1LjI3LS4xLjQzLS4xNmwuMTQtLjA2Yy40My0uMTguOTMgMCAxLjE2LjQybC40Mi43N2MuMjMuNDEuMTUuOTItLjE5IDEuMjNsLS4xMS4xMS0uMjUuMjMtLjA5LjA4LS4xMi4xMWMtLjAxLjAxLS4wMi4wMy0uMDMuMDR2LjA1bC0uMDEuMDhjLS4wMS4wNy0uMDIuMTQtLjAyLjE5di4wN2MwIC4xNC4wMS4yMy4wNS4yNmwuMzQuMzMuMjUuMjZjLjMxLjMuMzkuNzguMTkgMS4xN2wtLjAyLjA0LS40My43OS0uMDIuMDNjLS4yNC40LS43Mi41Ny0xLjE1LjM5bC0uMDYtLjAyLS4xMy0uMDYtLjExLS4wNC0uMTEtLjA0LS4xMS0uMDQtLjEtLjA0Yy0uMDEgMC0uMDMtLjAxLS4wNC0uMDFzLS4wMSAwLS4wMiAwbC0uMDguMDQtLjA3LjAzYy0uMDMuMDItLjA1LjAzLS4wNy4wNGwtLjA2LjA0Yy0uMTcuMDktLjI2LjE4LS4yOC4yNGwtLjA0LjE5LS4xNS42Yy0uMS40Mi0uNDYuNzItLjg3Ljc0aC0uMDQtLjgzYy0uNDEgMC0uNzctLjI3LS45LS42OGwtLjA0LS4xNC0uMDQtLjE0LS4wMi0uMDctLjA0LS4xMy0uMDMtLjEyLS4wMy0uMTFjLS4wMS0uMDQtLjAyLS4wOC0uMDMtLjExIDAtLjAxIDAtLjAxIDAtLjAybC0uMDgtLjA1LS4wNi0uMDUtLjA3LS4wNS0uMDYtLjA0LS4wNS0uMDMtLjAzLS4wMi0uMDUtLjAzLS4wNC0uMDJjLS4wMS0uMDEtLjAyLS4wMS0uMDMtLjAxbC0uMDMtLjAyLS4wNC0uMDJjLS4wNC0uMDEtLjA3LS4wMi0uMS0uMDFsLS4xLjA0LS4xMi4wNC0uMTIuMDQtLjE0LjA1LS4xNC4wNmMtLjQxLjE2LS44OC0uMDEtMS4xMi0uNGwtLjAyLS4wNC0uNDMtLjc4Yy0uMjMtLjQxLS4xNS0uOTIuMTktMS4yM2wuMjEtLjIuMDktLjA5LjEtLjA5LjEyLS4xMmMuMDEtLjAxLjAyLS4wMi4wNC0uMDQuMDMtLjAzLjA0LS4xLjA0LS4yMXYtLjA2YzAtLjAzLS4wMS0uMDgtLjAxLS4xMmwtLjAxLS4wNy0uMDEtLjA4LS4wMS0uMDgtLjAyLS4wOS0uMDItLjFjLS4xMy0uMTItLjI4LS4yNi0uNDctLjQyLS4zNi0uMjktLjQ3LS44MS0uMjYtMS4yM2wuMDItLjAzLjQ0LS43OWMuMjEtLjM5LjY2LS41OCAxLjA4LS40NWwuMzIuMS4yOC4wOWMuMDIuMDEuMDQuMDEuMDcuMDIuMDEuMDEuMDMuMDEuMDUuMDEuMTMtLjA2LjI0LS4xMS4zMy0uMTUuMDctLjA1LjE2LS4xMy4yNi0uMjFsLjE4LS43NWMuMS0uNDQuNDgtLjc1LjkxLS43NXptLS40MyAzLjJjLS45MyAwLTEuNjkuODEtMS42OSAxLjhzLjc2IDEuOCAxLjY5IDEuOCAxLjY5LS44MSAxLjY5LTEuOC0uNzYtMS44LTEuNjktMS44eiIgZmlsbD0iIzJiMmIyYiIgZmlsbC1ydWxlPSJldmVub2RkIi8+PC9zdmc+";
+
+const PERSONS_ICON =
+  "data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48c3R5bGU+LmF7ZmlsbDojN2Q4MWFiO308L3N0eWxlPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMiAtMikiPjxwYXRoIGNsYXNzPSJhIiBkPSJNMTIgMi41QTMuNSAzLjUgMCAxIDAgMTUuNSwgNUEzLjUzIDMuNTMgMCAwIDAgMTIsIDIuNVptMCA1QTEuNSAxLjUgMCAxIDEgMTMuNSwgNiwxLjUxIDEuNTEgMCAwIDEgMTIsIDcuNVpNMTIgMTFhNS41IDUuNSAwIDAgMC00LjY4LDIuNDdBMSAxIDAgMCAwIDcuOTMsMTVoOC4xN0ExIDEgMCAwIDAgMTYsMTMuNDdBNS41IDUuNSAwIDAgMCwxMiwgMTFaTTcuNSwxMGEzLjUgMy41IDAgMCAxIDcuMCwwQTQuNSA0LjUgMCAwIDAgMTIsIDlzLTIuNjQsLjA5LTQuNSwxLjQ5QTEuNSAxLjUgMCAwIDEgNy41LDEwWiIvPjxnIGNsYXNzPSJhIj48cGF0aCBkPSJNNSAxNC4yNUEyLjI1IDIuMjUgMCAwIDEgNy4yNSAxMmgzLjVhMi4yNSAyLjI1IDAgMCAxIDIuMjUgMi4yNVYxNUg1WiIvPjwvZz48L2c+PC9zdmc+";
 
 type AdRow = {
   id: string;
@@ -8,48 +14,285 @@ type AdRow = {
   status: string | null;
   target?: string | null;
   created_at: string;
+
   // метрики
-  views?: number;          // когда читаем ad_campaigns/v_adcampaigns_agency
+  views?: number;
+  opened?: number; // opened video / opens
+  clicks?: number;
   actions?: number;
-  impressions?: number;    // когда читаем v_adcampaigns_client_compat
+
   // деньги
   cpm: number | string;
   budget: number | string;
   spend?: number | string;
+
   // базовые поля (есть во вьюхе client_compat — опционально)
   budget_base?: number | string;
   cpm_base?: number | string;
   spend_base?: number | string;
+
+  // вычисляемые
+  ctr?: number; // %
+  cvr?: number; // %
+  cpc?: number;
+  cpa?: number;
+  cpv?: number;
+
+  url?: string | null;
 };
+
+type ColumnConfig<Key extends keyof AdRow = keyof AdRow> = {
+  id: Key;
+  label: string;
+  sortable?: boolean;
+  align?: "left" | "right" | "center";
+  defaultVisible?: boolean;
+  format?: (value: AdRow[Key], row: AdRow) => JSX.Element | string | number;
+};
+
+// порядок и подписи под Telegram Ads
+const TABLE_COLUMNS: ColumnConfig[] = [
+  {
+    id: "title",
+    label: "AD TITLE",
+    sortable: true,
+    align: "left",
+    defaultVisible: true,
+  },
+  {
+    id: "views",
+    label: "VIEWS",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+  },
+  {
+    id: "opened",
+    label: "OPENED",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+  },
+  {
+    id: "clicks",
+    label: "CLICKS",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+  },
+  {
+    id: "actions",
+    label: "ACTIONS",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+  },
+  {
+    id: "ctr",
+    label: "CTR",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
+  },
+  {
+    id: "cvr",
+    label: "CVR",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
+  },
+  {
+  id: "cpm",
+  label: "CPM",
+  sortable: true,
+  align: "right",
+  defaultVisible: true,
+  format: (v, row) => {
+    // CPM берём из того, что пришло:
+    // сначала v, если его нет — из row.cpm, если нет — из cpm_base
+    const cpm =
+      Number(v) ||
+      Number((row as any).cpm) ||
+      Number((row as any).cpm_base) ||
+      0;
+
+    return `€ ${cpm.toFixed(2)}`;
+  },
+},
+
+  {
+    id: "budget",
+    label: "BUDGET",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+  },
+  {
+    id: "spend",
+    label: "SPENT",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
+  },
+  {
+    id: "cpc",
+    label: "CPC",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(4)}`,
+  },
+  {
+    id: "cpa",
+    label: "CPA",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(4)}`,
+  },
+  {
+    id: "cpv",
+    label: "CPV",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(5)}`,
+  },
+  {
+    id: "target",
+    label: "TARGET",
+    sortable: false,
+    align: "left",
+    defaultVisible: true,
+    format: (v) => {
+      if (!v) return "—";
+      const parts = String(v)
+        .split("|")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      return (
+        <div className="flex flex-col text-[11px] text-gray-700">
+          {parts.map((p, i) => (
+            <span key={i}>{p}</span>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
+    id: "status",
+    label: "STATUS",
+    sortable: true,
+    align: "left",
+    defaultVisible: true,
+    format: (v) => (
+      <span className="text-[13px] font-medium text-blue-600">
+        {v ?? "—"}
+      </span>
+    ),
+  },
+  {
+    id: "created_at",
+    label: "DATE ADDED",
+    sortable: true,
+    align: "left",
+    defaultVisible: true,
+    format: (v) => {
+      if (!v) return "";
+      const d = new Date(String(v));
+      if (Number.isNaN(d.getTime())) return "";
+
+      const datePart = d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "2-digit",
+      });
+      const timePart = d.toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+
+      // 21 Nov 25 12:37
+      return `${datePart} ${timePart}`;
+    },
+  },
+];
+
+const STORAGE_KEY = "tgads_campaign_table_columns";
 
 export default function AdTable() {
   const [ads, setAds] = useState<AdRow[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<{ id: string; dir: "asc" | "desc" } | null>(
+    null
+  );
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [budgetModalMode, setBudgetModalMode] = useState<"increase" | "edit" | null>(
+    null
+  );
+  const [selectedAd, setSelectedAd] = useState<AdRow | null>(null);
+  const [budgetInput, setBudgetInput] = useState<string>("");
 
-  // ---- 1) общий загрузчик, источник зависит от роли ----
+  const openBudgetModal = (mode: "increase" | "edit", ad: AdRow) => {
+    setSelectedAd(ad);
+    setBudgetModalMode(mode);
+
+    if (mode === "increase") {
+      setBudgetInput(""); // добавляем к текущему бюджету
+    } else {
+      setBudgetInput((Number(ad.budget) || 0).toFixed(2)); // редактируем полный бюджет
+    }
+  };
+
+  const closeBudgetModal = () => {
+    setBudgetModalMode(null);
+    setSelectedAd(null);
+    setBudgetInput("");
+  };
+
+  const handleBudgetSubmit = async () => {
+    if (!selectedAd || !budgetModalMode) return;
+
+    const delta = Number(budgetInput.replace(",", ".") || 0);
+    if (Number.isNaN(delta) || delta < 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    // TODO: сюда потом добавишь реальный update в Supabase
+    console.log("BUDGET MODAL SUBMIT:", {
+      mode: budgetModalMode,
+      adId: selectedAd.id,
+      amount: delta,
+    });
+
+    closeBudgetModal();
+  };
+
   const fetchAds = async () => {
-    const role = localStorage.getItem("role");        // "client" | "agency" | "admin"
+    const role = localStorage.getItem("role"); // "client" | "agency" | "admin"
     const userId = localStorage.getItem("user_id");
     const agencyId = localStorage.getItem("agency_id");
 
-    // Клиент -> читаем готовые данные с маркапом и совместимыми именами
-    // Агентство/админ -> без маркапа
-	const source =
-	  role === "client"
-		? "v_adcampaigns_client_compat"
-		: "ad_campaigns";
-
+    const source =
+      role === "client" ? "v_adcampaigns_client_compat" : "ad_campaigns";
 
     let query = supabase.from(source).select("*");
 
     if (role === "client") {
-      // во вьюхе client_compat в каждой строке уже проверенный client_id/agency_id,
-      // фильтрация на клиенте по своему user_id
       if (userId) query = query.eq("client_id", userId);
     } else if (role === "agency") {
       if (agencyId) query = query.eq("agency_id", agencyId);
     }
 
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query.order("created_at", {
+      ascending: false,
+    });
 
     if (error) {
       console.error("Failed to fetch ads:", error.message);
@@ -57,29 +300,69 @@ export default function AdTable() {
       return;
     }
 
-    // Нормализуем поля для рендера (CTR, views и т.п.)
     const rows: AdRow[] = (data ?? []).map((ad: any) => {
-      // во вьюхе client_compat метрики называются impressions/actions
-      const views = Number(ad.views ?? ad.impressions ?? 0);
-      const actions = Number(ad.actions ?? 0);
+const views =
+  Number(ad.views) ||
+  Number(ad.impressions) ||
+  0;
+const opened =
+  Number(ad.opened) ||
+  Number(ad.opens) ||
+  0;
+const clicks = Number(ad.clicks ?? 0);
+const actions = Number(ad.actions ?? 0);
 
-      const cpm = Number(ad.cpm ?? 0);
-      const budget = Number(ad.budget ?? 0);
+// роль
+const role = localStorage.getItem("role");
+const isClient = role === "client";
 
-      // spend уже приходит из client_compat; для agency считаем по views*cpm
-      const spend =
-        ad.spend !== undefined
-          ? Number(ad.spend)
-          : Number(((views / 1000) * cpm).toFixed(2));
+// базовый CPM
+const cpmBase =
+  Number(ad.cpm_base) ||
+  Number(ad.cpm) ||
+  0;
+
+// CPM с маркапом из вьюхи (то, что ты показал на скрине)
+const cpmWithMarkup =
+  Number(ad.cpm_with_markup) ||
+  cpmBase;
+
+// финальный CPM, который используем в таблице
+const cpm = isClient ? cpmWithMarkup : cpmBase;
+
+const budget = Number(ad.budget ?? 0);
+
+// SPEND считаем от финального CPM
+const spend =
+  Number(ad.spend_raw) ||
+  Number(((views / 1000) * cpm).toFixed(2));
+
+      const ctr = views > 0 ? (clicks / views) * 100 : 0;
+      const cvr = clicks > 0 ? (actions / clicks) * 100 : 0;
+      const cpc = clicks > 0 ? spend / clicks : 0;
+      const cpa = actions > 0 ? spend / actions : 0;
+      const cpv = views > 0 ? spend / views : 0;
 
       return {
         ...ad,
+        title: ad.title ?? ad.name ?? "Untitled",
         views,
+        opened,
+        clicks,
         actions,
         cpm,
         budget,
         spend,
-        ctr: views > 0 ? (actions / views) * 100 : 0,
+        // базовые значения без маркапа (если приходят из вьюхи)
+        budget_base: (ad as any).budget_base ?? null,
+        cpm_base: (ad as any).cpm_base ?? null,
+        spend_base: (ad as any).spend_base ?? null,
+        ctr,
+        cvr,
+        cpc,
+        cpa,
+        cpv,
+        url: ad.url ?? null,
       };
     });
 
@@ -91,113 +374,390 @@ export default function AdTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- 2) мутации разрешаем только не-клиентам ----
-  const handleDelete = async (id: string) => {
-    const role = localStorage.getItem("role");
-    if (role === "client") return; // read-only для клиента
-
-    const { error } = await supabase.from("ad_campaigns").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting ad:", error.message);
+  // ---- инициализация видимых колонок ----
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      setVisibleColumns(JSON.parse(saved));
     } else {
-      setAds((prev) => prev.filter((ad) => ad.id !== id));
+      setVisibleColumns(
+        TABLE_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id as string)
+      );
     }
+  }, []);
+
+  const columnsToRender = useMemo(
+    () =>
+      TABLE_COLUMNS.filter((c) =>
+        c.id === "title" ? true : visibleColumns.includes(c.id as string)
+      ),
+    [visibleColumns]
+  );
+
+  const sortedAds = useMemo(() => {
+    if (!sortBy) return ads;
+    const col = TABLE_COLUMNS.find((c) => c.id === sortBy.id);
+    if (!col?.sortable) return ads;
+
+    return [...ads].sort((a, b) => {
+      const av = a[col.id];
+      const bv = b[col.id];
+      if (av === bv) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+
+      if (typeof av === "number" && typeof bv === "number") {
+        return sortBy.dir === "asc" ? av - bv : bv - av;
+      }
+
+      return sortBy.dir === "asc"
+        ? String(av).localeCompare(String(bv))
+        : String(bv).localeCompare(String(av));
+    });
+  }, [ads, sortBy]);
+
+  const handleToggleSort = (id: string) => {
+    setSortBy((prev) => {
+      if (!prev || prev.id !== id) return { id, dir: "desc" };
+      if (prev.dir === "desc") return { id, dir: "asc" };
+      return null;
+    });
   };
 
-  // +$10 увеличиваем ТОЛЬКО базовый бюджет (в таблице ad_campaigns)
-  // если источник client_compat, у строки есть budget_base — используем его
-  const handleAddBudget = async (id: string, ad: AdRow) => {
-    const role = localStorage.getItem("role");
-    if (role === "client") return; // клиент не может менять
+  const handleToggleColumn = (id: string) => {
+    setVisibleColumns((prev) => {
+      let next: string[];
 
-    const base = Number(ad.budget_base ?? ad.budget ?? 0);
-    const next = (base + 10).toFixed(2);
+      if (prev.includes(id)) {
+        next = prev.filter((x) => x !== id);
+      } else {
+        next = [...prev, id];
+      }
 
-    const { error } = await supabase
-      .from("ad_campaigns")
-      .update({ budget: next })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Failed to update budget:", error.message);
-    } else {
-      fetchAds();
-    }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 mt-6">
-      <div className="overflow-x-auto bg-white border rounded shadow-sm">
-        <table className="min-w-full text-sm text-gray-800">
-          <thead className="bg-gray-100 text-xs uppercase text-gray-500 border-b">
-            <tr>
-              <th className="px-4 py-3 text-left">Ad Title</th>
-              <th className="px-4 py-3 text-left">Views</th>
-              <th className="px-4 py-3 text-left">Actions</th>
-              <th className="px-4 py-3 text-left">CPM</th>
-              <th className="px-4 py-3 text-left">Budget</th>
-              <th className="px-4 py-3 text-left">CTR (%)</th>
-              <th className="px-4 py-3 text-left">Spend</th>
-              <th className="px-4 py-3 text-left">Target</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Date Added</th>
-              <th className="px-4 py-3 text-left">Tools</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {ads.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="text-center py-8 text-gray-400">
-                  No ads created yet.
-                </td>
-              </tr>
-            ) : (
-              ads.map((ad) => {
-                const role = localStorage.getItem("role");
-                return (
-                  <tr key={ad.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-blue-600 font-medium">
-                      <Link to={`/create?id=${ad.id}`} className="hover:underline">
-                        {ad.title || "Untitled"}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">{ad.views}</td>
-                    <td className="px-4 py-3">{ad.actions}</td>
-                    <td className="px-4 py-3">${Number(ad.cpm).toFixed(2)}</td>
-                    <td className="px-4 py-3">${Number(ad.budget).toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      {Number((ad as any).ctr ?? (ad.views ? (ad.actions / ad.views) * 100 : 0)).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3">${Number(ad.spend ?? 0).toFixed(2)}</td>
-                    <td className="px-4 py-3">{(ad as any).target}</td>
-                    <td className="px-4 py-3 text-blue-500">{ad.status}</td>
-                    <td className="px-4 py-3">
-                      {new Date(ad.created_at).toLocaleString("en-GB")}
-                    </td>
-                    <td className="px-4 py-3 flex gap-2">
-                      {role !== "client" && (
-                        <>
-                          <button
-                            className="text-red-600 hover:underline text-xs"
-                            onClick={() => handleDelete(ad.id)}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            className="text-blue-600 hover:underline text-xs"
-                            onClick={() => handleAddBudget(ad.id, ad)}
-                          >
-                            + $10
-                          </button>
-                        </>
+    <div className="flex flex-col gap-4">
+      {/* Хедер */}
+      <div className="flex items-center justify-between"></div>
+
+      {/* Таблица */}
+      <div className="tg-root w-full flex justify-center">
+        <div className="w-full max-w-[1365px]">
+          <table className="w-full text-[13px] text-gray-800 table-fixed border-collapse">
+            <thead className="text-[11px] font-semibold text-gray-600 border-b border-gray-200">
+              <tr className="h-9">
+                {columnsToRender.map((col) => (
+                  <th
+                    key={col.id as string}
+                    className={`px-3 ${
+                      col.align === "right"
+                        ? "text-right"
+                        : col.align === "center"
+                        ? "text-center"
+                        : "text-left"
+                    } ${col.sortable ? "cursor-pointer select-none" : ""}`}
+                    onClick={() =>
+                      col.sortable && handleToggleSort(col.id as string)
+                    }
+                  >
+                    <span className="inline-flex items-center gap-1 tracking-wide">
+                      {col.label}
+                      {sortBy?.id === col.id && (
+                        <span className="text-gray-500">
+                          {sortBy.dir === "asc" ? "▲" : "▼"}
+                        </span>
                       )}
-                    </td>
+                    </span>
+                  </th>
+                ))}
+
+                {/* колонка под шестерёнку, как в кабинете справа */}
+                <th className="w-8 px-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomizeOpen(true)}
+                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100"
+                  >
+                    <img src={GEAR_ICON_SRC} className="h-4 w-4" alt="settings" />
+                  </button>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {sortedAds.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={columnsToRender.length + 1}
+                    className="text-center py-8 text-gray-400"
+                  >
+                    No ads created yet.
+                  </td>
+                </tr>
+              ) : (
+                sortedAds.map((ad) => (
+                  <tr
+                    key={ad.id}
+                    className="bg-[#f6f7f9] hover:bg-[#e9f0f7]"
+                  >
+                    {columnsToRender.map((col) => {
+                      const value = ad[col.id];
+
+                      if (col.id === "title") {
+                        return (
+                          <td
+                            key={col.id as string}
+                            className="px-3 py-2 align-top w-[280px]"
+                          >
+                            <div className="flex items-start gap-2 w-full">
+                              {/* Иконка слева */}
+                              <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
+                                <img
+                                  src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjMmIyYjJiIj48cGF0aCBkPSJNIDEyLjEgOS40NSBDIDEzLjEyIDkuNDUgMTMuOTQgOC43MSAxMy45NCA3LjggQyAxMy45NCA2Ljg4IDEzLjEyIDYuMTUgMTIuMSA2LjE1IEMgMTEuMDcgNi4xNSAxMC4yNSA2Ljg4IDEwLjI1IDcuOCBDIDEwLjI1IDguNzEgMTEuMDcgOS40NSAxMi4xIDkuNDUgWiBNIDYuNzkgOS4yNSBDIDguMDIgOS4yNSA5IDguMyA5IDcuMTIgUyA4LjAyIDUgNi43OSA1IFMgNC41NyA1Ljk1IDQuNTcgNy4xMiBTIDUuNTYgOS4yNSA2Ljc5IDkuMjUgWiBNIDYuNjggMTAuMTYgQyA1LjEyIDEwLjE2IDIgMTAuODkgMiAxMi4zNiBWIDEzLjA4IEMgMiAxMy40MyAyLjUzIDEzLjkzIDIuOSAxMy45MyBIIDEwLjY4IEMgMTEuMDUgMTMuOTMgMTEuMzUgMTMuNjUgMTEuMzUgMTMuMyBWIDEyLjM2IEMgMTEuMzUgMTAuODkgOC4yMyAxMC4xNiA2LjY4IDEwLjE2IFogTSAxMS44OSAxMC40NiBDIDExLjcyIDEwLjQ2IDExLjUzIDEwLjQ3IDExLjMyIDEwLjQ5IEMgMTEuMzQgMTAuNSAxMS4zNCAxMC41MSAxMS4zNSAxMC41MSBDIDEyLjAyIDExIDEyLjczIDExLjY2IDEyLjczIDEyLjUzIFYgMTMuNDEgQyAxMi43MyAxMy42MiAxMi42OSAxMy44MiAxMi42MiAxNCBIIDE1LjE5IEMgMTUuNTEgMTQgMTYgMTMuNTEgMTYgMTMuMTkgViAxMi41MyBDIDE2IDExLjE1IDEzLjI2IDEwLjQ2IDExLjg5IDEwLjQ2IFoiLz48L2c+PC9zdmc+"
+                                  className="h-4 w-4"
+                                  alt=""
+                                />
+                              </div>
+
+                              {/* Текстовый блок с обрезкой */}
+                              <div className="flex flex-col w-full">
+                                <Link
+                                  to={`/create?id=${ad.id}`}
+                                  className="block text-[13px] font-medium text-blue-600 hover:underline truncate"
+                                >
+                                  {ad.title || "Untitled"}
+                                </Link>
+
+                                {ad.url && (
+                                  <a
+                                    href={ad.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block text-[11px] text-blue-600 hover:underline truncate"
+                                  >
+                                    {ad.url}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      if (col.id === "budget") {
+                        const currentRole = localStorage.getItem("role");
+                        const isClient = currentRole === "client";
+
+                        const rawBudget =
+                          (ad as any).budget_raw ??
+                          (ad as any).budget_base ??
+                          ad.budget ??
+                          0;
+
+                        const markedBudget =
+                          (ad as any).budget_with_markup ??
+                          ad.budget ??
+                          rawBudget;
+
+                        const mainBudget = Number(
+                          isClient ? markedBudget : rawBudget
+                        );
+
+                        const baseBudget =
+                          ad.budget_base !== undefined && ad.budget_base !== null
+                            ? Number(ad.budget_base) || 0
+                            : null;
+
+                        return (
+                          <td
+                            key={col.id as string}
+                            className="px-4 py-2 text-right align-middle"
+                          >
+                            <button
+                              type="button"
+                              className="block w-full text-right text-[13px] text-[#2481cc] hover:underline"
+                              onClick={() => openBudgetModal("increase", ad)}
+                            >
+                              € {mainBudget.toFixed(2)}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="block w-full text-right text-[11px] text-[#2481cc] hover:underline mt-0.5"
+                              onClick={() => openBudgetModal("edit", ad)}
+                            >
+                              {baseBudget !== null
+                                ? `€ ${baseBudget.toFixed(2)}`
+                                : `€ ${mainBudget.toFixed(2)}`}
+                            </button>
+                          </td>
+                        );
+                      }
+
+                      const baseClass =
+                        col.align === "right"
+                          ? "text-right"
+                          : col.align === "center"
+                          ? "text-center"
+                          : "text-left";
+
+                      const display = col.format
+                        ? col.format(value as any, ad)
+                        : (value as any) ?? "—";
+
+                      return (
+                        <td
+                          key={col.id as string}
+                          className={`px-3 py-2 ${baseClass}`}
+                        >
+                          {display === "" ||
+                          display === null ||
+                          display === undefined
+                            ? "—"
+                            : display}
+                        </td>
+                      );
+                    })}
+
+                    {/* пустая ячейка под выравнивание с шестерёнкой */}
+                    <td className="w-8 px-2" />
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Модалка кастомизации */}
+      {isCustomizeOpen && (
+        <CustomizeTableModal
+          visibleIds={visibleColumns}
+          onToggle={handleToggleColumn}
+          onClose={() => setIsCustomizeOpen(false)}
+        />
+      )}
+
+      {/* Модалка бюджета (Increase / Edit) */}
+      {budgetModalMode && selectedAd && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-lg bg-white shadow-lg">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-[15px] font-semibold text-gray-900">
+                {budgetModalMode === "increase"
+                  ? "Increase Budget"
+                  : "Edit Daily Budget"}
+              </h2>
+              <p className="mt-1 text-[13px] text-gray-700">
+                for {selectedAd.title || "Untitled"}
+              </p>
+            </div>
+
+            <div className="px-6 py-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[18px] text-gray-700">€</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={budgetInput}
+                  onChange={(e) => setBudgetInput(e.target.value)}
+                  placeholder={budgetModalMode === "increase" ? "0.00" : ""}
+                  className="flex-1 rounded-md border border-[#2a9cf0] px-3 py-2 text-[15px] outline-none focus:ring-2 focus:ring-[#2a9cf0]/50"
+                />
+              </div>
+
+              {budgetModalMode === "edit" && (
+                <p className="text-[12px] text-gray-500">
+                  €{" "}
+                  {Math.max(
+                    0,
+                    (Number(selectedAd.budget) || 0) -
+                      (Number(selectedAd.spend_raw) || 0)
+                  ).toFixed(2)}{" "}
+                  remaining today
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-4 border-t px-6 py-3 text-[13px]">
+              <button
+                type="button"
+                onClick={closeBudgetModal}
+                className="text-[#2481cc] hover:underline"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBudgetSubmit}
+                className="rounded bg-[#1890ff] px-4 py-1.5 text-white font-semibold hover:bg-[#1273cc]"
+              >
+                {budgetModalMode === "increase" ? "Add to budget" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Модальное окно Customize Table
+type CustomizeProps = {
+  visibleIds: string[];
+  onToggle: (id: string) => void;
+  onClose: () => void;
+};
+
+function CustomizeTableModal({
+  visibleIds,
+  onToggle,
+  onClose,
+}: CustomizeProps) {
+  const customizable = TABLE_COLUMNS.filter((c) => c.id !== "title");
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+      <div className="w-full max-w-sm rounded-lg bg-white shadow-lg">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            Customize Table
+          </h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Toggle columns to show in the campaigns list.
+          </p>
+        </div>
+
+        <div className="max-h-[420px] space-y-1 overflow-y-auto px-4 py-3 text-sm">
+          {customizable.map((col) => (
+            <label
+              key={col.id as string}
+              className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-1.5 hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-blue-600"
+                checked={visibleIds.includes(col.id as string)}
+                onChange={() => onToggle(col.id as string)}
+              />
+              <span className="text-gray-800">{col.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex justify-end border-t px-4 py-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

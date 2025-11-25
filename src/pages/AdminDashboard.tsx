@@ -25,6 +25,12 @@ export default function AdminDashboard() {
   const [topUpAmount, setTopUpAmount] = useState<number>(0);
   const [clients, setClients] = useState<{ client_id: string }[]>([]);
 
+  // Стейты для ручного ввода дневной статистики
+  const [statAdId, setStatAdId] = useState<number | null>(null);
+  const [statDate, setStatDate] = useState<string>("");
+  const [statViews, setStatViews] = useState<string>("");
+  const [statClicks, setStatClicks] = useState<string>("");
+
   // === Глобальный бюджет ===
   useEffect(() => {
     const fetchGlobalBudget = async () => {
@@ -90,22 +96,13 @@ export default function AdminDashboard() {
       .from("ad_campaigns")
       .update({
         title: ad.title,
-        views: ad.views,
-        actions: ad.actions,
         cpm: ad.cpm,
         status: ad.status,
         budget: ad.budget,
+        // views / actions лучше не апдейтить руками —
+        // они будут пересчитываться из ad_stats
       })
       .eq("id", ad.id);
-
-    await supabase.from("ad_stats").insert([
-      {
-        ad_id: ad.id,
-        timestamp: new Date().toISOString(),
-        views: ad.views,
-        clicks: ad.actions,
-      },
-    ]);
 
     setEditingId(null);
     fetchAds();
@@ -134,14 +131,94 @@ export default function AdminDashboard() {
 
   const handleDecreaseBudget = async (ad: Ad, amount: number) => {
     const newBudget = Math.max(0, ad.budget - amount);
-    await supabase.from("ad_campaigns").update({ budget: newBudget }).eq("id", ad.id);
+    await supabase
+      .from("ad_campaigns")
+      .update({ budget: newBudget })
+      .eq("id", ad.id);
     fetchAds();
+  };
+
+  // === Добавление дневной статистики ===
+  const handleAddDailyStat = async () => {
+    if (!statAdId || !statDate || !statViews) {
+      alert("Выбери кампанию, дату и укажи просмотры");
+      return;
+    }
+
+    const viewsNum = Number(statViews) || 0;
+    const clicksNum = Number(statClicks) || 0;
+
+    try {
+      // 1. Вставляем строку в ad_stats
+      const { error: insertError } = await supabase.from("ad_stats").insert([
+        {
+          ad_id: statAdId,
+          timestamp: new Date(statDate + "T00:00:00").toISOString(),
+          views: viewsNum,
+          clicks: clicksNum,
+        },
+      ]);
+
+      if (insertError) {
+        console.error("Ошибка при вставке в ad_stats:", insertError.message);
+        alert("Не удалось сохранить дневную статистику");
+        return;
+      }
+
+      // 2. Считаем totals по этой кампании
+      const { data: statsRows, error: statsError } = await supabase
+        .from("ad_stats")
+        .select("views, clicks")
+        .eq("ad_id", statAdId);
+
+      if (statsError || !statsRows) {
+        console.error("Ошибка при чтении ad_stats:", statsError?.message);
+        alert("Не удалось пересчитать totals для кампании");
+        return;
+      }
+
+      const totalViews = statsRows.reduce(
+        (sum: number, row: any) => sum + (Number(row.views) || 0),
+        0
+      );
+      const totalClicks = statsRows.reduce(
+        (sum: number, row: any) => sum + (Number(row.clicks) || 0),
+        0
+      );
+
+      // 3. Обновляем totals в ad_campaigns
+      const { error: updError } = await supabase
+        .from("ad_campaigns")
+        .update({
+          views: totalViews,
+          actions: totalClicks,
+        })
+        .eq("id", statAdId);
+
+      if (updError) {
+        console.error("Ошибка при обновлении кампании:", updError.message);
+        alert("Статистика за день сохранена, но totals не обновились");
+      } else {
+        alert("Дневная статистика сохранена и totals обновлены ✅");
+      }
+
+      // 4. Сброс формы + обновление списка
+      setStatViews("");
+      setStatClicks("");
+      // дату можно не сбрасывать, удобно вводить подряд
+      fetchAds();
+    } catch (e: any) {
+      console.error(e);
+      alert("Ошибка при сохранении статистики");
+    }
   };
 
   // === Балансы клиентов ===
   useEffect(() => {
     const fetchClients = async () => {
-      const { data, error } = await supabase.from("client_balances").select("client_id");
+      const { data, error } = await supabase
+        .from("client_balances")
+        .select("client_id");
       if (!error && data) setClients(data);
     };
     fetchClients();
@@ -175,30 +252,39 @@ export default function AdminDashboard() {
   };
 
   // === Создание агентства ===
-  const handleCreateAgency = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateAgency = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
     try {
       const form = e.currentTarget;
-      const email = (form.elements.namedItem("email") as HTMLInputElement).value;
-      const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+      const email = (form.elements.namedItem("email") as HTMLInputElement)
+        .value;
+      const password = (
+        form.elements.namedItem("password") as HTMLInputElement
+      ).value;
       const name = (form.elements.namedItem("name") as HTMLInputElement).value;
-      const markup = Number((form.elements.namedItem("markup") as HTMLInputElement).value);
-      const balance = Number((form.elements.namedItem("balance") as HTMLInputElement).value);
+      const markup = Number(
+        (form.elements.namedItem("markup") as HTMLInputElement).value
+      );
+      const balance = Number(
+        (form.elements.namedItem("balance") as HTMLInputElement).value
+      );
 
-	const res = await fetch(
-	  "https://eoybnbhpqsqxeygsikkz.functions.supabase.co/create-agency",
-	  {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-		  email,
-		  password,
-		  name,
-		  markup_percent: markup,
-		  balance,
-		}),
-	  }
-	);
+      const res = await fetch(
+        "https://eoybnbhpqsqxeygsikkz.functions.supabase.co/create-agency",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            password,
+            name,
+            markup_percent: markup,
+            balance,
+          }),
+        }
+      );
 
       const data = await res.json();
       if (data.error) {
@@ -250,7 +336,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* === Таблица кампаний === */}
-      <table className="w-full text-sm border border-gray-300 mb-10">
+      <table className="w-full text-sm border border-gray-300 mb-6">
         <thead className="bg-gray-100 text-gray-600">
           <tr>
             <th className="p-2 border">Title</th>
@@ -273,7 +359,9 @@ export default function AdminDashboard() {
                   <input
                     className="w-full border px-1"
                     value={ad.title}
-                    onChange={(e) => handleChange(ad.id, "title", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(ad.id, "title", e.target.value)
+                    }
                   />
                 ) : (
                   ad.title
@@ -285,7 +373,9 @@ export default function AdminDashboard() {
                     className="w-full border px-1"
                     value={ad.views}
                     type="number"
-                    onChange={(e) => handleChange(ad.id, "views", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(ad.id, "views", e.target.value)
+                    }
                   />
                 ) : (
                   ad.views
@@ -297,7 +387,9 @@ export default function AdminDashboard() {
                     className="w-full border px-1"
                     value={ad.actions}
                     type="number"
-                    onChange={(e) => handleChange(ad.id, "actions", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(ad.id, "actions", e.target.value)
+                    }
                   />
                 ) : (
                   ad.actions
@@ -310,7 +402,9 @@ export default function AdminDashboard() {
                     className="w-full border px-1"
                     value={ad.cpm}
                     type="number"
-                    onChange={(e) => handleChange(ad.id, "cpm", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(ad.id, "cpm", e.target.value)
+                    }
                   />
                 ) : (
                   ad.cpm
@@ -331,7 +425,9 @@ export default function AdminDashboard() {
                   <select
                     className="w-full border px-1"
                     value={ad.status}
-                    onChange={(e) => handleChange(ad.id, "status", e.target.value)}
+                    onChange={(e) =>
+                      handleChange(ad.id, "status", e.target.value)
+                    }
                   >
                     <option value="Active">Active</option>
                     <option value="Paused">Paused</option>
@@ -369,16 +465,109 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
+      {/* === Форма добавления дневной статистики === */}
+      <div className="mb-8 p-4 border rounded bg-gray-50">
+        <h3 className="text-md font-semibold mb-3">
+          Добавить дневную статистику для кампании
+        </h3>
+        <div className="flex flex-wrap gap-3 items-end">
+          <select
+            className="border rounded px-2 py-1 min-w-[220px]"
+            value={statAdId ?? ""}
+            onChange={(e) =>
+              setStatAdId(
+                e.target.value ? Number(e.target.value) : null
+              )
+            }
+          >
+            <option value="">Выберите кампанию</option>
+            {ads.map((ad) => (
+              <option key={ad.id} value={ad.id}>
+                {ad.title} (id: {ad.id})
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            className="border rounded px-2 py-1"
+            value={statDate}
+            onChange={(e) => setStatDate(e.target.value)}
+          />
+
+          <input
+            type="number"
+            className="border rounded px-2 py-1 w-28"
+            placeholder="Views"
+            value={statViews}
+            onChange={(e) => setStatViews(e.target.value)}
+          />
+
+          <input
+            type="number"
+            className="border rounded px-2 py-1 w-28"
+            placeholder="Clicks"
+            value={statClicks}
+            onChange={(e) => setStatClicks(e.target.value)}
+          />
+
+          <button
+            className="bg-blue-600 text-white px-4 py-1 rounded"
+            onClick={handleAddDailyStat}
+          >
+            Сохранить день
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          Строка добавляется в <code>ad_stats</code>, после чего
+          автоматически пересчитываются суммарные просмотры и клики
+          кампании в <code>ad_campaigns</code>.
+        </p>
+      </div>
+
       {/* === Создание агентства === */}
       <div className="mb-6 p-4 border rounded bg-gray-50">
         <h3 className="text-md font-semibold mb-3">Создать агентство</h3>
-        <form onSubmit={handleCreateAgency} className="flex flex-wrap gap-3 items-end">
-          <input name="name" placeholder="Название" className="border rounded px-2 py-1" required />
-          <input name="email" placeholder="Email" className="border rounded px-2 py-1" required />
-          <input name="password" placeholder="Пароль" type="password" className="border rounded px-2 py-1" required />
-          <input name="markup" type="number" placeholder="Маржа %" className="border rounded px-2 py-1 w-20" defaultValue={20} />
-          <input name="balance" type="number" placeholder="Баланс €" className="border rounded px-2 py-1 w-24" defaultValue={0} />
-          <button className="bg-blue-600 text-white px-4 py-1 rounded">Создать</button>
+        <form
+          onSubmit={handleCreateAgency}
+          className="flex flex-wrap gap-3 items-end"
+        >
+          <input
+            name="name"
+            placeholder="Название"
+            className="border rounded px-2 py-1"
+            required
+          />
+          <input
+            name="email"
+            placeholder="Email"
+            className="border rounded px-2 py-1"
+            required
+          />
+          <input
+            name="password"
+            placeholder="Пароль"
+            type="password"
+            className="border rounded px-2 py-1"
+            required
+          />
+          <input
+            name="markup"
+            type="number"
+            placeholder="Маржа %"
+            className="border rounded px-2 py-1 w-20"
+            defaultValue={20}
+          />
+          <input
+            name="balance"
+            type="number"
+            placeholder="Баланс €"
+            className="border rounded px-2 py-1 w-24"
+            defaultValue={0}
+          />
+          <button className="bg-blue-600 text-white px-4 py-1 rounded">
+            Создать
+          </button>
         </form>
       </div>
 
@@ -386,7 +575,9 @@ export default function AdminDashboard() {
       <div className="mb-6 p-4 border rounded bg-gray-50">
         <h3 className="text-md font-semibold mb-2">Список агентств</h3>
         {agencies.length === 0 ? (
-          <p className="text-gray-500 text-sm">Пока нет зарегистрированных агентств</p>
+          <p className="text-gray-500 text-sm">
+            Пока нет зарегистрированных агентств
+          </p>
         ) : (
           <table className="w-full text-sm border border-gray-300">
             <thead className="bg-gray-100 text-gray-600">
