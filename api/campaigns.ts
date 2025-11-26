@@ -61,60 +61,99 @@ export default async function handler(req: any, res: any) {
     }
 
     const rows =
-      (data || []) as {
-        id: string;
-        title: string;
-        text: string | null;
-        url: string | null;
-        media_url: string | null;
-        media_type: string | null;
-        status: string;
-        target: string | null;
-        created_at: string;
-        updated_at: string;
-        client_id: string | null;
-        agency_id: string | null;
-        cpm: number | null;
-        budget: number | null;
-        views: number | null;
-        clicks: number | null;
-      }[];
+  (data || []) as {
+    id: string;
+    title: string;
+    text: string | null;
+    url: string | null;
+    media_url: string | null;
+    media_type: string | null;
+    status: string;
+    target: string | null;
+    created_at: string;
+    updated_at: string;
+    client_id: string | null;
+    agency_id: string | null;
+
+    cpm: number | null;                 // net CPM
+    budget_raw: number | null;          // бюджет без маркапа
+    views: number | null;
+    actions: number | null;             // наши "клики/действия"
+    ctr: number | null;
+
+    spend_raw: number | null;           // net spend
+    cpm_with_markup: number | null;
+    budget_with_markup: number | null;
+    spend_with_markup: number | null;
+    markup_percent: number | null;
+  }[];
 
     // считаем метрики по каждой кампании
     const items = rows.map((row) => {
-      const views = Number(row.views || 0);
-      const clicks = Number(row.clicks || 0);
-      const cpmNet = Number(row.cpm || 0);
-      const budgetNet = Number(row.budget || 0);
+  const views = Number(row.views || 0);
+  const clicks = Number(row.actions || 0); // из колонки actions
+  const cpmNet = Number(row.cpm || 0);
 
-      const spendNet = views > 0 ? (views * cpmNet) / 1000 : 0; // если нужно считать от фактических показов
-      const spendClient = Number((spendNet * markupMultiplier).toFixed(2));
-      const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+  const budgetNet = Number(row.budget_raw || 0);
 
-      return {
-        id: row.id,
-        title: row.title,
-        text: row.text,
-        url: row.url,
-        media_url: row.media_url,
-        media_type: row.media_type,
-        status: row.status,
-        target: row.target,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        client_id: row.client_id,
-        agency_id: row.agency_id,
-        cpm_net: cpmNet,
-        cpm_client: Number((cpmNet * markupMultiplier).toFixed(2)),
-        budget_net: budgetNet,
-        budget_client: Number((budgetNet * markupMultiplier).toFixed(2)),
-        views,
-        clicks,
-        spend_net: Number(spendNet.toFixed(2)),
-        spend_client: spendClient,
-        ctr,
-      };
-    });
+  const spendNet =
+    row.spend_raw != null
+      ? Number(row.spend_raw)
+      : views > 0
+      ? (views * cpmNet) / 1000
+      : 0;
+
+  const spendClient =
+    row.spend_with_markup != null
+      ? Number(row.spend_with_markup)
+      : Number((spendNet * markupMultiplier).toFixed(2));
+
+  const ctr =
+    row.ctr != null
+      ? Number(row.ctr)
+      : views > 0
+      ? Number(((clicks / views) * 100).toFixed(2))
+      : 0;
+
+  const cpmClient =
+    row.cpm_with_markup != null
+      ? Number(row.cpm_with_markup)
+      : Number((cpmNet * markupMultiplier).toFixed(2));
+
+  const budgetClient =
+    row.budget_with_markup != null
+      ? Number(row.budget_with_markup)
+      : Number((budgetNet * markupMultiplier).toFixed(2));
+
+  return {
+    id: row.id,
+    title: row.title,
+    text: row.text,
+    url: row.url,
+    media_url: row.media_url,
+    media_type: row.media_type,
+    status: row.status,
+    target: row.target,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    client_id: row.client_id,
+    agency_id: row.agency_id,
+
+    cpm_net: cpmNet,
+    cpm_client: cpmClient,
+
+    budget_net: budgetNet,
+    budget_client: budgetClient,
+
+    views,
+    clicks,
+
+    spend_net: Number(spendNet.toFixed(2)),
+    spend_client: Number(spendClient.toFixed(2)),
+
+    ctr,
+  };
+});
 
     // итоги по всем кампаниям
     const totalViews = items.reduce((s, r) => s + r.views, 0);
