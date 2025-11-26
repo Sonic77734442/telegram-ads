@@ -6,14 +6,10 @@ export default async function handler(req: any, res: any) {
     const { mode, client_id, agency_id } = (req as any).query || {};
 
     // режим: client | agency | admin
-    const resolvedMode =
+    const resolvedMode: "client" | "agency" | "admin" =
       mode === "client" || mode === "agency" || mode === "admin"
         ? mode
         : "client";
-
-    // Маркап как в /api/reports (можно переиспользовать тот же env)
-    const markupPercent = Number(process.env.CLIENT_MARKUP_PERCENT ?? "10");
-    const markupMultiplier = 1 + markupPercent / 100;
 
     // 👇 Динамический импорт Supabase
     const supabaseModule: any = await import("@supabase/supabase-js");
@@ -43,8 +39,30 @@ export default async function handler(req: any, res: any) {
     // ⚠️ тут важно: я исхожу из того, что у тебя уже есть вьюха
     // v_adcampaigns_client_compat с полями:
     // id, client_id, agency_id, title, text, url, media_url, media_type,
-    // status, target, created_at, updated_at, actions, cpm, budget, views, clicks
+    // status, target, created_at, updated_at, cpm, budget,
+    // daily_views, daily_budget, views, clicks, actions, spend_raw, markup_percent
 
+    // --------- МАРКАП КЛИЕНТА ИЗ client_balances ---------
+    let clientMarkup = 0;
+
+    if (resolvedMode === "client" && client_id) {
+      const { data: balanceRow, error: balanceError } = await supabase
+        .from("client_balances")
+        .select("markup_percent")
+        .eq("client_id", client_id)
+        .single();
+
+      if (balanceError) {
+        console.error("Error loading client markup:", balanceError);
+      }
+
+      clientMarkup = Number(balanceRow?.markup_percent ?? 0);
+    }
+
+    const markupMultiplier = 1 + clientMarkup / 100;
+    // ------------------------------------------------------
+
+    // основной запрос к вьюхе
     let query = supabase.from("v_adcampaigns_client_compat").select("*");
 
     if (resolvedMode === "client" && client_id) {
@@ -54,13 +72,15 @@ export default async function handler(req: any, res: any) {
     }
 
     const { data, error } = await query.order("created_at", {
-  ascending: false,
-});
+      ascending: false,
+    });
 
-if (error) {
-  console.error("Error loading campaigns:", error);
-  return res.status(500).json({ error: "Failed to load campaigns" } as any);
-}
+    if (error) {
+      console.error("Error loading campaigns:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to load campaigns" } as any);
+    }
 
     // здесь уже есть resolvedMode и markupMultiplier
     const rows = (data || []) as any[];
@@ -77,8 +97,8 @@ if (error) {
       const views = Number(row.views ?? 0);
       const clicks = Number(row.clicks ?? row.actions ?? 0);
 
-      const cpmNet = Number(row.cpm ?? 0);          // NET-CPM из вьюхи
-      const budgetNet = Number(row.budget ?? 0);    // NET общий бюджет
+      const cpmNet = Number(row.cpm ?? 0); // NET-CPM из вьюхи
+      const budgetNet = Number(row.budget ?? 0); // NET общий бюджет
       const dailyBudgetNet = Number(row.daily_budget ?? 0); // NET дневной бюджет
 
       // NET SPEND: берем из вьюхи, либо считаем заново
@@ -89,7 +109,7 @@ if (error) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // Маркап для клиента
+      // Маркап для клиента: CPM_client = CPM_net * factor
       const cpmClient = isClientMode
         ? Number((cpmNet * markupMultiplier).toFixed(4))
         : cpmNet;
@@ -177,4 +197,8 @@ if (error) {
       },
       mode: resolvedMode,
     });
-
+  } catch (e: any) {
+    console.error("Unexpected error in /api/campaigns:", e);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+}
