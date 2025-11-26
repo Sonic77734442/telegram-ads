@@ -148,54 +148,42 @@ const multiplier =
     })();
   }, [adId, statsRange]);
 
-  // load budget chart
-  useEffect(() => {
-    if (!adId) return;
-    (async () => {
-      const fn =
-        budgetRange === "days" ? "get_budget_stats_daily" : "get_budget_stats_5min";
-      const { data, error } = await supabase.rpc(fn, { input_ad_id: adId });
-      if (error) {
-        console.error("budget rpc error:", error);
-        setBudgetData([]);
-        return;
-      }
-      const normalized = (data || []).map((r: any) => {
-        const base = Number(r.amount ?? 0);
-        return {
-          ...(budgetRange === "days" ? { date: r.date } : { ts: r.ts }),
-          amount: base * multiplier, // на стороне клиента с маркапом
-        };
-      });
-      setBudgetData(normalized);
-    })();
-  }, [adId, budgetRange, multiplier]);
-
-  // load reports (table)
+   // load reports (table)
   useEffect(() => {
     if (!adId || !selectedMonth) return;
+
     (async () => {
-      const { data, error } = await supabase.rpc("get_reports_for_month", {
-        input_ad_id: adId,
-        ym: selectedMonth, // 'YYYY-MM'
-      });
-      if (error) {
-        console.error("reports rpc error:", error);
+      try {
+        const resp = await fetch(
+          `/api/reports?ad_id=${adId}&ym=${selectedMonth}`
+        );
+        const json = await resp.json();
+
+        if (json.error) {
+          console.error("reports fetch error:", json.error);
+          setReports([]);
+          return;
+        }
+
+        const data = json.data || [];
+
+        setReports(
+          data.map((r: any) => {
+            const baseAmount = Number(r.amount || 0);
+            return {
+              day: r.day, // 'YYYY-MM-DD'
+              views: Number(r.views || 0),
+              amount: baseAmount * multiplier, // с маркапом для клиента
+            };
+          })
+        );
+      } catch (e) {
+        console.error("reports fetch exception:", e);
         setReports([]);
-        return;
       }
-      setReports(
-        (data || []).map((r: any) => {
-          const baseAmount = Number(r.amount || 0);
-          return {
-            day: r.day, // 'YYYY-MM-DD'
-            views: Number(r.views || 0),
-            amount: baseAmount * multiplier, // с маркапом для клиента
-          };
-        })
-      );
     })();
   }, [adId, selectedMonth, multiplier]);
+
 
   // csv helpers
   const downloadCSV = (rows: any[], fileName: string) => {
