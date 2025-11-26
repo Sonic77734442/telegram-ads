@@ -51,7 +51,7 @@ export default function LoginPage() {
         data.role === "client" ? data.agency_markup?.toString() || "0" : "0"
       );
 
-      console.log("✅ Авторизация успешна:", data);
+      console.log("✅ Авторизация успешна:");
 
       if (data.role === "admin") navigate("/admin");
       else navigate("/");
