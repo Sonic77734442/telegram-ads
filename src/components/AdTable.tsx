@@ -369,15 +369,32 @@ export default function AdTable() {
 
   // ---- инициализация видимых колонок ----
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setVisibleColumns(JSON.parse(saved));
-    } else {
-      setVisibleColumns(
-        TABLE_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id as string)
-      );
+  const savedRaw = localStorage.getItem(STORAGE_KEY);
+
+  // список всех актуальных колонок
+  const allIds = TABLE_COLUMNS.map((c) => c.id as string);
+  const defaultIds = TABLE_COLUMNS
+    .filter((c) => c.defaultVisible)
+    .map((c) => c.id as string);
+
+  if (savedRaw) {
+    try {
+      const saved: string[] = JSON.parse(savedRaw);
+
+      // оставляем только те, которые реально существуют
+      const validSaved = saved.filter((id) => allIds.includes(id));
+
+      // добавляем новые дефолтные колонки (в т.ч. BUDGET), если их не было
+      const merged = Array.from(new Set([...validSaved, ...defaultIds]));
+
+      setVisibleColumns(merged);
+    } catch {
+      setVisibleColumns(defaultIds);
     }
-  }, []);
+  } else {
+    setVisibleColumns(defaultIds);
+  }
+}, []);
 
   const columnsToRender = useMemo(
     () =>
