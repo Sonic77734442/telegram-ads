@@ -1,6 +1,6 @@
 // api/reports.ts
-// ВАЖНО: никаких import сверху!
 
+// без import'ов сверху, как мы уже сделали
 export default async function handler(req: any, res: any) {
   try {
     const { ad_id, ym } = (req as any).query || {};
@@ -14,7 +14,9 @@ export default async function handler(req: any, res: any) {
         .json({ error: "ym is required, format YYYY-MM, e.g. 2025-11" });
     }
 
-    // 👇 Динамический импорт Supabase внутри handler’a
+    const markupPercent = Number(process.env.CLIENT_MARKUP_PERCENT ?? "10");
+    const markupMultiplier = 1 + markupPercent / 100;
+
     const supabaseModule: any = await import("@supabase/supabase-js");
     const createClient = supabaseModule.createClient;
 
@@ -49,7 +51,45 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json({ data: data || [] });
+    const rows = (data || []) as {
+      day: string;
+      views: number;
+      amount: number;
+    }[];
+
+    const items = rows.map((r) => {
+      const amount_client = Number((r.amount * markupMultiplier).toFixed(2));
+      return { ...r, amount_client };
+    });
+
+    const total_views = items.reduce((sum, r) => sum + (r.views || 0), 0);
+    const total_amount_net = Number(
+      items.reduce((sum, r) => sum + (r.amount || 0), 0).toFixed(2)
+    );
+    const total_amount_client = Number(
+      items.reduce((sum, r) => sum + (r.amount_client || 0), 0).toFixed(2)
+    );
+
+    const cpm_net =
+      total_views > 0
+        ? Number(((total_amount_net * 1000) / total_views).toFixed(2))
+        : 0;
+    const cpm_client =
+      total_views > 0
+        ? Number(((total_amount_client * 1000) / total_views).toFixed(2))
+        : 0;
+
+    return res.status(200).json({
+      data: items, // для текущего фронта
+      total: {
+        views: total_views,
+        amount_net: total_amount_net,
+        amount_client: total_amount_client,
+        cpm_net,
+        cpm_client,
+      },
+      markup_percent: markupPercent,
+    });
   } catch (e: any) {
     console.error("reports handler exception", e);
     return res.status(500).json({ error: e?.message || String(e) });
