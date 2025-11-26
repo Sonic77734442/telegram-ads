@@ -25,8 +25,8 @@ type AdRow = {
   cpm: number | string;
   budget: number | string;
   spend?: number | string;
-  
-    // дневной бюджет
+
+  // дневной бюджет
   daily_budget?: number | string;
   daily_budget_base?: number | string;
 
@@ -36,8 +36,8 @@ type AdRow = {
   spend_base?: number | string;
 
   // НОВОЕ: явные поля из Supabase
-  spend_raw?: number | string;           // агентский спент
-  spend_with_markup?: number | string;   // клиентский спент
+  spend_raw?: number | string; // агентский спент
+  spend_with_markup?: number | string; // клиентский спент
 
   // вычисляемые
   ctr?: number; // %
@@ -112,23 +112,21 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
   },
   {
-  id: "cpm",
-  label: "CPM",
-  sortable: true,
-  align: "right",
-  defaultVisible: true,
-  format: (v, row) => {
-    // CPM берём из того, что пришло:
-    // сначала v, если его нет — из row.cpm, если нет — из cpm_base
-    const cpm =
-      Number(v) ||
-      Number((row as any).cpm) ||
-      Number((row as any).cpm_base) ||
-      0;
+    id: "cpm",
+    label: "CPM",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    format: (v, row) => {
+      const cpm =
+        Number(v) ||
+        Number((row as any).cpm) ||
+        Number((row as any).cpm_base) ||
+        0;
 
-    return `€ ${cpm.toFixed(2)}`;
+      return `€ ${cpm.toFixed(2)}`;
+    },
   },
-},
 
   {
     id: "budget",
@@ -197,11 +195,6 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "left",
     defaultVisible: true,
-    format: (v) => (
-      <span className="text-[13px] font-medium text-blue-600">
-        {v ?? "—"}
-      </span>
-    ),
   },
   {
     id: "created_at",
@@ -225,7 +218,6 @@ const TABLE_COLUMNS: ColumnConfig[] = [
         hour12: false,
       });
 
-      // 21 Nov 25 12:37
       return `${datePart} ${timePart}`;
     },
   },
@@ -240,6 +232,8 @@ export default function AdTable() {
     null
   );
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+
+  // ===== BUDGET MODAL =====
   const [budgetModalMode, setBudgetModalMode] = useState<"increase" | "edit" | null>(
     null
   );
@@ -251,19 +245,18 @@ export default function AdTable() {
     setBudgetModalMode(mode);
 
     if (mode === "increase") {
-      setBudgetInput(""); // добавляем к текущему бюджету
+      setBudgetInput("");
     } else {
-      setBudgetInput((Number(ad.budget) || 0).toFixed(2)); // редактируем полный бюджет
+      setBudgetInput((Number(ad.budget) || 0).toFixed(2));
     }
   };
 
   const closeBudgetModal = () => {
     setBudgetModalMode(null);
-    setSelectedAd(null);
     setBudgetInput("");
   };
 
-    const handleBudgetSubmit = async () => {
+  const handleBudgetSubmit = async () => {
     if (!selectedAd || !budgetModalMode) return;
 
     const raw = budgetInput.replace(",", ".").trim();
@@ -295,8 +288,6 @@ export default function AdTable() {
         return;
       }
 
-      // после успешного апдейта перезагружаем кампании,
-      // чтобы в таблице сразу отобразился новый бюджет
       await fetchAds();
       closeBudgetModal();
     } catch (e) {
@@ -305,69 +296,120 @@ export default function AdTable() {
     }
   };
 
-  const fetchAds = async () => {
-  try {
-    const role = localStorage.getItem("role") || "client"; // client | agency | admin
-    const clientId = localStorage.getItem("user_id") || "";
-    const agencyId = localStorage.getItem("agency_id") || "";
+  // ===== STATUS MODAL =====
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusValue, setStatusValue] = useState<string>("Active");
+  const [runOnSchedule, setRunOnSchedule] = useState(false);
+  const [endDate, setEndDate] = useState<string>("");
 
-    const params = new URLSearchParams({ mode: role });
+  const openStatusModal = (ad: AdRow) => {
+    setSelectedAd(ad);
+    setIsStatusModalOpen(true);
+    setStatusValue(ad.status || "Active");
+    setRunOnSchedule(false);
+    setEndDate("");
+  };
 
-    if (role === "client" && clientId) params.set("client_id", clientId);
-    if (role === "agency" && agencyId) params.set("agency_id", agencyId);
+  const closeStatusModal = () => {
+    setIsStatusModalOpen(false);
+  };
 
-    const resp = await fetch(`/api/campaigns?${params.toString()}`);
-    const json = await resp.json();
+  const handleStatusSubmit = async () => {
+    if (!selectedAd) return;
 
-    if (json.error) {
-      console.error("API campaigns error:", json.error);
-      setAds([]);
-      return;
+    try {
+      // если ещё нет API — просто оставь этот fetch, потом подменишь URL
+      const resp = await fetch("/api/campaigns-status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ad_id: selectedAd.id,
+          status: statusValue, // "Active" | "On Hold"
+          run_on_schedule: runOnSchedule,
+          end_date: endDate || null,
+        }),
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok || json.error) {
+        console.error("status api error:", json.error || json);
+        alert("Failed to update status");
+        return;
+      }
+
+      await fetchAds();
+      closeStatusModal();
+    } catch (e) {
+      console.error("status api exception:", e);
+      alert("Failed to update status");
     }
+  };
 
-    const rows: AdRow[] = json.data.map((c: any) => ({
-      id: c.id,
-      title: c.title,
-      status: c.status,
-      target: c.target,
-      created_at: c.created_at,
+  const fetchAds = async () => {
+    try {
+      const role = localStorage.getItem("role") || "client"; // client | agency | admin
+      const clientId = localStorage.getItem("user_id") || "";
+      const agencyId = localStorage.getItem("agency_id") || "";
 
-      views: c.views,
-      opened: 0, // если появится — заменим
-      clicks: c.clicks,
-      actions: 0,
+      const params = new URLSearchParams({ mode: role });
 
-      // --- ГЛАВНОЕ: берём клиентские данные ---
-      cpm: c.cpm_client,
-      cpm_base: c.cpm_net,
+      if (role === "client" && clientId) params.set("client_id", clientId);
+      if (role === "agency" && agencyId) params.set("agency_id", agencyId);
 
-      budget: c.budget_client,
-      budget_base: c.budget_net,
-	  
-	  daily_budget: c.daily_budget_client,      // НОВОЕ
-	  daily_budget_base: c.daily_budget_net,    // НОВОЕ
+      const resp = await fetch(`/api/campaigns?${params.toString()}`);
+      const json = await resp.json();
 
-      spend: c.spend_client,
-      spend_base: c.spend_net,
+      if (json.error) {
+        console.error("API campaigns error:", json.error);
+        setAds([]);
+        return;
+      }
 
-      ctr: c.ctr,
-      cvr: 0,
-      cpc: 0,
-      cpa: 0,
-      cpv: 0,
+      const rows: AdRow[] = json.data.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        target: c.target,
+        created_at: c.created_at,
 
-      spend_raw: c.spend_net,
-      spend_with_markup: c.spend_client,
+        views: c.views,
+        opened: 0,
+        clicks: c.clicks,
+        actions: 0,
 
-      url: c.url,
-    }));
+        cpm: c.cpm_client,
+        cpm_base: c.cpm_net,
 
-    setAds(rows);
-  } catch (e) {
-    console.error("Campaigns API exception:", e);
-    setAds([]);
-  }
-};
+        budget: c.budget_client,
+        budget_base: c.budget_net,
+
+        daily_budget: c.daily_budget_client,
+        daily_budget_base: c.daily_budget_net,
+
+        spend: c.spend_client,
+        spend_base: c.spend_net,
+
+        ctr: c.ctr,
+        cvr: 0,
+        cpc: 0,
+        cpa: 0,
+        cpv: 0,
+
+        spend_raw: c.spend_net,
+        spend_with_markup: c.spend_client,
+
+        url: c.url,
+      }));
+
+      setAds(rows);
+    } catch (e) {
+      console.error("Campaigns API exception:", e);
+      setAds([]);
+    }
+  };
 
   useEffect(() => {
     fetchAds();
@@ -376,32 +418,29 @@ export default function AdTable() {
 
   // ---- инициализация видимых колонок ----
   useEffect(() => {
-  const savedRaw = localStorage.getItem(STORAGE_KEY);
+    const savedRaw = localStorage.getItem(STORAGE_KEY);
 
-  // список всех актуальных колонок
-  const allIds = TABLE_COLUMNS.map((c) => c.id as string);
-  const defaultIds = TABLE_COLUMNS
-    .filter((c) => c.defaultVisible)
-    .map((c) => c.id as string);
+    const allIds = TABLE_COLUMNS.map((c) => c.id as string);
+    const defaultIds = TABLE_COLUMNS.filter((c) => c.defaultVisible).map(
+      (c) => c.id as string
+    );
 
-  if (savedRaw) {
-    try {
-      const saved: string[] = JSON.parse(savedRaw);
+    if (savedRaw) {
+      try {
+        const saved: string[] = JSON.parse(savedRaw);
 
-      // оставляем только те, которые реально существуют
-      const validSaved = saved.filter((id) => allIds.includes(id));
+        const validSaved = saved.filter((id) => allIds.includes(id));
 
-      // добавляем новые дефолтные колонки (в т.ч. BUDGET), если их не было
-      const merged = Array.from(new Set([...validSaved, ...defaultIds]));
+        const merged = Array.from(new Set([...validSaved, ...defaultIds]));
 
-      setVisibleColumns(merged);
-    } catch {
+        setVisibleColumns(merged);
+      } catch {
+        setVisibleColumns(defaultIds);
+      }
+    } else {
       setVisibleColumns(defaultIds);
     }
-  } else {
-    setVisibleColumns(defaultIds);
-  }
-}, []);
+  }, []);
 
   const columnsToRender = useMemo(
     () =>
@@ -492,7 +531,6 @@ export default function AdTable() {
                   </th>
                 ))}
 
-                {/* колонка под шестерёнку, как в кабинете справа */}
                 <th className="w-8 px-2 text-right">
                   <button
                     type="button"
@@ -517,13 +555,11 @@ export default function AdTable() {
                 </tr>
               ) : (
                 sortedAds.map((ad) => (
-                  <tr
-                    key={ad.id}
-                    className="bg-[#f6f7f9] hover:bg-[#e9f0f7]"
-                  >
+                  <tr key={ad.id} className="bg-[#f6f7f9] hover:bg-[#e9f0f7]">
                     {columnsToRender.map((col) => {
                       const value = ad[col.id];
 
+                      // ==== AD TITLE ====
                       if (col.id === "title") {
                         return (
                           <td
@@ -531,7 +567,6 @@ export default function AdTable() {
                             className="px-3 py-2 align-top w-[280px]"
                           >
                             <div className="flex items-start gap-2 w-full">
-                              {/* Иконка слева */}
                               <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
                                 <img
                                   src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjMmIyYjJiIj48cGF0aCBkPSJNIDEyLjEgOS40NSBDIDEzLjEyIDkuNDUgMTMuOTQgOC43MSAxMy45NCA3LjggQyAxMy45NCA2Ljg4IDEzLjEyIDYuMTUgMTIuMSA2LjE1IEMgMTEuMDcgNi4xNSAxMC4yNSA2Ljg4IDEwLjI1IDcuOCBDIDEwLjI1IDguNzEgMTEuMDcgOS40NSAxMi4xIDkuNDUgWiBNIDYuNzkgOS4yNSBDIDguMDIgOS4yNSA5IDguMyA5IDcuMTIgUyA4LjAyIDUgNi43OSA1IFMgNC41NyA1Ljk1IDQuNTcgNy4xMiBTIDUuNTYgOS4yNSA2Ljc5IDkuMjUgWiBNIDYuNjggMTAuMTYgQyA1LjEyIDEwLjE2IDIgMTAuODkgMiAxMi4zNiBWIDEzLjA4IEMgMiAxMy40MyAyLjUzIDEzLjkzIDIuOSAxMy45MyBIIDEwLjY4IEMgMTEuMDUgMTMuOTMgMTEuMzUgMTMuNjUgMTEuMzUgMTMuMyBWIDEyLjM2IEMgMTEuMzUgMTAuODkgOC4yMyAxMC4xNiA2LjY4IDEwLjE2IFogTSAxMS44OSAxMC40NiBDIDExLjcyIDEwLjQ2IDExLjUzIDEwLjQ3IDExLjMyIDEwLjQ5IEMgMTEuMzQgMTAuNSAxMS4zNCAxMC41MSAxMS4zNSAxMC41MSBDIDEyLjAyIDExIDEyLjczIDExLjY2IDEyLjczIDEyLjUzIFYgMTMuNDEgQyAxMi43MyAxMy42MiAxMi42OSAxMy44MiAxMi42MiAxNCBIIDE1LjE5IEMgMTUuNTEgMTQgMTYgMTMuNTEgMTYgMTMuMTkgViAxMi41MyBDIDE2IDExLjE1IDEzLjI2IDEwLjQ2IDExLjg5IDEwLjQ2IFoiLz48L2c+PC9zdmc+"
@@ -540,7 +575,6 @@ export default function AdTable() {
                                 />
                               </div>
 
-                              {/* Текстовый блок с обрезкой */}
                               <div className="flex flex-col w-full">
                                 <Link
                                   to={`/create?id=${ad.id}`}
@@ -565,30 +599,59 @@ export default function AdTable() {
                         );
                       }
 
+                      // ==== BUDGET (TOTAL + DAILY, кликабельные) ====
                       if (col.id === "budget") {
-					  const role = localStorage.getItem("role");
-					  const isClient = role === "client";
+                        const role = localStorage.getItem("role");
+                        const isClient = role === "client";
 
-					  // общий бюджет кампании
-					  const totalBudget = isClient ? ad.budget : ad.budget_base;
+                        const totalBudget = isClient ? ad.budget : ad.budget_base;
+                        const dailyBudget = isClient
+                          ? ad.daily_budget
+                          : ad.daily_budget_base;
 
-					  // дневной бюджет кампании
-					  const dailyBudget = isClient ? ad.daily_budget : ad.daily_budget_base;
+                        return (
+                          <td
+                            key={col.id as string}
+                            className="px-3 py-2 text-right whitespace-nowrap"
+                          >
+                            {/* верх — общий бюджет (Increase Budget) */}
+                            <button
+                              type="button"
+                              onClick={() => openBudgetModal("increase", ad)}
+                              className="text-primary font-medium hover:underline"
+                            >
+                              € {Number(totalBudget || 0).toFixed(2)}
+                            </button>
 
-					  return (
-						<td className="px-3 py-2 text-right whitespace-nowrap">
-						  {/* верх — общий бюджет */}
-						  <div className="text-primary font-medium">
-							€ {Number(totalBudget || 0).toFixed(2)}
-						  </div>
+                            {/* низ — дневной бюджет (Edit Daily Budget) */}
+                            <button
+                              type="button"
+                              onClick={() => openBudgetModal("edit", ad)}
+                              className="block text-muted-foreground text-xs hover:underline"
+                            >
+                              € {Number(dailyBudget || 0).toFixed(2)}
+                            </button>
+                          </td>
+                        );
+                      }
 
-						  {/* низ — дневной бюджет */}
-						  <div className="text-muted-foreground text-xs">
-							€ {Number(dailyBudget || 0).toFixed(2)}
-						  </div>
-						</td>
-					  );
-					}
+                      // ==== STATUS (кликабельный) ====
+                      if (col.id === "status") {
+                        return (
+                          <td
+                            key={col.id as string}
+                            className="px-3 py-2 text-left"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openStatusModal(ad)}
+                              className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[13px] font-medium text-blue-600 hover:bg-blue-100"
+                            >
+                              {ad.status || "Active"}
+                            </button>
+                          </td>
+                        );
+                      }
 
                       const baseClass =
                         col.align === "right"
@@ -615,7 +678,6 @@ export default function AdTable() {
                       );
                     })}
 
-                    {/* пустая ячейка под выравнивание с шестерёнкой */}
                     <td className="w-8 px-2" />
                   </tr>
                 ))
@@ -694,6 +756,112 @@ export default function AdTable() {
           </div>
         </div>
       )}
+
+      {/* Модалка статуса */}
+      {isStatusModalOpen && selectedAd && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-lg bg-white shadow-lg">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-[15px] font-semibold text-gray-900">
+                Edit Status
+              </h2>
+              <p className="mt-1 text-[13px] text-gray-700">
+                for {selectedAd.title || "Untitled"}
+              </p>
+            </div>
+
+            <div className="px-6 py-4 space-y-4 text-[13px] text-gray-800">
+              {/* Status radio */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="Active"
+                    checked={statusValue === "Active"}
+                    onChange={() => setStatusValue("Active")}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  <span>Active</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="status"
+                    value="On Hold"
+                    checked={statusValue === "On Hold"}
+                    onChange={() => setStatusValue("On Hold")}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  <span>On Hold</span>
+                </label>
+
+                {/* Set end date */}
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    className="text-[#2481cc] hover:underline text-[12px]"
+                    onClick={() => {
+                      /* просто даём фокус на input ниже */
+                      const el = document.getElementById(
+                        "status-end-date-input"
+                      ) as HTMLInputElement | null;
+                      el?.focus();
+                    }}
+                  >
+                    Set end date
+                  </button>
+                  <input
+                    id="status-end-date-input"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1 text-[12px] focus:ring-1 focus:ring-[#2a9cf0]"
+                  />
+                </div>
+              </div>
+
+              {/* Ad schedule */}
+              <div className="border-t pt-3 space-y-2">
+                <div className="flex items-center gap-1 text-[12px] text-gray-700">
+                  <span className="font-medium">Ad Schedule</span>
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] text-gray-500">
+                    i
+                  </span>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer text-[12px]">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-blue-600"
+                    checked={runOnSchedule}
+                    onChange={(e) => setRunOnSchedule(e.target.checked)}
+                  />
+                  <span>Run this ad on schedule</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4 border-t px-6 py-3 text-[13px]">
+              <button
+                type="button"
+                onClick={closeStatusModal}
+                className="text-[#2481cc] hover:underline"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStatusSubmit}
+                className="rounded bg-[#1890ff] px-4 py-1.5 text-white font-semibold hover:bg-[#1273cc]"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -705,11 +873,7 @@ type CustomizeProps = {
   onClose: () => void;
 };
 
-function CustomizeTableModal({
-  visibleIds,
-  onToggle,
-  onClose,
-}: CustomizeProps) {
+function CustomizeTableModal({ visibleIds, onToggle, onClose }: CustomizeProps) {
   const customizable = TABLE_COLUMNS.filter((c) => c.id !== "title");
 
   return (

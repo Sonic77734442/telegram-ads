@@ -62,110 +62,119 @@ if (error) {
   return res.status(500).json({ error: "Failed to load campaigns" } as any);
 }
 
-const rows = (data || []) as DbRow[];
+    // здесь уже есть resolvedMode и markupMultiplier
+    const rows = (data || []) as any[];
 
-const items: ApiRow[] = [];
-let totalViews = 0;
-let totalClicks = 0;
-let totalSpendNet = 0;
-let totalSpendClient = 0;
+    const items: any[] = [];
+    let totalViews = 0;
+    let totalClicks = 0;
+    let totalSpendNet = 0;
+    let totalSpendClient = 0;
 
-for (const row of rows) {
-  const views = Number(row.views || 0);
-  const clicks = Number(row.clicks || row.actions || 0);
+    const isClientMode = resolvedMode === "client";
 
-  const cpmNet = Number(row.cpm || 0);
-  const budgetNet = Number(row.budget || 0);
-  const dailyBudgetNet = Number(row.daily_budget || 0);
+    for (const row of rows) {
+      const views = Number(row.views ?? 0);
+      const clicks = Number(row.clicks ?? row.actions ?? 0);
 
-  const spendNet = Number(row.spend_raw || 0);
+      const cpmNet = Number(row.cpm ?? 0);          // NET-CPM из вьюхи
+      const budgetNet = Number(row.budget ?? 0);    // NET общий бюджет
+      const dailyBudgetNet = Number(row.daily_budget ?? 0); // NET дневной бюджет
 
-  const markup = Number(row.markup_percent || 0);
-  const factor = 1 + markup / 100;
+      // NET SPEND: берем из вьюхи, либо считаем заново
+      const spendNet =
+        row.spend_raw !== undefined && row.spend_raw !== null
+          ? Number(row.spend_raw)
+          : views > 0
+          ? (views * cpmNet) / 1000
+          : 0;
 
-  const isClient = resolvedMode === "client";
+      // Маркап для клиента
+      const cpmClient = isClientMode
+        ? Number((cpmNet * markupMultiplier).toFixed(4))
+        : cpmNet;
 
-  const cpmClient = isClient
-    ? Number((cpmNet * factor).toFixed(4))
-    : cpmNet;
+      // Бюджеты НЕ множим на маркап — лимит один и тот же
+      const budgetClient = budgetNet;
+      const dailyBudgetClient = dailyBudgetNet;
 
-  // бюджет НЕ множим на маркап
-  const budgetClient = budgetNet;
-  const dailyBudgetClient = dailyBudgetNet;
+      // SPEND для клиента считаем из CPM клиента
+      const spendClient = isClientMode
+        ? Number(((views * cpmClient) / 1000).toFixed(2))
+        : Number(spendNet.toFixed(2));
 
-  // SPEND множим на маркап только один раз
-  const spendClient = isClient
-    ? Number((spendNet * factor).toFixed(2))
-    : spendNet;
+      const ctr =
+        views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
 
-  const ctr =
-    views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+      items.push({
+        id: row.id,
+        title: row.title,
+        text: row.text,
+        url: row.url,
+        media_url: row.media_url,
+        media_type: row.media_type,
+        status: row.status,
+        target: row.target,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        client_id: row.client_id,
+        agency_id: row.agency_id,
 
-  items.push({
-    id: row.id,
-    title: row.title,
-    text: row.text,
-    url: row.url,
-    media_url: row.media_url,
-    media_type: row.media_type,
-    status: row.status,
-    target: row.target,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    client_id: row.client_id,
-    agency_id: row.agency_id,
+        views,
+        clicks,
+        actions: Number(row.actions ?? clicks),
 
-    views,
-    clicks,
-    actions: Number(row.actions || clicks),
+        // CPM
+        cpm_net: cpmNet,
+        cpm_client: cpmClient,
 
-    cpm_net: cpmNet,
-    cpm_client: cpmClient,
+        // TOTAL budget
+        budget_net: budgetNet,
+        budget_client: budgetClient,
 
-    budget_net: budgetNet,
-    budget_client: budgetClient,
+        // DAILY budget
+        daily_budget_net: dailyBudgetNet,
+        daily_budget_client: dailyBudgetClient,
 
-    daily_budget_net: dailyBudgetNet,
-    daily_budget_client: dailyBudgetClient,
+        // SPEND
+        spend_net: Number(spendNet.toFixed(2)),
+        spend_client: spendClient,
 
-    spend_net: Number(spendNet.toFixed(2)),
-    spend_client: spendClient,
+        ctr,
+      });
 
-    ctr,
-  });
+      totalViews += views;
+      totalClicks += clicks;
+      totalSpendNet += spendNet;
+      totalSpendClient += spendClient;
+    }
 
-  totalViews += views;
-  totalClicks += clicks;
-  totalSpendNet += spendNet;
-  totalSpendClient += spendClient;
-}
+    const totalCtr =
+      totalViews > 0
+        ? Number(((totalClicks / totalViews) * 100).toFixed(2))
+        : 0;
 
-const totalCtr =
-  totalViews > 0
-    ? Number(((totalClicks / totalViews) * 100).toFixed(2))
-    : 0;
+    const totalCpmNet =
+      totalViews > 0
+        ? Number(((totalSpendNet * 1000) / totalViews).toFixed(4))
+        : 0;
 
-const totalCpmNet =
-  totalViews > 0
-    ? Number(((totalSpendNet * 1000) / totalViews).toFixed(4))
-    : 0;
+    const totalCpmClient =
+      totalViews > 0
+        ? Number(((totalSpendClient * 1000) / totalViews).toFixed(4))
+        : 0;
 
-const totalCpmClient =
-  totalViews > 0
-    ? Number(((totalSpendClient * 1000) / totalViews).toFixed(4))
-    : 0;
-
-return res.status(200).json({
-  data: items,
-  total: {
-    views: totalViews,
-    clicks: totalClicks,
-    spend_net: Number(totalSpendNet.toFixed(2)),
-    spend_client: Number(totalSpendClient.toFixed(2)),
-    ctr: totalCtr,
-    cpm_net: totalCpmNet,
-    cpm_client: totalCpmClient,
-  },
-  mode: resolvedMode,
-});
+    return res.status(200).json({
+      data: items,
+      total: {
+        views: totalViews,
+        clicks: totalClicks,
+        spend_net: Number(totalSpendNet.toFixed(2)),
+        spend_client: Number(totalSpendClient.toFixed(2)),
+        ctr: totalCtr,
+        cpm_net: totalCpmNet,
+        cpm_client: totalCpmClient,
+      },
+      mode: resolvedMode,
+    });
 
