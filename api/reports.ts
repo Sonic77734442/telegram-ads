@@ -1,10 +1,9 @@
 // api/reports.ts
-
-import { getSupabaseAdmin } from "./supabaseAdmin";
+// ВАЖНО: никаких import сверху!
 
 export default async function handler(req: any, res: any) {
   try {
-    const { ad_id, ym } = req.query || {};
+    const { ad_id, ym } = (req as any).query || {};
 
     if (!ad_id || typeof ad_id !== "string") {
       return res.status(400).json({ error: "ad_id is required" });
@@ -15,7 +14,30 @@ export default async function handler(req: any, res: any) {
         .json({ error: "ym is required, format YYYY-MM, e.g. 2025-11" });
     }
 
-    const supabase = getSupabaseAdmin();
+    // 👇 Динамический импорт Supabase внутри handler’a
+    const supabaseModule: any = await import("@supabase/supabase-js");
+    const createClient = supabaseModule.createClient;
+
+    if (!createClient) {
+      return res
+        .status(500)
+        .json({ error: "Failed to load @supabase/supabase-js" });
+    }
+
+    const supabaseUrl =
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      return res.status(500).json({
+        error:
+          "SUPABASE_URL / VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set",
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    });
 
     const { data, error } = await supabase.rpc("get_reports_for_month", {
       input_ad_id: ad_id,
