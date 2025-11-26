@@ -359,46 +359,6 @@ const multiplier =
           *** Video open statistics are available as of October 7, 2023.
         </div>
 
-        {/* ========== SPENT BUDGET (second chart) ========== */}
-        <SectionHeader title="" right={<span />} periodLabel={periodLabel()} />
-        <ChartContainer>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={budgetData as any[]}>
-              <CartesianGrid stroke="#e5e7eb" />
-              <XAxis
-                dataKey={budgetRange === "days" ? "date" : "ts"}
-                tickFormatter={(v: string) =>
-                  budgetRange === "days"
-                    ? v.slice(5, 10)
-                    : new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                }
-              />
-              <YAxis tickFormatter={(n) => `€ ${n}`} />
-              <Tooltip
-                formatter={(v: number) => [`€ ${Number(v).toFixed(2)}`, "Amount"]}
-                labelFormatter={(v) =>
-                  budgetRange === "days" ? v : new Date(v).toLocaleString()
-                }
-              />
-              <Line
-                type="monotone"
-                dataKey="amount"
-                stroke="#007bff"
-                name="Spent budget"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-        <UnderChartBar
-          leftButtonLabel="Spent budget"
-          onCSV={() => downloadCSV(budgetData as any[], `budget_${budgetRange}.csv`)}
-          extraRight={<RangeToggle value={budgetRange} onChange={setBudgetRange} />}
-        />
-        <div className="text-xs text-gray-500 leading-tight">
-          * Time and date shown in UTC.
-        </div>
-
         {/* ========== REPORTS TABLE ========== */}
         <div className="flex items-center gap-3 justify-end">
           {monthTabs.map((m) => {
@@ -588,7 +548,7 @@ function UnderChartBar({
 }
 
 function periodLabel() {
-  // декоративная подпись "7 November 2025 – 10 November 2025"
+  // декоративная подпись "10 November 2025 – 25 November 2025"
   const end = new Date();
   const start = new Date(end);
   start.setDate(end.getDate() - 3);

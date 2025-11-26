@@ -21,15 +21,19 @@ type AdRow = {
   clicks?: number;
   actions?: number;
 
-  // деньги
+  // деньги (то, что показываем в таблице)
   cpm: number | string;
   budget: number | string;
   spend?: number | string;
 
-  // базовые поля (есть во вьюхе client_compat — опционально)
+  // сырые значения из вьюх / таблиц
   budget_base?: number | string;
   cpm_base?: number | string;
   spend_base?: number | string;
+
+  // НОВОЕ: явные поля из Supabase
+  spend_raw?: number | string;           // агентский спент
+  spend_with_markup?: number | string;   // клиентский спент
 
   // вычисляемые
   ctr?: number; // %
@@ -280,7 +284,7 @@ export default function AdTable() {
     const agencyId = localStorage.getItem("agency_id");
 
     const source =
-      role === "client" ? "v_adcampaigns_client_compat" : "ad_campaigns";
+      role === "client" ? "v_adcampaigns_totals" : "ad_campaigns";
 
     let query = supabase.from(source).select("*");
 
@@ -300,71 +304,87 @@ export default function AdTable() {
       return;
     }
 
-    const rows: AdRow[] = (data ?? []).map((ad: any) => {
-const views =
-  Number(ad.views) ||
-  Number(ad.impressions) ||
-  0;
-const opened =
-  Number(ad.opened) ||
-  Number(ad.opens) ||
-  0;
-const clicks = Number(ad.clicks ?? 0);
-const actions = Number(ad.actions ?? 0);
+  const rows: AdRow[] = (data ?? []).map((ad: any) => {
+  const views =
+    Number(ad.views) ||
+    Number(ad.impressions) ||
+    0;
+  const opened =
+    Number(ad.opened) ||
+    Number(ad.opens) ||
+    0;
+  const clicks = Number(ad.clicks ?? 0);
+  const actions = Number(ad.actions ?? 0);
 
-// роль
-const role = localStorage.getItem("role");
-const isClient = role === "client";
+  // роль
+  const role = localStorage.getItem("role");
+  const isClient = role === "client";
 
-// базовый CPM
-const cpmBase =
-  Number(ad.cpm_base) ||
-  Number(ad.cpm) ||
-  0;
+  // базовый CPM (агентский)
+  const cpmBase =
+    Number(ad.cpm_base) ||
+    Number(ad.cpm) ||
+    0;
 
-// CPM с маркапом из вьюхи (то, что ты показал на скрине)
-const cpmWithMarkup =
-  Number(ad.cpm_with_markup) ||
-  cpmBase;
+  // CPM с маркапом (для клиента, из вьюхи)
+  const cpmWithMarkup =
+    Number(ad.cpm_with_markup) ||
+    cpmBase;
 
-// финальный CPM, который используем в таблице
-const cpm = isClient ? cpmWithMarkup : cpmBase;
+  // сырые спенты из Supabase
+  const spendRaw = Number(ad.spend_raw ?? 0);               // агентский
+  const spendWithMarkup = Number(ad.spend_with_markup ?? 0); // клиентский
 
-const budget = Number(ad.budget ?? 0);
+  // какой CPM показываем в таблице
+  const cpm = isClient ? cpmWithMarkup : cpmBase;
 
-// SPEND считаем от финального CPM
-const spend =
-  Number(ad.spend_raw) ||
-  Number(((views / 1000) * cpm).toFixed(2));
+  // SPENT: агент видит spend_raw, клиент — spend_with_markup
+  let spend: number;
 
-      const ctr = views > 0 ? (clicks / views) * 100 : 0;
-      const cvr = clicks > 0 ? (actions / clicks) * 100 : 0;
-      const cpc = clicks > 0 ? spend / clicks : 0;
-      const cpa = actions > 0 ? spend / actions : 0;
-      const cpv = views > 0 ? spend / views : 0;
+  if (isClient) {
+    spend =
+      spendWithMarkup ||
+      Number(((views / 1000) * cpmWithMarkup).toFixed(2));
+  } else {
+    spend =
+      spendRaw ||
+      Number(((views / 1000) * cpmBase).toFixed(2));
+  }
 
-      return {
-        ...ad,
-        title: ad.title ?? ad.name ?? "Untitled",
-        views,
-        opened,
-        clicks,
-        actions,
-        cpm,
-        budget,
-        spend,
-        // базовые значения без маркапа (если приходят из вьюхи)
-        budget_base: (ad as any).budget_base ?? null,
-        cpm_base: (ad as any).cpm_base ?? null,
-        spend_base: (ad as any).spend_base ?? null,
-        ctr,
-        cvr,
-        cpc,
-        cpa,
-        cpv,
-        url: ad.url ?? null,
-      };
-    });
+  const budget = Number(ad.budget ?? 0);
+
+  const ctr = views > 0 ? (clicks / views) * 100 : 0;
+  const cvr = clicks > 0 ? (actions / clicks) * 100 : 0;
+  const cpc = clicks > 0 ? spend / clicks : 0;
+  const cpa = actions > 0 ? spend / actions : 0;
+  const cpv = views > 0 ? spend / views : 0;
+
+  return {
+    ...ad,
+    title: ad.title ?? ad.name ?? "Untitled",
+    views,
+    opened,
+    clicks,
+    actions,
+    cpm,
+    budget,
+    spend,
+
+    // сохраняем обе цифры, чтобы можно было использовать в модалках и дебаге
+    spend_raw: spendRaw,
+    spend_with_markup: spendWithMarkup,
+
+    budget_base: (ad as any).budget_base ?? null,
+    cpm_base: (ad as any).cpm_base ?? null,
+    spend_base: (ad as any).spend_base ?? null,
+    ctr,
+    cvr,
+    cpc,
+    cpa,
+    cpv,
+    url: ad.url ?? null,
+  };
+});
 
     setAds(rows);
   };
