@@ -284,7 +284,7 @@ export default function AdTable() {
     const agencyId = localStorage.getItem("agency_id");
 
     const source =
-      role === "client" ? "v_adcampaigns_totals" : "ad_campaigns";
+      role === "client" ? "v_adcampaigns_client_compat" : "ad_campaigns";
 
     let query = supabase.from(source).select("*");
 
