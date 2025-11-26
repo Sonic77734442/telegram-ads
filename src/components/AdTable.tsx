@@ -25,6 +25,10 @@ type AdRow = {
   cpm: number | string;
   budget: number | string;
   spend?: number | string;
+  
+    // дневной бюджет
+  daily_budget?: number | string;
+  daily_budget_base?: number | string;
 
   // сырые значения из вьюх / таблиц
   budget_base?: number | string;
@@ -339,6 +343,9 @@ export default function AdTable() {
 
       budget: c.budget_client,
       budget_base: c.budget_net,
+	  
+	  daily_budget: c.daily_budget_client,      // НОВОЕ
+	  daily_budget_base: c.daily_budget_net,    // НОВОЕ
 
       spend: c.spend_client,
       spend_base: c.spend_net,
@@ -559,54 +566,29 @@ export default function AdTable() {
                       }
 
                       if (col.id === "budget") {
-                        const currentRole = localStorage.getItem("role");
-                        const isClient = currentRole === "client";
+					  const role = localStorage.getItem("role");
+					  const isClient = role === "client";
 
-                        const rawBudget =
-                          (ad as any).budget_raw ??
-                          (ad as any).budget_base ??
-                          ad.budget ??
-                          0;
+					  // общий бюджет кампании
+					  const totalBudget = isClient ? ad.budget : ad.budget_base;
 
-                        const markedBudget =
-                          (ad as any).budget_with_markup ??
-                          ad.budget ??
-                          rawBudget;
+					  // дневной бюджет кампании
+					  const dailyBudget = isClient ? ad.daily_budget : ad.daily_budget_base;
 
-                        const mainBudget = Number(
-                          isClient ? markedBudget : rawBudget
-                        );
+					  return (
+						<td className="px-3 py-2 text-right whitespace-nowrap">
+						  {/* верх — общий бюджет */}
+						  <div className="text-primary font-medium">
+							€ {Number(totalBudget || 0).toFixed(2)}
+						  </div>
 
-                        const baseBudget =
-                          ad.budget_base !== undefined && ad.budget_base !== null
-                            ? Number(ad.budget_base) || 0
-                            : null;
-
-                        return (
-                          <td
-                            key={col.id as string}
-                            className="px-4 py-2 text-right align-middle"
-                          >
-                            <button
-                              type="button"
-                              className="block w-full text-right text-[13px] text-[#2481cc] hover:underline"
-                              onClick={() => openBudgetModal("increase", ad)}
-                            >
-                              € {mainBudget.toFixed(2)}
-                            </button>
-
-                            <button
-                              type="button"
-                              className="block w-full text-right text-[11px] text-[#2481cc] hover:underline mt-0.5"
-                              onClick={() => openBudgetModal("edit", ad)}
-                            >
-                              {baseBudget !== null
-                                ? `€ ${baseBudget.toFixed(2)}`
-                                : `€ ${mainBudget.toFixed(2)}`}
-                            </button>
-                          </td>
-                        );
-                      }
+						  {/* низ — дневной бюджет */}
+						  <div className="text-muted-foreground text-xs">
+							€ {Number(dailyBudget || 0).toFixed(2)}
+						  </div>
+						</td>
+					  );
+					}
 
                       const baseClass =
                         col.align === "right"
