@@ -1,3 +1,4 @@
+// api/supabaseAdmin.ts
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl =
@@ -5,8 +6,7 @@ const supabaseUrl =
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 /**
- * Ленивая и безопасная инициализация админ-клиента Supabase.
- * Если нет нужных env — кидаем осмысленную ошибку.
+ * Ленивая и безопасная инициализация admin-клиента Supabase.
  */
 export function getSupabaseAdmin(): SupabaseClient {
   if (!supabaseUrl) {
