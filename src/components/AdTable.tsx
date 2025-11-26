@@ -578,7 +578,7 @@ export default function AdTable() {
                               <div className="flex flex-col w-full">
                                 <Link
                                   to={`/create?id=${ad.id}`}
-                                  className="block text-[13px] font-medium text-blue-600 hover:underline truncate"
+                                  className="block text-[13px] font-medium text-black-600 hover:underline truncate"
                                 >
                                   {ad.title || "Untitled"}
                                 </Link>
@@ -624,13 +624,13 @@ export default function AdTable() {
                             </button>
 
                             {/* низ — дневной бюджет (Edit Daily Budget) */}
-                            <button
-                              type="button"
-                              onClick={() => openBudgetModal("edit", ad)}
-                              className="block text-muted-foreground text-xs hover:underline"
-                            >
-                              € {Number(dailyBudget || 0).toFixed(2)}
-                            </button>
+							<button
+							  type="button"
+							  onClick={() => openBudgetModal("edit", ad)}
+							  className="block text-xs text-blue-500 hover:underline text-right"
+							>
+							  € {Number(dailyBudget || 0).toFixed(2)}
+							</button>
                           </td>
                         );
                       }
