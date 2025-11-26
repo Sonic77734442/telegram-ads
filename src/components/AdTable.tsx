@@ -279,115 +279,65 @@ export default function AdTable() {
   };
 
   const fetchAds = async () => {
-    const role = localStorage.getItem("role"); // "client" | "agency" | "admin"
-    const userId = localStorage.getItem("user_id");
-    const agencyId = localStorage.getItem("agency_id");
+  try {
+    const role = localStorage.getItem("role") || "client"; // client | agency | admin
+    const clientId = localStorage.getItem("user_id") || "";
+    const agencyId = localStorage.getItem("agency_id") || "";
 
-    const source =
-      role === "client" ? "v_adcampaigns_client_compat" : "ad_campaigns";
+    const params = new URLSearchParams({ mode: role });
 
-    let query = supabase.from(source).select("*");
+    if (role === "client" && clientId) params.set("client_id", clientId);
+    if (role === "agency" && agencyId) params.set("agency_id", agencyId);
 
-    if (role === "client") {
-      if (userId) query = query.eq("client_id", userId);
-    } else if (role === "agency") {
-      if (agencyId) query = query.eq("agency_id", agencyId);
-    }
+    const resp = await fetch(`/api/campaigns?${params.toString()}`);
+    const json = await resp.json();
 
-    const { data, error } = await query.order("created_at", {
-      ascending: false,
-    });
-
-    if (error) {
-      console.error("Failed to fetch ads:", error.message);
+    if (json.error) {
+      console.error("API campaigns error:", json.error);
       setAds([]);
       return;
     }
 
-  const rows: AdRow[] = (data ?? []).map((ad: any) => {
-  const views =
-    Number(ad.views) ||
-    Number(ad.impressions) ||
-    0;
-  const opened =
-    Number(ad.opened) ||
-    Number(ad.opens) ||
-    0;
-  const clicks = Number(ad.clicks ?? 0);
-  const actions = Number(ad.actions ?? 0);
+    const rows: AdRow[] = json.data.map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      status: c.status,
+      target: c.target,
+      created_at: c.created_at,
 
-  // роль
-  const role = localStorage.getItem("role");
-  const isClient = role === "client";
+      views: c.views,
+      opened: 0, // если появится — заменим
+      clicks: c.clicks,
+      actions: 0,
 
-  // базовый CPM (агентский)
-  const cpmBase =
-    Number(ad.cpm_base) ||
-    Number(ad.cpm) ||
-    0;
+      // --- ГЛАВНОЕ: берём клиентские данные ---
+      cpm: c.cpm_client,
+      cpm_base: c.cpm_net,
 
-  // CPM с маркапом (для клиента, из вьюхи)
-  const cpmWithMarkup =
-    Number(ad.cpm_with_markup) ||
-    cpmBase;
+      budget: c.budget_client,
+      budget_base: c.budget_net,
 
-  // сырые спенты из Supabase
-  const spendRaw = Number(ad.spend_raw ?? 0);               // агентский
-  const spendWithMarkup = Number(ad.spend_with_markup ?? 0); // клиентский
+      spend: c.spend_client,
+      spend_base: c.spend_net,
 
-  // какой CPM показываем в таблице
-  const cpm = isClient ? cpmWithMarkup : cpmBase;
+      ctr: c.ctr,
+      cvr: 0,
+      cpc: 0,
+      cpa: 0,
+      cpv: 0,
 
-  // SPENT: агент видит spend_raw, клиент — spend_with_markup
-  let spend: number;
+      spend_raw: c.spend_net,
+      spend_with_markup: c.spend_client,
 
-  if (isClient) {
-    spend =
-      spendWithMarkup ||
-      Number(((views / 1000) * cpmWithMarkup).toFixed(2));
-  } else {
-    spend =
-      spendRaw ||
-      Number(((views / 1000) * cpmBase).toFixed(2));
-  }
-
-  const budget = Number(ad.budget ?? 0);
-
-  const ctr = views > 0 ? (actions / views) * 100 : 0;
-  const cvr = clicks > 0 ? (actions / clicks) * 100 : 0;
-  const cpc = clicks > 0 ? spend / clicks : 0;
-  const cpa = actions > 0 ? spend / actions : 0;
-  const cpv = views > 0 ? spend / views : 0;
-
-  return {
-    ...ad,
-    title: ad.title ?? ad.name ?? "Untitled",
-    views,
-    opened,
-    clicks,
-    actions,
-    cpm,
-    budget,
-    spend,
-
-    // сохраняем обе цифры, чтобы можно было использовать в модалках и дебаге
-    spend_raw: spendRaw,
-    spend_with_markup: spendWithMarkup,
-
-    budget_base: (ad as any).budget_base ?? null,
-    cpm_base: (ad as any).cpm_base ?? null,
-    spend_base: (ad as any).spend_base ?? null,
-    ctr,
-    cvr,
-    cpc,
-    cpa,
-    cpv,
-    url: ad.url ?? null,
-  };
-});
+      url: c.url,
+    }));
 
     setAds(rows);
-  };
+  } catch (e) {
+    console.error("Campaigns API exception:", e);
+    setAds([]);
+  }
+};
 
   useEffect(() => {
     fetchAds();
