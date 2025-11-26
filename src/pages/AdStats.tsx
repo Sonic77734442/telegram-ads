@@ -283,17 +283,19 @@ const multiplier =
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <Meta label="Link">
-              <a
-                href={ad.url?.startsWith("http") ? ad.url : `https://${ad.url}`}
-                className="text-blue-600 hover:underline"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {ad.url}
-              </a>
-            </Meta>
+			<div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+			  {/* Link на всю строку */}
+			  <div className="col-span-2 md:col-span-3 text-left">
+				<div className="text-gray-500">Link</div>
+				<a
+				  href={ad.url?.startsWith("http") ? ad.url : `https://${ad.url}`}
+				  className="text-blue-600 hover:underline break-all"
+				  target="_blank"
+				  rel="noreferrer"
+				>
+				  {ad.url}
+				</a>
+			  </div>
             <Meta label="Date created">
               {ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}
             </Meta>

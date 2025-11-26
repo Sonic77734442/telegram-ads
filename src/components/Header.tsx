@@ -99,9 +99,6 @@ useEffect(() => {
             <span className="text-[14px] text-gray-600 font-bold">
               Budget: €{balance.toFixed(2)}
             </span>
-            <span className="text-[14px] text-gray-600 font-bold">
-              Spent: €{totalSpend.toFixed(2)}
-            </span>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gray-300" />
               <button

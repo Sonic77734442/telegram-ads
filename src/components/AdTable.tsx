@@ -353,7 +353,7 @@ export default function AdTable() {
 
   const budget = Number(ad.budget ?? 0);
 
-  const ctr = views > 0 ? (clicks / views) * 100 : 0;
+  const ctr = views > 0 ? (actions / views) * 100 : 0;
   const cvr = clicks > 0 ? (actions / clicks) * 100 : 0;
   const cpc = clicks > 0 ? spend / clicks : 0;
   const cpa = actions > 0 ? spend / actions : 0;
