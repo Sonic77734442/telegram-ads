@@ -259,23 +259,46 @@ export default function AdTable() {
     setBudgetInput("");
   };
 
-  const handleBudgetSubmit = async () => {
+    const handleBudgetSubmit = async () => {
     if (!selectedAd || !budgetModalMode) return;
 
-    const delta = Number(budgetInput.replace(",", ".") || 0);
-    if (Number.isNaN(delta) || delta < 0) {
+    const raw = budgetInput.replace(",", ".").trim();
+    const amount = Number(raw || 0);
+
+    if (!Number.isFinite(amount) || amount < 0) {
       alert("Please enter a valid amount");
       return;
     }
 
-    // TODO: сюда потом добавишь реальный update в Supabase
-    console.log("BUDGET MODAL SUBMIT:", {
-      mode: budgetModalMode,
-      adId: selectedAd.id,
-      amount: delta,
-    });
+    try {
+      const resp = await fetch("/api/campaigns-budget", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ad_id: selectedAd.id,
+          mode: budgetModalMode, // "increase" | "edit"
+          amount,
+        }),
+      });
 
-    closeBudgetModal();
+      const json = await resp.json();
+
+      if (!resp.ok || json.error) {
+        console.error("budget api error:", json.error || json);
+        alert("Failed to update budget");
+        return;
+      }
+
+      // после успешного апдейта перезагружаем кампании,
+      // чтобы в таблице сразу отобразился новый бюджет
+      await fetchAds();
+      closeBudgetModal();
+    } catch (e) {
+      console.error("budget api exception:", e);
+      alert("Failed to update budget");
+    }
   };
 
   const fetchAds = async () => {
