@@ -1,247 +1,171 @@
-// pages/api/campaigns.ts (или src/pages/api/campaigns.ts)
-import type { NextApiRequest, NextApiResponse } from "next";
-import { createClient } from "@supabase/supabase-js";
+// api/campaigns.ts
+// ВАЖНО: никаких import сверху, только динамический import внутри handler
 
-// 🔧 если у тебя свой supabaseAdmin – замени это на свой импорт
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-type DbRow = {
-  id: string;
-  client_id: string | null;
-  agency_id: string | null;
-
-  title: string | null;
-  text: string | null;
-  url: string | null;
-  media_url: string | null;
-  media_type: string | null;
-  status: string | null;
-  target: string | null;
-
-  created_at: string;
-  updated_at: string;
-
-  cpm: number | null;            // net
-  budget: number | null;         // net
-
-  daily_views: number | null;
-  daily_budget: number | null;   // net
-
-  views: number | null;
-  clicks: number | null;
-  actions: number | null;
-  ctr: number | null;
-
-  spend_raw: number | null;      // net spend
-  markup_percent: number | null; // %
-};
-
-type ApiRow = {
-  id: string;
-  title: string | null;
-  text: string | null;
-  url: string | null;
-  media_url: string | null;
-  media_type: string | null;
-  status: string | null;
-  target: string | null;
-  created_at: string;
-  updated_at: string;
-  client_id: string | null;
-  agency_id: string | null;
-
-  views: number;
-  clicks: number;
-  actions: number;
-
-  // CPM
-  cpm_net: number;
-  cpm_client: number;
-
-  // TOTAL budget
-  budget_net: number;
-  budget_client: number;
-
-  // DAILY budget
-  daily_budget_net: number;
-  daily_budget_client: number;
-
-  // SPEND
-  spend_net: number;
-  spend_client: number;
-
-  ctr: number;
-};
-
-type ApiResponse = {
-  data: ApiRow[];
-  total: {
-    views: number;
-    clicks: number;
-    spend_net: number;
-    spend_client: number;
-    ctr: number;
-    cpm_net: number;
-    cpm_client: number;
-  };
-  mode: "client" | "agency" | "admin";
-};
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ApiResponse | { error: string }>
-) {
+export default async function handler(req: any, res: any) {
   try {
-    const { mode, client_id, agency_id } = (req.query || {}) as {
-      mode?: string;
-      client_id?: string;
-      agency_id?: string;
-    };
+    const { mode, client_id, agency_id } = (req as any).query || {};
 
-    const resolvedMode: "client" | "agency" | "admin" =
-      mode === "agency" || mode === "admin" ? (mode as any) : "client";
+    // режим: client | agency | admin
+    const resolvedMode =
+      mode === "client" || mode === "agency" || mode === "admin"
+        ? mode
+        : "client";
 
-    // 🔧 базовый запрос к вьюхе
-    let query = supabase
-      .from<DbRow>("v_adcampaigns_client_compat")
-      .select("*");
+    // Маркап как в /api/reports (можно переиспользовать тот же env)
+    const markupPercent = Number(process.env.CLIENT_MARKUP_PERCENT ?? "10");
+    const markupMultiplier = 1 + markupPercent / 100;
 
-    // фильтрация по роли
+    // 👇 Динамический импорт Supabase
+    const supabaseModule: any = await import("@supabase/supabase-js");
+    const createClient = supabaseModule.createClient;
+
+    if (!createClient) {
+      return res
+        .status(500)
+        .json({ error: "Failed to load @supabase/supabase-js" });
+    }
+
+    const supabaseUrl =
+      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      return res.status(500).json({
+        error:
+          "SUPABASE_URL / VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set",
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    });
+
+    // ⚠️ тут важно: я исхожу из того, что у тебя уже есть вьюха
+    // v_adcampaigns_client_compat с полями:
+    // id, client_id, agency_id, title, text, url, media_url, media_type,
+    // status, target, created_at, updated_at, actions, cpm, budget, views, clicks
+
+    let query = supabase.from("v_adcampaigns_client_compat").select("*");
+
     if (resolvedMode === "client" && client_id) {
       query = query.eq("client_id", client_id);
     } else if (resolvedMode === "agency" && agency_id) {
       query = query.eq("agency_id", agency_id);
     }
 
-    // можно фильтровать по статусу, если нужно:
-    // query = query.neq("status", "archived");
-
     const { data, error } = await query.order("created_at", {
-      ascending: false,
-    });
+  ascending: false,
+});
 
-    if (error) {
-      console.error("Error loading campaigns:", error);
-      return res
-        .status(500)
-        .json({ error: "Failed to load campaigns" } as any);
-    }
-
-    const rows: DbRow[] = data || [];
-
-    const items: ApiRow[] = [];
-    let totalViews = 0;
-    let totalClicks = 0;
-    let totalSpendNet = 0;
-    let totalSpendClient = 0;
-
-    for (const row of rows) {
-      const views = Number(row.views || 0);
-      const clicks = Number(row.clicks || row.actions || 0);
-
-      const cpmNet = Number(row.cpm || 0);
-      const budgetNet = Number(row.budget || 0);
-      const dailyBudgetNet = Number(row.daily_budget || 0);
-
-      const spendNet = Number(row.spend_raw || 0);
-
-      const markup = Number(row.markup_percent || 0);
-      const factor = 1 + markup / 100;
-
-      // CPM / SPEND / BUDGET под роли
-      const isClient = resolvedMode === "client";
-
-      const cpmClient = isClient
-        ? Number((cpmNet * factor).toFixed(4))
-        : cpmNet;
-
-      // ❗ бюджет не умножаем на маркап: client видит тот же лимит
-      const budgetClient = budgetNet;
-      const dailyBudgetClient = dailyBudgetNet;
-
-      // ❗ SPEND: либо net, либо net * factor (ОДИН РАЗ)
-      const spendClient = isClient
-        ? Number((spendNet * factor).toFixed(2))
-        : spendNet;
-
-      const ctr =
-        views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
-
-      items.push({
-        id: row.id,
-        title: row.title,
-        text: row.text,
-        url: row.url,
-        media_url: row.media_url,
-        media_type: row.media_type,
-        status: row.status,
-        target: row.target,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        client_id: row.client_id,
-        agency_id: row.agency_id,
-
-        views,
-        clicks,
-        actions: Number(row.actions || clicks),
-
-        cpm_net: cpmNet,
-        cpm_client: cpmClient,
-
-        budget_net: budgetNet,
-        budget_client: budgetClient,
-
-        daily_budget_net: dailyBudgetNet,
-        daily_budget_client: dailyBudgetClient,
-
-        spend_net: Number(spendNet.toFixed(2)),
-        spend_client: spendClient,
-
-        ctr,
-      });
-
-      totalViews += views;
-      totalClicks += clicks;
-      totalSpendNet += spendNet;
-      totalSpendClient += spendClient;
-    }
-
-    // агрегированные CPM / CTR
-    const totalCtr =
-      totalViews > 0
-        ? Number(((totalClicks / totalViews) * 100).toFixed(2))
-        : 0;
-
-    const totalCpmNet =
-      totalViews > 0
-        ? Number(((totalSpendNet * 1000) / totalViews).toFixed(4))
-        : 0;
-
-    const totalCpmClient =
-      totalViews > 0
-        ? Number(((totalSpendClient * 1000) / totalViews).toFixed(4))
-        : 0;
-
-    const response: ApiResponse = {
-      data: items,
-      total: {
-        views: totalViews,
-        clicks: totalClicks,
-        spend_net: Number(totalSpendNet.toFixed(2)),
-        spend_client: Number(totalSpendClient.toFixed(2)),
-        ctr: totalCtr,
-        cpm_net: totalCpmNet,
-        cpm_client: totalCpmClient,
-      },
-      mode: resolvedMode,
-    };
-
-    return res.status(200).json(response);
-  } catch (e: any) {
-    console.error("Unexpected error in /api/campaigns:", e);
-    return res.status(500).json({ error: "Internal server error" } as any);
-  }
+if (error) {
+  console.error("Error loading campaigns:", error);
+  return res.status(500).json({ error: "Failed to load campaigns" } as any);
 }
+
+const rows = (data || []) as DbRow[];
+
+const items: ApiRow[] = [];
+let totalViews = 0;
+let totalClicks = 0;
+let totalSpendNet = 0;
+let totalSpendClient = 0;
+
+for (const row of rows) {
+  const views = Number(row.views || 0);
+  const clicks = Number(row.clicks || row.actions || 0);
+
+  const cpmNet = Number(row.cpm || 0);
+  const budgetNet = Number(row.budget || 0);
+  const dailyBudgetNet = Number(row.daily_budget || 0);
+
+  const spendNet = Number(row.spend_raw || 0);
+
+  const markup = Number(row.markup_percent || 0);
+  const factor = 1 + markup / 100;
+
+  const isClient = resolvedMode === "client";
+
+  const cpmClient = isClient
+    ? Number((cpmNet * factor).toFixed(4))
+    : cpmNet;
+
+  // бюджет НЕ множим на маркап
+  const budgetClient = budgetNet;
+  const dailyBudgetClient = dailyBudgetNet;
+
+  // SPEND множим на маркап только один раз
+  const spendClient = isClient
+    ? Number((spendNet * factor).toFixed(2))
+    : spendNet;
+
+  const ctr =
+    views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+
+  items.push({
+    id: row.id,
+    title: row.title,
+    text: row.text,
+    url: row.url,
+    media_url: row.media_url,
+    media_type: row.media_type,
+    status: row.status,
+    target: row.target,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    client_id: row.client_id,
+    agency_id: row.agency_id,
+
+    views,
+    clicks,
+    actions: Number(row.actions || clicks),
+
+    cpm_net: cpmNet,
+    cpm_client: cpmClient,
+
+    budget_net: budgetNet,
+    budget_client: budgetClient,
+
+    daily_budget_net: dailyBudgetNet,
+    daily_budget_client: dailyBudgetClient,
+
+    spend_net: Number(spendNet.toFixed(2)),
+    spend_client: spendClient,
+
+    ctr,
+  });
+
+  totalViews += views;
+  totalClicks += clicks;
+  totalSpendNet += spendNet;
+  totalSpendClient += spendClient;
+}
+
+const totalCtr =
+  totalViews > 0
+    ? Number(((totalClicks / totalViews) * 100).toFixed(2))
+    : 0;
+
+const totalCpmNet =
+  totalViews > 0
+    ? Number(((totalSpendNet * 1000) / totalViews).toFixed(4))
+    : 0;
+
+const totalCpmClient =
+  totalViews > 0
+    ? Number(((totalSpendClient * 1000) / totalViews).toFixed(4))
+    : 0;
+
+return res.status(200).json({
+  data: items,
+  total: {
+    views: totalViews,
+    clicks: totalClicks,
+    spend_net: Number(totalSpendNet.toFixed(2)),
+    spend_client: Number(totalSpendClient.toFixed(2)),
+    ctr: totalCtr,
+    cpm_net: totalCpmNet,
+    cpm_client: totalCpmClient,
+  },
+  mode: resolvedMode,
+});
+
