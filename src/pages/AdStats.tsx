@@ -46,7 +46,6 @@ export default function AdStats() {
     return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
   });
   const monthTabs = useMemo(() => {
-    // три вкладки: текущий и два предыдущих месяца
     const base = new Date();
     base.setUTCDate(1);
     const arr: string[] = [];
@@ -64,18 +63,21 @@ export default function AdStats() {
     }),
     [reports]
   );
+    // суммарные просмотры по данным top-чарта
+  const totalViewsFromStats = useMemo(
+    () =>
+      statsData.reduce((sum, point: any) => sum + (Number(point.views) || 0), 0),
+    [statsData]
+  );
 
   const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
 
-// если клиент и markupPercent уже загружен — умножаем на (1 + markup/100)
-// для агентства и админа множитель = 1 (без наценки)
 const multiplier =
   role === "client" && typeof markupPercent === "number"
     ? 1 + markupPercent / 100
     : 1;
 
 
-  // грузим markupPercent для клиента
   useEffect(() => {
     const loadMarkup = async () => {
       const roleLocal = localStorage.getItem("role");
@@ -250,11 +252,22 @@ const multiplier =
   if (!ad) return <div className="p-4">Loading…</div>;
 
   const displayBudget = (() => {
-    const base = Number(ad.budget ?? 0);
+    const base = Number(ad?.budget ?? 0);
+    if (!base) return "0.00";
+    return base.toFixed(2);
+  })();
+  
+    const displayCpm = (() => {
+    const base = Number(ad?.cpm ?? 0);
     if (!base) return "0.00";
     return (base * multiplier).toFixed(2);
   })();
 
+  const metaViews =
+    totalViewsFromStats ||
+    reportsTotal.views ||
+    Number(ad?.views ?? 0);
+  
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
@@ -287,9 +300,9 @@ const multiplier =
             <Meta label="Date created">
               {ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}
             </Meta>
-            <Meta label="CPM">€ {ad.cpm}</Meta>
+            <Meta label="CPM">€ {displayCpm}</Meta>
             <Meta label="Budget">€ {displayBudget}</Meta>
-            <Meta label="Views">{ad.views}</Meta>
+            <Meta label="Views">{metaViews.toLocaleString()}</Meta>
           </div>
         </div>
 

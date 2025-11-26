@@ -15,75 +15,82 @@ const Header = () => {
   const agencyId = localStorage.getItem("agency_id") || "";
   const [markupPercent, setMarkupPercent] = useState(0);
 
-useEffect(() => {
-  const fetchBalance = async () => {
-    if (role === "client" && userId) {
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("balance, markup_percent")
-        .eq("client_id", userId)
-        .maybeSingle();
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (role === "client" && userId) {
+        const { data, error } = await supabase
+          .from("client_balances")
+          .select("balance, markup_percent")
+          .eq("client_id", userId)
+          .maybeSingle();
 
-      if (!error && data) {
-        const markup = parseFloat(data.markup_percent) || 0;
-        const finalBalance = (data.balance || 0) * (1 + markup / 100);
-        setBalance(finalBalance);
-        setMarkupPercent(markup);
+        if (!error && data) {
+          const markup = parseFloat(data.markup_percent) || 0;
+
+          // 👇 Баланс показываем БЕЗ маркапа
+          setBalance(data.balance || 0);
+          // Маркап запоминаем отдельно для расчёта CPM/Spend
+          setMarkupPercent(markup);
+        }
+      } else if (role === "agency" && agencyId) {
+        const { data, error } = await supabase
+          .from("client_balances")
+          .select("balance")
+          .eq("agency_id", agencyId);
+
+        if (!error && data) {
+          const total = data.reduce(
+            (sum, row) => sum + (row.balance || 0),
+            0
+          );
+          setBalance(total);
+        } else {
+          console.warn("❌ Ошибка получения баланса агента:", error);
+        }
       }
-    } else if (role === "agency" && agencyId) {
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("balance")
-        .eq("agency_id", agencyId);
+    };
 
-      if (!error && data) {
-        const total = data.reduce((sum, row) => sum + (row.balance || 0), 0);
-        setBalance(total);
+    fetchBalance();
+  }, [role, userId, agencyId]);
+
+  useEffect(() => {
+    const shouldFetch = role === "client" ? markupPercent > 0 : true;
+    if (!shouldFetch) return;
+
+    const fetchSpend = async () => {
+      let query = supabase.from("ad_campaigns").select("views, cpm");
+
+      if (role === "client" && userId) {
+        query = query.eq("client_id", userId);
+      } else if (role === "agency" && agencyId) {
+        query = query.eq("agency_id", agencyId);
       } else {
-        console.warn("❌ Ошибка получения баланса агента:", error);
+        return;
       }
-    }
-  };
 
-  fetchBalance();
-}, [role, userId, agencyId]);
-
-useEffect(() => {
-  const shouldFetch = role === "client" ? markupPercent > 0 : true;
-  if (!shouldFetch) return;
-
-  const fetchSpend = async () => {
-    let query = supabase.from("ad_campaigns").select("views, cpm");
-
-    if (role === "client" && userId) {
-      query = query.eq("client_id", userId);
-    } else if (role === "agency" && agencyId) {
-      query = query.eq("agency_id", agencyId);
-    } else {
-      return;
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error("❌ Ошибка загрузки трат:", error);
-      return;
-    }
-
-    const total = data.reduce((sum, ad) => {
-      const views = Number(ad.views) || 0;
-      let cpm = parseFloat(ad.cpm) || 0;
-      if (role === "client") {
-        cpm *= (1 + markupPercent / 100);
+      const { data, error } = await query;
+      if (error) {
+        console.error("❌ Ошибка загрузки трат:", error);
+        return;
       }
-      return sum + (views / 1000) * cpm;
-    }, 0);
 
-    setTotalSpend(total);
-  };
+      const total = (data || []).reduce((sum, ad: any) => {
+        const views = Number(ad.views) || 0;
+        let cpm = parseFloat(ad.cpm) || 0;
 
-  fetchSpend();
-}, [role, userId, agencyId, markupPercent]);
+        // Для клиента — CPM с маркапом
+        if (role === "client") {
+          cpm *= 1 + markupPercent / 100;
+        }
 
+        return sum + (views / 1000) * cpm;
+      }, 0);
+
+      setTotalSpend(total);
+    };
+
+    fetchSpend();
+  }, [role, userId, agencyId, markupPercent]);
 
   const remainingBalance = balance - totalSpend;
 
@@ -91,14 +98,25 @@ useEffect(() => {
     <header className="border-b border-[#e6e6e6] bg-white">
       <Container>
         <div className="flex items-center justify-between h-12">
-          <Link to="/dashboard" className="flex items-center gap-2 cursor-pointer">
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2 cursor-pointer"
+          >
             <img src={LOGO_SVG} alt="logo" className="w-[22px] h-[22px]" />
-            <span className="font-semibold text-[16px] text-[#119af5]">Telegram Ads</span>
+            <span className="font-semibold text-[16px] text-[#119af5]">
+              Telegram Ads
+            </span>
           </Link>
+
           <div className="flex items-center gap-4">
             <span className="text-[14px] text-gray-600 font-bold">
               Budget: €{balance.toFixed(2)}
             </span>
+            {/* Если захочешь — можно вывести и остаток:
+            <span className="text-[12px] text-gray-500">
+              Remaining: €{remainingBalance.toFixed(2)}
+            </span>
+            */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gray-300" />
               <button
