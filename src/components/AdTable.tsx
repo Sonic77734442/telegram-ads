@@ -24,6 +24,7 @@ type AdRow = {
   // деньги (то, что показываем в таблице)
   cpm: number | string;
   budget: number | string;
+  daily_budget: number | string;
   spend?: number | string;
 
   // дневной бюджет
@@ -128,13 +129,28 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     },
   },
 
-  {
-    id: "budget",
-    label: "BUDGET",
-    sortable: true,
-    align: "right",
-    defaultVisible: true,
-  },
+{
+  id: "budget",
+  label: "BUDGET",
+  sortable: true,
+  align: "right",
+  defaultVisible: true,
+  render: (row: AdRow) => (
+    <div className="flex flex-col items-end leading-tight">
+      {/* Верхняя строка — общий бюджет кампании */}
+      <div>€ {(Number(row.budget) || 0).toFixed(2)}</div>
+
+      {/* Нижняя строка — дневной бюджет, открывает модалку */}
+      <button
+        type="button"
+        className="text-xs text-blue-500 underline"
+        onClick={() => openBudgetModal("edit", row)}
+      >
+        € {(Number((row as any).daily_budget ?? 0) || 0).toFixed(2)}
+      </button>
+    </div>
+  ),
+},
   {
     id: "spend",
     label: "SPENT",
