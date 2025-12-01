@@ -14,9 +14,6 @@ export default async function handler(req: any, res: any) {
         .json({ error: "ym is required, format YYYY-MM, e.g. 2025-11" });
     }
 
-    const markupPercent = Number(process.env.CLIENT_MARKUP_PERCENT ?? "10");
-    const markupMultiplier = 1 + markupPercent / 100;
-
     const supabaseModule: any = await import("@supabase/supabase-js");
     const createClient = supabaseModule.createClient;
 
@@ -40,6 +37,33 @@ export default async function handler(req: any, res: any) {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     });
+
+    let markupPercent = 0;
+
+    // Try to resolve client markup from client_balances by ad's client_id
+    const { data: campaignRow, error: campaignError } = await supabase
+      .from("ad_campaigns")
+      .select("client_id, agency_id")
+      .eq("id", ad_id)
+      .single();
+
+    if (campaignError) {
+      console.error("failed to load campaign for markup", campaignError);
+    } else if (campaignRow?.client_id) {
+      const { data: balanceRow, error: balanceError } = await supabase
+        .from("client_balances")
+        .select("markup_percent")
+        .eq("client_id", campaignRow.client_id)
+        .maybeSingle();
+
+      if (balanceError) {
+        console.error("failed to load client markup", balanceError);
+      } else {
+        markupPercent = Number(balanceRow?.markup_percent ?? 0);
+      }
+    }
+
+    const markupMultiplier = 1 + markupPercent / 100;
 
     const { data, error } = await supabase.rpc("get_reports_for_month", {
       input_ad_id: ad_id,
