@@ -118,10 +118,9 @@ export default async function handler(req: any, res: any) {
       const budgetClient = budgetNet;
       const dailyBudgetClient = dailyBudgetNet;
 
-      // SPEND для клиента считаем из CPM клиента
-      const spendClient = isClientMode
-        ? Number(((views * cpmClient) / 1000).toFixed(2))
-        : Number(spendNet.toFixed(2));
+      // SPEND клиента = NET-спенд без маркапа; маркап только в CPM
+	  const spendClient = Number(spendNet.toFixed(2));
+
 
       const ctr =
         views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
@@ -166,7 +165,7 @@ export default async function handler(req: any, res: any) {
       totalViews += views;
       totalClicks += clicks;
       totalSpendNet += spendNet;
-      totalSpendClient += spendClient;
+      totalSpendClient += spendNet;
     }
 
     const totalCtr =
