@@ -171,11 +171,11 @@ const multiplier =
 
         setReports(
           data.map((r: any) => {
-            const baseAmount = Number(r.amount || 0);
+            const baseAmount = Number(r.amount_client ?? r.amount ?? 0);
             return {
               day: r.day, // 'YYYY-MM-DD'
               views: Number(r.views || 0),
-              amount: baseAmount * multiplier, // с маркапом для клиента
+              amount: baseAmount, // server already includes markup when present
             };
           })
         );
@@ -184,7 +184,7 @@ const multiplier =
         setReports([]);
       }
     })();
-  }, [adId, selectedMonth, multiplier]);
+  }, [adId, selectedMonth]);
 
 
   // csv helpers
