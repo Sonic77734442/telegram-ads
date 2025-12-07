@@ -75,32 +75,72 @@ export default async function handler(req: any, res: any) {
       const views = Number(row.views ?? 0);
       const clicks = Number(row.clicks ?? row.actions ?? 0);
 
-      // поддержка вьюхи с полями *_net и наследие
-      const cpmNet = Number(row.cpm_net ?? row.cpm ?? 0);
-      const budgetNet = Number(row.budget_net ?? row.budget ?? 0);
-      const dailyBudgetNet = Number(row.daily_budget_net ?? row.daily_budget ?? 0);
+      // поддержка вьюхи с полями *_net / *_client и наследие
+      const cpmClientRaw =
+        row.cpm_client !== undefined && row.cpm_client !== null
+          ? Number(row.cpm_client)
+          : null;
+      const cpmNet =
+        row.cpm_net !== undefined && row.cpm_net !== null
+          ? Number(row.cpm_net)
+          : cpmClientRaw !== null
+          ? Number((cpmClientRaw / markupMultiplier).toFixed(4))
+          : Number(row.cpm ?? 0);
 
-      const spendNet =
-        row.spend_net !== undefined && row.spend_net !== null
-          ? Number(row.spend_net)
-          : row.spend_raw !== undefined && row.spend_raw !== null
-          ? Number(row.spend_raw)
-          : views > 0
-          ? (views * cpmNet) / 1000
-          : 0;
+      const budgetClientRaw =
+        row.budget_client !== undefined && row.budget_client !== null
+          ? Number(row.budget_client)
+          : null;
+      const budgetNet =
+        row.budget_net !== undefined && row.budget_net !== null
+          ? Number(row.budget_net)
+          : Number(row.budget ?? 0);
 
-      // считаем клиентские значения самостоятельно, чтобы не получить двойную наценку
-      const cpmClient = isClientMode ? Number((cpmNet * markupMultiplier).toFixed(4)) : cpmNet;
-      const budgetClient =
-        row.budget_client !== undefined ? Number(row.budget_client) : budgetNet;
-      const dailyBudgetClient =
-        row.daily_budget_client !== undefined
+      const dailyBudgetClientRaw =
+        row.daily_budget_client !== undefined && row.daily_budget_client !== null
           ? Number(row.daily_budget_client)
-          : dailyBudgetNet;
+          : null;
+      const dailyBudgetNet =
+        row.daily_budget_net !== undefined && row.daily_budget_net !== null
+          ? Number(row.daily_budget_net)
+          : Number(row.daily_budget ?? 0);
 
-      const spendClient = isClientMode
-        ? Number((spendNet * markupMultiplier).toFixed(2))
-        : Number(spendNet.toFixed(2));
+      // если вьюха отдает spend_client — используем его как источник истины, чтобы не делать двойной markup
+      let spendNet: number;
+      let spendClient: number;
+
+      if (isClientMode && row.spend_client !== undefined && row.spend_client !== null) {
+        spendClient = Number(row.spend_client);
+        if (row.spend_net !== undefined && row.spend_net !== null) {
+          spendNet = Number(row.spend_net);
+        } else {
+          spendNet = markupMultiplier ? Number((spendClient / markupMultiplier).toFixed(4)) : spendClient;
+        }
+      } else {
+        spendNet =
+          row.spend_net !== undefined && row.spend_net !== null
+            ? Number(row.spend_net)
+            : row.spend_raw !== undefined && row.spend_raw !== null
+            ? Number(row.spend_raw)
+            : views > 0
+            ? (views * cpmNet) / 1000
+            : 0;
+
+        spendClient = isClientMode
+          ? Number((spendNet * markupMultiplier).toFixed(2))
+          : Number(spendNet.toFixed(2));
+      }
+
+      const cpmClient =
+        cpmClientRaw !== null
+          ? cpmClientRaw
+          : isClientMode
+          ? Number((cpmNet * markupMultiplier).toFixed(4))
+          : cpmNet;
+
+      const budgetClient = budgetClientRaw !== null ? budgetClientRaw : budgetNet;
+      const dailyBudgetClient =
+        dailyBudgetClientRaw !== null ? dailyBudgetClientRaw : dailyBudgetNet;
 
       const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
 
@@ -140,7 +180,7 @@ export default async function handler(req: any, res: any) {
       totalViews += views;
       totalClicks += clicks;
       totalSpendNet += spendNet;
-      totalSpendClient += isClientMode ? spendNet * markupMultiplier : spendNet;
+      totalSpendClient += spendClient;
     }
 
     const totalCtr =
