@@ -29,22 +29,8 @@ export default async function handler(req: any, res: any) {
     const ym =
       typeof queryYm === "string" && /^\d{4}-\d{2}$/.test(queryYm) ? queryYm : null;
 
-    // Load markup for clients (used to derive client CPM).
-    let clientMarkup = 0;
-    if (resolvedMode === "client") {
-      const { data: balanceRow, error: balanceError } = await supabase
-        .from("client_balances")
-        .select("markup_percent")
-        .eq("client_id", clientId)
-        .maybeSingle();
-
-      if (balanceError) {
-        console.error("Error loading client markup:", balanceError);
-      }
-      clientMarkup = Number(balanceRow?.markup_percent ?? 0);
-    }
-
-    const markupMultiplier = 1 + clientMarkup / 100;
+    // No markup applied to client-facing values in this endpoint.
+    const markupMultiplier = 1;
 
     let query = supabase.from("v_adcampaigns_client_compat").select("*");
 
@@ -91,8 +77,6 @@ export default async function handler(req: any, res: any) {
       const cpmNet =
         row.cpm_net !== undefined && row.cpm_net !== null
           ? Number(row.cpm_net)
-          : cpmClientRaw !== null
-          ? Number((cpmClientRaw / markupMultiplier).toFixed(4))
           : Number(row.cpm ?? 0);
 
       const budgetClientRaw =
@@ -117,27 +101,17 @@ export default async function handler(req: any, res: any) {
       let spendNet: number;
       let spendClient: number;
 
-      if (isClientMode && row.spend_client !== undefined && row.spend_client !== null) {
-        spendClient = Number(row.spend_client);
-        if (row.spend_net !== undefined && row.spend_net !== null) {
-          spendNet = Number(row.spend_net);
-        } else {
-          spendNet = markupMultiplier ? Number((spendClient / markupMultiplier).toFixed(4)) : spendClient;
-        }
-      } else {
-        spendNet =
-          row.spend_net !== undefined && row.spend_net !== null
-            ? Number(row.spend_net)
-            : row.spend_raw !== undefined && row.spend_raw !== null
-            ? Number(row.spend_raw)
-            : views > 0
-            ? (views * cpmNet) / 1000
-            : 0;
+      spendNet =
+        row.spend_net !== undefined && row.spend_net !== null
+          ? Number(row.spend_net)
+          : row.spend_raw !== undefined && row.spend_raw !== null
+          ? Number(row.spend_raw)
+          : views > 0
+          ? (views * cpmNet) / 1000
+          : 0;
 
-        spendClient = isClientMode
-          ? Number((spendNet * markupMultiplier).toFixed(2))
-          : Number(spendNet.toFixed(2));
-      }
+      // For client mode we now show net as-is (no markup).
+      spendClient = Number(spendNet.toFixed(2));
 
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
@@ -175,9 +149,7 @@ export default async function handler(req: any, res: any) {
               0
             );
             spendNet = Number(amountNet.toFixed(2));
-            spendClient = isClientMode
-              ? Number((amountNet * markupMultiplier).toFixed(2))
-              : spendNet;
+            spendClient = Number(spendNet.toFixed(2));
             break;
           }
         }
@@ -186,8 +158,6 @@ export default async function handler(req: any, res: any) {
       const cpmClient =
         cpmClientRaw !== null
           ? cpmClientRaw
-          : isClientMode
-          ? Number((cpmNet * markupMultiplier).toFixed(4))
           : cpmNet;
 
       const budgetClient = budgetClientRaw !== null ? budgetClientRaw : budgetNet;
