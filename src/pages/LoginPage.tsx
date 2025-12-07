@@ -1,7 +1,5 @@
-import { supabase } from "../supabaseClient";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import bcrypt from "bcryptjs";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -12,32 +10,20 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      let { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("username", email)
-        .maybeSingle();
+      const resp = await fetch("/api/auth-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // если по username нет, пробуем email (если есть колонка)
-      if ((!data || error) && !data?.username) {
-        const { data: byEmail } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", email)
-          .maybeSingle();
-        data = byEmail;
-      }
+      const json = await resp.json();
 
-      if (!data) {
-        alert("Неверный логин или пароль");
+      if (!resp.ok || json.error) {
+        alert(json.error || "Invalid credentials");
         return;
       }
 
-      const passwordMatch = await bcrypt.compare(password, data.password_hash);
-      if (!passwordMatch) {
-        alert("Неверный логин или пароль");
-        return;
-      }
+      const data = json.user;
 
       localStorage.setItem("role", data.role);
       localStorage.setItem("user_id", data.user_id);
@@ -51,13 +37,11 @@ export default function LoginPage() {
         data.role === "client" ? data.agency_markup?.toString() || "0" : "0"
       );
 
-      console.log("✅ Авторизация успешна:");
-
       if (data.role === "admin") navigate("/admin");
       else navigate("/");
     } catch (e) {
-      console.error("❌ Ошибка входа:", e);
-      alert("Ошибка при входе. Проверь консоль.");
+      console.error("в?? Р?С?РёР+РєР° Р?С:Р?Р?Р°:", e);
+      alert("Р?С?РёР+РєР° РїС?Рё Р?С:Р?Р?Рч. Р?С?Р?Р?РчС?С? РєР?Р?С?Р?Р>С?.");
     }
   };
 
