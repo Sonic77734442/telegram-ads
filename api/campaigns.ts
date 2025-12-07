@@ -142,22 +142,44 @@ export default async function handler(req: any, res: any) {
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
       if (ym) {
-        const { data: reportsRows, error: reportsError } = await supabase.rpc(
-          "get_reports_for_month",
-          { input_ad_id: row.id, ym }
-        );
-        if (!reportsError && Array.isArray(reportsRows) && reportsRows.length > 0) {
-          const amountNet = reportsRows.reduce(
-            (sum: number, r: any) => sum + Number(r.amount ?? 0),
-            0
-          );
-          // Override only when we have rows for the month; otherwise keep earlier spend.
-          spendNet = Number(amountNet.toFixed(2));
-          spendClient = isClientMode
-            ? Number((amountNet * markupMultiplier).toFixed(2))
-            : spendNet;
-        } else if (reportsError) {
-          console.error("get_reports_for_month error (campaigns)", reportsError);
+        const fetchMonth = async (month: string) => {
+          const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
+            input_ad_id: row.id,
+            ym: month,
+          });
+          return { rows, error };
+        };
+
+        const attemptMonths = [ym];
+
+        // If the requested month has no rows, try the previous month as a fallback.
+        const ymDate = new Date(`${ym}-01T00:00:00Z`);
+        if (!Number.isNaN(ymDate.getTime())) {
+          ymDate.setUTCMonth(ymDate.getUTCMonth() - 1);
+          const prevYm = `${ymDate.getUTCFullYear()}-${String(ymDate.getUTCMonth() + 1).padStart(
+            2,
+            "0"
+          )}`;
+          if (prevYm !== ym) attemptMonths.push(prevYm);
+        }
+
+        for (const month of attemptMonths) {
+          const { rows, error } = await fetchMonth(month);
+          if (error) {
+            console.error("get_reports_for_month error (campaigns)", { month, error });
+            continue;
+          }
+          if (Array.isArray(rows) && rows.length > 0) {
+            const amountNet = rows.reduce(
+              (sum: number, r: any) => sum + Number(r.amount ?? 0),
+              0
+            );
+            spendNet = Number(amountNet.toFixed(2));
+            spendClient = isClientMode
+              ? Number((amountNet * markupMultiplier).toFixed(2))
+              : spendNet;
+            break;
+          }
         }
       }
 
