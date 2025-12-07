@@ -372,11 +372,6 @@ export default function AdTable() {
 
       const params = new URLSearchParams({ mode: role });
 
-      // Align spend with AdStats (which shows monthly data): pass current month (UTC) to API.
-      const now = new Date();
-      const ym = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-      params.set("ym", ym);
-
       if (role === "client" && clientId) params.set("client_id", clientId);
       if (role === "agency" && agencyId) params.set("agency_id", agencyId);
 
