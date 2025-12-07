@@ -128,34 +128,47 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // Apply markup only once for client mode; otherwise keep net.
-      spendClient = isClientMode
-        ? Number((spendNet * markupMultiplier).toFixed(2))
-        : Number(spendNet.toFixed(2));
+      // Base: no markup on spend; will override with reports (amount_client) if available.
+      spendClient = Number(spendNet.toFixed(2));
 
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
       if (ym) {
-        const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
-          input_ad_id: row.id,
-          ym,
-        });
+        const attemptMonths: string[] = [];
+        attemptMonths.push(ym);
+        // fallback: previous month if no rows
+        const d = new Date(`${ym}-01T00:00:00Z`);
+        if (!Number.isNaN(d.getTime())) {
+          d.setUTCMonth(d.getUTCMonth() - 1);
+          const prevYm = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+          if (prevYm !== ym) attemptMonths.push(prevYm);
+        }
 
-        if (error) {
-          console.error("get_reports_for_month error (campaigns)", { ym, error });
-        } else if (Array.isArray(rows) && rows.length > 0) {
-          const amountNet = rows.reduce(
-            (sum: number, r: any) => sum + Number(r.amount ?? 0),
-            0
-          );
-          spendNet = Number(amountNet.toFixed(2));
-          const amountClient = rows.reduce(
-            (sum: number, r: any) => sum + Number(r.amount_client ?? r.amount ?? 0),
-            0
-          );
-          spendClient = isClientMode
-            ? Number(amountClient.toFixed(2))
-            : Number(spendNet.toFixed(2));
+        for (const month of attemptMonths) {
+          const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
+            input_ad_id: row.id,
+            ym: month,
+          });
+
+          if (error) {
+            console.error("get_reports_for_month error (campaigns)", { ym: month, error });
+            continue;
+          }
+          if (Array.isArray(rows) && rows.length > 0) {
+            const amountNet = rows.reduce(
+              (sum: number, r: any) => sum + Number(r.amount ?? 0),
+              0
+            );
+            const amountClient = rows.reduce(
+              (sum: number, r: any) => sum + Number(r.amount_client ?? r.amount ?? 0),
+              0
+            );
+            spendNet = Number(amountNet.toFixed(2));
+            spendClient = isClientMode
+              ? Number(amountClient.toFixed(2))
+              : Number(spendNet.toFixed(2));
+            break;
+          }
         }
       }
 
