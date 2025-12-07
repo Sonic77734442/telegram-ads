@@ -127,8 +127,12 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // Base: no markup on spend; will override with reports (amount_client) if available.
-      spendClient = Number(spendNet.toFixed(2));
+      // If view provides spend_client, respect it for clients (lifetime case).
+      if (isClientMode && row.spend_client !== undefined && row.spend_client !== null) {
+        spendClient = Number(row.spend_client);
+      } else {
+        spendClient = Number(spendNet.toFixed(2));
+      }
 
       // If month filter is provided, override spend with monthly reports totals (no fallback).
       if (ym) {
