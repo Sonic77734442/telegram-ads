@@ -75,20 +75,13 @@ export default async function handler(req: any, res: any) {
       const views = Number(row.views ?? 0);
       const clicks = Number(row.clicks ?? row.actions ?? 0);
 
-      // поддержка вьюхи с полями *_client/_net и наследие
+      // поддержка вьюхи с полями *_net и наследие
       const cpmNet = Number(row.cpm_net ?? row.cpm ?? 0);
-      const cpmFromViewClient = row.cpm_client !== undefined ? Number(row.cpm_client) : null;
-
       const budgetNet = Number(row.budget_net ?? row.budget ?? 0);
-      const budgetFromViewClient =
-        row.budget_client !== undefined ? Number(row.budget_client) : null;
-
       const dailyBudgetNet = Number(row.daily_budget_net ?? row.daily_budget ?? 0);
-      const dailyBudgetFromViewClient =
-        row.daily_budget_client !== undefined ? Number(row.daily_budget_client) : null;
 
       const spendNet =
-        row.spend_net !== undefined
+        row.spend_net !== undefined && row.spend_net !== null
           ? Number(row.spend_net)
           : row.spend_raw !== undefined && row.spend_raw !== null
           ? Number(row.spend_raw)
@@ -96,25 +89,18 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // если вьюха уже отдаёт клиентские значения — используем их, иначе считаем по markup
-      const cpmClient =
-        cpmFromViewClient !== null
-          ? cpmFromViewClient
-          : isClientMode
-          ? Number((cpmNet * markupMultiplier).toFixed(4))
-          : cpmNet;
-
+      // считаем клиентские значения самостоятельно, чтобы не получить двойную наценку
+      const cpmClient = isClientMode ? Number((cpmNet * markupMultiplier).toFixed(4)) : cpmNet;
       const budgetClient =
-        budgetFromViewClient !== null ? budgetFromViewClient : budgetNet;
+        row.budget_client !== undefined ? Number(row.budget_client) : budgetNet;
       const dailyBudgetClient =
-        dailyBudgetFromViewClient !== null ? dailyBudgetFromViewClient : dailyBudgetNet;
+        row.daily_budget_client !== undefined
+          ? Number(row.daily_budget_client)
+          : dailyBudgetNet;
 
-      const spendClient =
-        row.spend_client !== undefined
-          ? Number(row.spend_client)
-          : isClientMode
-          ? Number((spendNet * markupMultiplier).toFixed(2))
-          : Number(spendNet.toFixed(2));
+      const spendClient = isClientMode
+        ? Number((spendNet * markupMultiplier).toFixed(2))
+        : Number(spendNet.toFixed(2));
 
       const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
 
@@ -154,12 +140,7 @@ export default async function handler(req: any, res: any) {
       totalViews += views;
       totalClicks += clicks;
       totalSpendNet += spendNet;
-      totalSpendClient +=
-        row.spend_client !== undefined
-          ? Number(row.spend_client)
-          : isClientMode
-          ? spendNet * markupMultiplier
-          : spendNet;
+      totalSpendClient += isClientMode ? spendNet * markupMultiplier : spendNet;
     }
 
     const totalCtr =
