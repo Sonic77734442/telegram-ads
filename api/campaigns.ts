@@ -146,11 +146,12 @@ export default async function handler(req: any, res: any) {
           "get_reports_for_month",
           { input_ad_id: row.id, ym }
         );
-        if (!reportsError && Array.isArray(reportsRows)) {
+        if (!reportsError && Array.isArray(reportsRows) && reportsRows.length > 0) {
           const amountNet = reportsRows.reduce(
             (sum: number, r: any) => sum + Number(r.amount ?? 0),
             0
           );
+          // Override only when we have rows for the month; otherwise keep earlier spend.
           spendNet = Number(amountNet.toFixed(2));
           spendClient = isClientMode
             ? Number((amountNet * markupMultiplier).toFixed(2))
