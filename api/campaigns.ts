@@ -19,7 +19,15 @@ export default async function handler(req: any, res: any) {
     let resolvedMode: "client" | "agency" | "admin" = role;
 
     // Only admins can optionally filter; others are locked to their own scope.
-    const { client_id: queryClientId, agency_id: queryAgencyId } = (req as any).query || {};
+    const {
+      client_id: queryClientId,
+      agency_id: queryAgencyId,
+      ym: queryYm,
+    } = (req as any).query || {};
+
+    // Optional month filter (YYYY-MM) to align spend with reports period.
+    const ym =
+      typeof queryYm === "string" && /^\d{4}-\d{2}$/.test(queryYm) ? queryYm : null;
 
     // Load markup for clients (used to derive client CPM).
     let clientMarkup = 0;
@@ -129,6 +137,27 @@ export default async function handler(req: any, res: any) {
         spendClient = isClientMode
           ? Number((spendNet * markupMultiplier).toFixed(2))
           : Number(spendNet.toFixed(2));
+      }
+
+      // If month filter is provided, override spend with monthly reports totals to
+      // keep Dashboard in sync with AdStats (which shows monthly spend).
+      if (ym) {
+        const { data: reportsRows, error: reportsError } = await supabase.rpc(
+          "get_reports_for_month",
+          { input_ad_id: row.id, ym }
+        );
+        if (!reportsError && Array.isArray(reportsRows)) {
+          const amountNet = reportsRows.reduce(
+            (sum: number, r: any) => sum + Number(r.amount ?? 0),
+            0
+          );
+          spendNet = Number(amountNet.toFixed(2));
+          spendClient = isClientMode
+            ? Number((amountNet * markupMultiplier).toFixed(2))
+            : spendNet;
+        } else if (reportsError) {
+          console.error("get_reports_for_month error (campaigns)", reportsError);
+        }
       }
 
       const cpmClient =
