@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from "./supabaseAdmin";
-import { readSessionFromRequest } from "./auth-utils";
+import { getSupabaseAdmin } from "./supabaseAdmin.js";
+import { readSessionFromRequest } from "./auth-utils.js";
 
 // api/reports.ts
 export default async function handler(req: any, res: any) {

@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-import { getSupabaseAdmin } from "./supabaseAdmin";
-import { signSession, setSessionCookie } from "./auth-utils";
+import { getSupabaseAdmin } from "./supabaseAdmin.js";
+import { signSession, setSessionCookie } from "./auth-utils.js";
 
 /**
  * Login endpoint: validates credentials server-side and issues an HttpOnly session cookie.
