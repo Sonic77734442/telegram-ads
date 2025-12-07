@@ -159,10 +159,13 @@ export default async function handler(req: any, res: any) {
               (sum: number, r: any) => sum + Number(r.amount ?? 0),
               0
             );
-            const amountClient = rows.reduce(
+            let amountClient = rows.reduce(
               (sum: number, r: any) => sum + Number(r.amount_client ?? r.amount ?? 0),
               0
             );
+            if (isClientMode && amountClient === amountNet && markupMultiplier !== 1) {
+              amountClient = Number((amountNet * markupMultiplier).toFixed(2));
+            }
             spendNet = Number(amountNet.toFixed(2));
             spendClient = isClientMode
               ? Number(amountClient.toFixed(2))
