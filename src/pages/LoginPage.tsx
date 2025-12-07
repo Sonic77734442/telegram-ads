@@ -16,32 +16,38 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const json = await resp.json();
+      const isJson = resp.headers
+        .get("content-type")
+        ?.includes("application/json");
+      const json = isJson ? await resp.json() : null;
 
-      if (!resp.ok || json.error) {
-        alert(json.error || "Invalid credentials");
+      if (!resp.ok || (json && json.error)) {
+        const message =
+          (json && json.error) ||
+          `Login failed (${resp.status} ${resp.statusText})`;
+        alert(message);
         return;
       }
 
-      const data = json.user;
+      const data = json?.user;
 
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("user_id", data.user_id);
+      localStorage.setItem("role", data?.role || "");
+      localStorage.setItem("user_id", data?.user_id || "");
       localStorage.setItem(
         "agency_id",
-        data.role === "agency" ? data.user_id : data.agency_id ?? ""
+        data?.role === "agency" ? data?.user_id : data?.agency_id ?? ""
       );
       localStorage.setItem("auth", "1");
       localStorage.setItem(
-        "markup",
-        data.role === "client" ? data.agency_markup?.toString() || "0" : "0"
+        "markup" "0",
+        data?.role === "client" ? data?.agency_markup?.toString() || "0" : "0"
       );
 
-      if (data.role === "admin") navigate("/admin");
+      if (data?.role === "admin") navigate("/admin");
       else navigate("/");
     } catch (e) {
-      console.error("в?? Р?С?РёР+РєР° Р?С:Р?Р?Р°:", e);
-      alert("Р?С?РёР+РєР° РїС?Рё Р?С:Р?Р?Рч. Р?С?Р?Р?РчС?С? РєР?Р?С?Р?Р>С?.");
+      console.error("auth-login failed:", e);
+      alert("Login failed. See console for details.");
     }
   };
 

@@ -48,14 +48,6 @@ export default async function handler(req: any, res: any) {
 
     setSessionCookie(res, sessionToken);
 
-    return res.status(200).json({
-      user: {
-        user_id: user.user_id,
-        role,
-        agency_id: user.agency_id,
-        agency_markup: user.agency_markup,
-      },
-    });
   } catch (e: any) {
     console.error("auth-login error:", e);
     return res.status(500).json({ error: "Internal server error" });
