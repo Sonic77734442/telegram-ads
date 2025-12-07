@@ -25,14 +25,13 @@ export default async function handler(req: any, res: any) {
       ym: queryYm,
     } = (req as any).query || {};
 
-    // Month filter (YYYY-MM). If not provided, use current month to align with AdStats default.
+    // Month filter (YYYY-MM). If not provided or set to "all", use lifetime (no override).
     const ym =
       typeof queryYm === "string" && /^\d{4}-\d{2}$/.test(queryYm)
         ? queryYm
-        : (() => {
-            const now = new Date();
-            return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-          })();
+        : queryYm === "all"
+        ? null
+        : null;
 
     // Load client markup for client mode to match AdStats (which applies it in reports).
     let markupMultiplier = 1;
@@ -131,50 +130,34 @@ export default async function handler(req: any, res: any) {
       // Base: no markup on spend; will override with reports (amount_client) if available.
       spendClient = Number(spendNet.toFixed(2));
 
-      // If month filter is provided, override spend with monthly reports totals to
-      // keep Dashboard in sync with AdStats (which shows monthly spend).
+      // If month filter is provided, override spend with monthly reports totals (no fallback).
       if (ym) {
-        const attemptMonths: string[] = [];
-        attemptMonths.push(ym);
-        // fallback: previous month if no rows
-        const d = new Date(`${ym}-01T00:00:00Z`);
-        if (!Number.isNaN(d.getTime())) {
-          d.setUTCMonth(d.getUTCMonth() - 1);
-          const prevYm = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-          if (prevYm !== ym) attemptMonths.push(prevYm);
-        }
+        const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
+          input_ad_id: row.id,
+          ym,
+        });
 
-        for (const month of attemptMonths) {
-          const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
-            input_ad_id: row.id,
-            ym: month,
-          });
-
-          if (error) {
-            console.error("get_reports_for_month error (campaigns)", { ym: month, error });
-            continue;
-          }
-          if (Array.isArray(rows) && rows.length > 0) {
-            const amountNetRaw = rows.reduce(
-              (sum: number, r: any) => sum + Number(r.amount ?? 0),
-              0
-            );
-            let amountClientRaw = rows.reduce(
-              (sum: number, r: any) =>
-                sum +
-                Number(
-                  r.amount_client !== undefined && r.amount_client !== null
-                    ? r.amount_client
-                    : (r.amount ?? 0) * markupMultiplier
-                ),
-              0
-            );
-            spendNet = Number(amountNetRaw.toFixed(2));
-            spendClient = isClientMode
-              ? Number(amountClientRaw.toFixed(2))
-              : Number(spendNet.toFixed(2));
-            break;
-          }
+        if (error) {
+          console.error("get_reports_for_month error (campaigns)", { ym, error });
+        } else if (Array.isArray(rows) && rows.length > 0) {
+          const amountNetRaw = rows.reduce(
+            (sum: number, r: any) => sum + Number(r.amount ?? 0),
+            0
+          );
+          const amountClientRaw = rows.reduce(
+            (sum: number, r: any) =>
+              sum +
+              Number(
+                r.amount_client !== undefined && r.amount_client !== null
+                  ? r.amount_client
+                  : (r.amount ?? 0) * markupMultiplier
+              ),
+            0
+          );
+          spendNet = Number(amountNetRaw.toFixed(2));
+          spendClient = isClientMode
+            ? Number(amountClientRaw.toFixed(2))
+            : Number(spendNet.toFixed(2));
         }
       }
 
