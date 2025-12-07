@@ -38,22 +38,8 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    // Markup is not applied to amounts here; CPM client may be adjusted later if needed.
     let markupPercent = 0;
-
-    // Try to resolve client markup from client_balances by ad's client_id
-    const { data: balanceRow, error: balanceError } = await supabase
-      .from("client_balances")
-      .select("markup_percent")
-      .eq("client_id", campaignRow.client_id)
-      .maybeSingle();
-
-    if (balanceError) {
-      console.error("failed to load client markup", balanceError);
-    } else {
-      markupPercent = Number(balanceRow?.markup_percent ?? 0);
-    }
-
-    const markupMultiplier = 1 + markupPercent / 100;
 
     const { data, error } = await supabase.rpc("get_reports_for_month", {
       input_ad_id: ad_id,
@@ -71,10 +57,10 @@ export default async function handler(req: any, res: any) {
       amount: number;
     }[];
 
-    const items = rows.map((r) => {
-      const amount_client = Number((r.amount * markupMultiplier).toFixed(2));
-      return { ...r, amount_client };
-    });
+    const items = rows.map((r) => ({
+      ...r,
+      amount_client: Number((r.amount ?? 0).toFixed(2)), // same as net; markup not applied to spend
+    }));
 
     const total_views = items.reduce((sum, r) => sum + (r.views || 0), 0);
     const total_amount_net = Number(
@@ -87,7 +73,7 @@ export default async function handler(req: any, res: any) {
     const cpm_net =
       total_views > 0 ? Number(((total_amount_net * 1000) / total_views).toFixed(2)) : 0;
     const cpm_client =
-      total_views > 0 ? Number(((total_amount_client * 1000) / total_views).toFixed(2)) : 0;
+      total_views > 0 ? Number(((total_amount_client * (1 + markupPercent / 100) * 1000) / total_views).toFixed(2)) : 0;
 
     return res.status(200).json({
       data: items,
