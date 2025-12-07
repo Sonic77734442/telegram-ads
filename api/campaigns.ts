@@ -128,8 +128,10 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // Spend is reported without markup; markup affects only CPM display.
-      spendClient = Number(spendNet.toFixed(2));
+      // Apply markup only once for client mode; otherwise keep net.
+      spendClient = isClientMode
+        ? Number((spendNet * markupMultiplier).toFixed(2))
+        : Number(spendNet.toFixed(2));
 
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
@@ -147,7 +149,13 @@ export default async function handler(req: any, res: any) {
             0
           );
           spendNet = Number(amountNet.toFixed(2));
-          spendClient = Number(spendNet.toFixed(2));
+          const amountClient = rows.reduce(
+            (sum: number, r: any) => sum + Number(r.amount_client ?? r.amount ?? 0),
+            0
+          );
+          spendClient = isClientMode
+            ? Number(amountClient.toFixed(2))
+            : Number(spendNet.toFixed(2));
         }
       }
 
