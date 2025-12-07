@@ -34,8 +34,21 @@ export default async function handler(req: any, res: any) {
             return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
           })();
 
-    // No markup applied to client-facing values in this endpoint.
-    const markupMultiplier = 1;
+    // Load client markup for client mode to match AdStats (which applies it in reports).
+    let markupMultiplier = 1;
+    if (resolvedMode === "client") {
+      const { data: balanceRow, error: balanceError } = await supabase
+        .from("client_balances")
+        .select("markup_percent")
+        .eq("client_id", clientId)
+        .maybeSingle();
+
+      if (balanceError) {
+        console.error("Error loading client markup:", balanceError);
+      }
+      const clientMarkup = Number(balanceRow?.markup_percent ?? 0);
+      markupMultiplier = 1 + clientMarkup / 100;
+    }
 
     let query = supabase.from("v_adcampaigns_client_compat").select("*");
 
@@ -115,8 +128,9 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      // For client mode we now show net as-is (no markup).
-      spendClient = Number(spendNet.toFixed(2));
+      spendClient = isClientMode
+        ? Number((spendNet * markupMultiplier).toFixed(2))
+        : Number(spendNet.toFixed(2));
 
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
@@ -134,13 +148,17 @@ export default async function handler(req: any, res: any) {
             0
           );
           spendNet = Number(amountNet.toFixed(2));
-          spendClient = Number(spendNet.toFixed(2));
+          spendClient = isClientMode
+            ? Number((spendNet * markupMultiplier).toFixed(2))
+            : Number(spendNet.toFixed(2));
         }
       }
 
       const cpmClient =
         cpmClientRaw !== null
           ? cpmClientRaw
+          : isClientMode
+          ? Number((cpmNet * markupMultiplier).toFixed(4))
           : cpmNet;
 
       const budgetClient = budgetClientRaw !== null ? budgetClientRaw : budgetNet;
