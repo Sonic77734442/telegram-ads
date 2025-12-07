@@ -25,9 +25,14 @@ export default async function handler(req: any, res: any) {
       ym: queryYm,
     } = (req as any).query || {};
 
-    // Optional month filter (YYYY-MM) to align spend with reports period.
+    // Month filter (YYYY-MM). If not provided, use current month to align with AdStats default.
     const ym =
-      typeof queryYm === "string" && /^\d{4}-\d{2}$/.test(queryYm) ? queryYm : null;
+      typeof queryYm === "string" && /^\d{4}-\d{2}$/.test(queryYm)
+        ? queryYm
+        : (() => {
+            const now = new Date();
+            return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+          })();
 
     // No markup applied to client-facing values in this endpoint.
     const markupMultiplier = 1;
@@ -116,42 +121,20 @@ export default async function handler(req: any, res: any) {
       // If month filter is provided, override spend with monthly reports totals to
       // keep Dashboard in sync with AdStats (which shows monthly spend).
       if (ym) {
-        const fetchMonth = async (month: string) => {
-          const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
-            input_ad_id: row.id,
-            ym: month,
-          });
-          return { rows, error };
-        };
+        const { data: rows, error } = await supabase.rpc("get_reports_for_month", {
+          input_ad_id: row.id,
+          ym,
+        });
 
-        const attemptMonths = [ym];
-
-        // If the requested month has no rows, try the previous month as a fallback.
-        const ymDate = new Date(`${ym}-01T00:00:00Z`);
-        if (!Number.isNaN(ymDate.getTime())) {
-          ymDate.setUTCMonth(ymDate.getUTCMonth() - 1);
-          const prevYm = `${ymDate.getUTCFullYear()}-${String(ymDate.getUTCMonth() + 1).padStart(
-            2,
-            "0"
-          )}`;
-          if (prevYm !== ym) attemptMonths.push(prevYm);
-        }
-
-        for (const month of attemptMonths) {
-          const { rows, error } = await fetchMonth(month);
-          if (error) {
-            console.error("get_reports_for_month error (campaigns)", { month, error });
-            continue;
-          }
-          if (Array.isArray(rows) && rows.length > 0) {
-            const amountNet = rows.reduce(
-              (sum: number, r: any) => sum + Number(r.amount ?? 0),
-              0
-            );
-            spendNet = Number(amountNet.toFixed(2));
-            spendClient = Number(spendNet.toFixed(2));
-            break;
-          }
+        if (error) {
+          console.error("get_reports_for_month error (campaigns)", { ym, error });
+        } else if (Array.isArray(rows) && rows.length > 0) {
+          const amountNet = rows.reduce(
+            (sum: number, r: any) => sum + Number(r.amount ?? 0),
+            0
+          );
+          spendNet = Number(amountNet.toFixed(2));
+          spendClient = Number(spendNet.toFixed(2));
         }
       }
 
