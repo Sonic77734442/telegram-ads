@@ -73,17 +73,25 @@ export default async function handler(req: any, res: any) {
     }[];
 
     const items = rows.map((r) => {
-      const amount_client = Number(((r.amount ?? 0) * markupMultiplier).toFixed(2));
+      const amount_client_raw = (r.amount ?? 0) * markupMultiplier;
+      const amount_client = Number(amount_client_raw.toFixed(2));
       return { ...r, amount_client };
     });
 
     const total_views = items.reduce((sum, r) => sum + (r.views || 0), 0);
-    const total_amount_net = Number(
-      items.reduce((sum, r) => sum + (r.amount || 0), 0).toFixed(2)
+
+    // Sum using raw values (no per-day rounding) then round once at the end
+    const total_amount_net_raw = rows.reduce(
+      (sum, r) => sum + Number(r.amount || 0),
+      0
     );
-    const total_amount_client = Number(
-      items.reduce((sum, r) => sum + (r.amount_client || 0), 0).toFixed(2)
+    const total_amount_client_raw = rows.reduce(
+      (sum, r) => sum + Number((r.amount || 0) * markupMultiplier),
+      0
     );
+
+    const total_amount_net = Number(total_amount_net_raw.toFixed(2));
+    const total_amount_client = Number(total_amount_client_raw.toFixed(2));
 
     const cpm_net =
       total_views > 0 ? Number(((total_amount_net * 1000) / total_views).toFixed(2)) : 0;

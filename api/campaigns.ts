@@ -155,20 +155,23 @@ export default async function handler(req: any, res: any) {
             continue;
           }
           if (Array.isArray(rows) && rows.length > 0) {
-            const amountNet = rows.reduce(
+            const amountNetRaw = rows.reduce(
               (sum: number, r: any) => sum + Number(r.amount ?? 0),
               0
             );
-            let amountClient = rows.reduce(
-              (sum: number, r: any) => sum + Number(r.amount_client ?? r.amount ?? 0),
+            let amountClientRaw = rows.reduce(
+              (sum: number, r: any) =>
+                sum +
+                Number(
+                  r.amount_client !== undefined && r.amount_client !== null
+                    ? r.amount_client
+                    : (r.amount ?? 0) * markupMultiplier
+                ),
               0
             );
-            if (isClientMode && amountClient === amountNet && markupMultiplier !== 1) {
-              amountClient = Number((amountNet * markupMultiplier).toFixed(2));
-            }
-            spendNet = Number(amountNet.toFixed(2));
+            spendNet = Number(amountNetRaw.toFixed(2));
             spendClient = isClientMode
-              ? Number(amountClient.toFixed(2))
+              ? Number(amountClientRaw.toFixed(2))
               : Number(spendNet.toFixed(2));
             break;
           }
