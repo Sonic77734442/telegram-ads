@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Container from "../components/Container";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
@@ -19,6 +19,34 @@ export default function BotAdForm() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [targetBots, setTargetBots] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+  const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+  const [markupPercent, setMarkupPercent] = useState(0);
+  const [markupLoaded, setMarkupLoaded] = useState(role !== "client");
+  const multiplier = role === "client" && markupPercent > 0 ? 1 + markupPercent / 100 : 1;
+
+  // Load client markup to show CPM/budget with markup for client role.
+  useEffect(() => {
+    const loadMarkup = async () => {
+      if (role !== "client" || !clientId) {
+        setMarkupLoaded(true);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("client_balances")
+        .select("markup_percent")
+        .eq("client_id", clientId)
+        .maybeSingle();
+
+      if (!error && data && typeof data.markup_percent === "number") {
+        setMarkupPercent(Number(data.markup_percent) || 0);
+      }
+      setMarkupLoaded(true);
+    };
+
+    loadMarkup();
+  }, [role, clientId]);
 
   /* ──────────────── upload handler ──────────────── */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,11 +74,13 @@ export default function BotAdForm() {
       return;
     }
 
-    const clientId = localStorage.getItem("user_id");
     if (!clientId) {
       alert("❌ Ошибка: user_id отсутствует в localStorage");
       return;
     }
+
+    const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
+    const budgetNet = role === "client" ? Number(budget || 0) / multiplier : Number(budget || 0);
 
 // получаем agency_id клиента из таблицы users
 const { data: userData, error: userError } = await supabase
@@ -71,8 +101,8 @@ const agency_id = userData?.agency_id || null;
 		title,
 		text,
 		url,
-		cpm,
-		budget,
+		cpm: Number(cpmNet.toFixed(4)),
+		budget: Number(budgetNet.toFixed(4)),
 		daily_views: dailyViews,
 		status,
 		schedule_enabled: schedule,

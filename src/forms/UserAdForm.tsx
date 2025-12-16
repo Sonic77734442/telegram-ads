@@ -54,6 +54,11 @@ export default function ChannelAdForm() {
   const [schedule, setSchedule] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [otherInfo, setOtherInfo] = useState("");
+  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+  const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+  const [markupPercent, setMarkupPercent] = useState(0);
+  const [markupLoaded, setMarkupLoaded] = useState(role !== "client");
+  const multiplier = role === "client" && markupPercent > 0 ? 1 + markupPercent / 100 : 1;
 
   const [countries, setCountries] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
@@ -70,6 +75,45 @@ const [showDatePicker, setShowDatePicker] = useState(false);
 const [startDate, setStartDate] = useState<string>("");
 const [endDate, setEndDate] = useState<string>("");
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Load client markup to show CPM/budget with markup for client role.
+  useEffect(() => {
+    const loadMarkup = async () => {
+      if (role !== "client" || !clientId) {
+        setMarkupLoaded(true);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("client_balances")
+        .select("markup_percent")
+        .eq("client_id", clientId)
+        .maybeSingle();
+
+      if (!error && data && typeof data.markup_percent === "number") {
+        setMarkupPercent(Number(data.markup_percent) || 0);
+      }
+      setMarkupLoaded(true);
+    };
+
+    loadMarkup();
+  }, [role, clientId]);
+
+  const applyMarkupForInput = (baseValue: any) => {
+    const num = Number(baseValue || 0);
+    return role === "client" ? (num * multiplier).toFixed(2) : num.toFixed(2);
+  };
+
+  const resolveValueForInput = (valueWithMarkup: any, baseValue: any) => {
+    if (role === "client") {
+      if (valueWithMarkup !== undefined && valueWithMarkup !== null) {
+        return Number(valueWithMarkup || 0).toFixed(2);
+      }
+      return applyMarkupForInput(baseValue);
+    }
+    const effective = valueWithMarkup ?? baseValue ?? 0;
+    return Number(effective || 0).toFixed(2);
+  };
 
 
   /* upload */
@@ -94,15 +138,15 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   /* load existing */
   useEffect(() => {
     const fetchAd = async () => {
-      if (!adId) return;
+      if (!adId || !markupLoaded) return;
       const { data } = await supabase.from("ad_campaigns").select("*").eq("id", adId).single();
       if (!data) return;
 
       setTitle(data.title || "");
       setText(data.text || "");
       setUrl(data.url || "");
-      setCpm(data.cpm || "0.00");
-      setBudget(data.budget || "0.00");
+      setCpm(resolveValueForInput(data.cpm_client ?? data.cpm_net, data.cpm));
+      setBudget(resolveValueForInput(data.budget_client ?? data.budget_net, data.budget));
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
       setSchedule(data.schedule_enabled || false);
@@ -122,7 +166,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	  setLocations(data.locations || []);
     };
     fetchAd();
-  }, [adId]);
+  }, [adId, markupLoaded]);
 
   /* clear */
   const onClear = () => {
@@ -158,11 +202,13 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       return;
     }
 
-    const clientId = localStorage.getItem("user_id");
     if (!clientId) {
       alert("❌ Ошибка: user_id отсутствует в localStorage");
       return;
     }
+
+    const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
+    const budgetNet = role === "client" ? Number(budget || 0) / multiplier : Number(budget || 0);
 
     const { data: userData } = await supabase
       .from("users")
@@ -176,8 +222,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       title,
       text,
       url,
-      cpm,
-      budget,
+      cpm: Number(cpmNet.toFixed(4)),
+      budget: Number(budgetNet.toFixed(4)),
       daily_views: dailyViews,
       status,
       schedule_enabled: schedule,
