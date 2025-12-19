@@ -39,7 +39,7 @@ export default function LoginPage() {
       );
       localStorage.setItem("auth", "1");
       localStorage.setItem(
-        "markup" "0",
+        "markup",
         data?.role === "client" ? data?.agency_markup?.toString() || "0" : "0"
       );
 
