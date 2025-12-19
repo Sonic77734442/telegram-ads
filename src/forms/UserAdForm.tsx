@@ -146,7 +146,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setText(data.text || "");
       setUrl(data.url || "");
       setCpm(resolveValueForInput(data.cpm_client ?? data.cpm_net, data.cpm));
-      setBudget(resolveValueForInput(data.budget_client ?? data.budget_net, data.budget));
+      const budgetValue = data.budget_client ?? data.budget_net ?? data.budget ?? 0;
+      setBudget(Number(budgetValue || 0).toFixed(2));
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
       setSchedule(data.schedule_enabled || false);
@@ -208,7 +209,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     }
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
-    const budgetNet = role === "client" ? Number(budget || 0) / multiplier : Number(budget || 0);
+    const budgetNumber = Number(budget || 0);
 
     const { data: userData } = await supabase
       .from("users")
@@ -223,7 +224,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       text,
       url,
       cpm: Number(cpmNet.toFixed(4)),
-      budget: Number(budgetNet.toFixed(4)),
+      budget: Number(budgetNumber.toFixed(4)),
       daily_views: dailyViews,
       status,
       schedule_enabled: schedule,
