@@ -48,6 +48,17 @@ export default async function handler(req: any, res: any) {
 
     setSessionCookie(res, sessionToken);
 
+    const agencyId = user.role === "agency" ? user.user_id : user.agency_id;
+    const safeUser = {
+      user_id: user.user_id,
+      role,
+      agency_id: agencyId,
+      email: user.email,
+      username: user.username,
+      agency_markup: user.agency_markup ? Number(user.agency_markup) : null,
+    };
+
+    return res.status(200).json({ user: safeUser });
   } catch (e: any) {
     console.error("auth-login error:", e);
     return res.status(500).json({ error: "Internal server error" });
