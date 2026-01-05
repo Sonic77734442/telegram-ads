@@ -3,6 +3,11 @@ import { readSessionFromRequest } from "./auth-utils.js";
 
 export default async function handler(req: any, res: any) {
   try {
+    const roundMoney = (value: number) =>
+      Number.isFinite(value)
+        ? Math.round((value + Number.EPSILON) * 100) / 100
+        : 0;
+
     const session = readSessionFromRequest(req);
     if (!session) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -115,10 +120,10 @@ export default async function handler(req: any, res: any) {
           : Number(row.daily_budget ?? 0);
 
       // если вьюха отдает spend_client — используем его как источник истины, чтобы не делать двойной markup
-      let spendNet: number;
-      let spendClient: number;
+      let spendNetRaw: number;
+      let spendClientRaw: number;
 
-      spendNet =
+      spendNetRaw =
         row.spend_net !== undefined && row.spend_net !== null
           ? Number(row.spend_net)
           : row.spend_raw !== undefined && row.spend_raw !== null
@@ -129,9 +134,11 @@ export default async function handler(req: any, res: any) {
 
       // If view provides spend_client, respect it for clients (lifetime case).
       if (isClientMode && row.spend_client !== undefined && row.spend_client !== null) {
-        spendClient = Number(row.spend_client);
+        spendClientRaw = Number(row.spend_client);
       } else {
-        spendClient = Number(spendNet.toFixed(2));
+        spendClientRaw = isClientMode
+          ? spendNetRaw * markupMultiplier
+          : spendNetRaw;
       }
 
       // If month filter is provided, override spend with monthly reports totals (no fallback).
@@ -158,10 +165,8 @@ export default async function handler(req: any, res: any) {
               ),
             0
           );
-          spendNet = Number(amountNetRaw.toFixed(2));
-          spendClient = isClientMode
-            ? Number(amountClientRaw.toFixed(2))
-            : Number(spendNet.toFixed(2));
+          spendNetRaw = amountNetRaw;
+          spendClientRaw = isClientMode ? amountClientRaw : amountNetRaw;
         }
       }
 
@@ -205,16 +210,16 @@ export default async function handler(req: any, res: any) {
         daily_budget_net: dailyBudgetNet,
         daily_budget_client: dailyBudgetClient,
 
-        spend_net: Number(spendNet.toFixed(2)),
-        spend_client: spendClient,
+        spend_net: roundMoney(spendNetRaw),
+        spend_client: roundMoney(spendClientRaw),
 
         ctr,
       });
 
       totalViews += views;
       totalClicks += clicks;
-      totalSpendNet += spendNet;
-      totalSpendClient += spendClient;
+      totalSpendNet += spendNetRaw;
+      totalSpendClient += spendClientRaw;
     }
 
     const totalCtr =
@@ -231,8 +236,8 @@ export default async function handler(req: any, res: any) {
       total: {
         views: totalViews,
         clicks: totalClicks,
-        spend_net: Number(totalSpendNet.toFixed(2)),
-        spend_client: Number(totalSpendClient.toFixed(2)),
+        spend_net: roundMoney(totalSpendNet),
+        spend_client: roundMoney(totalSpendClient),
         ctr: totalCtr,
         cpm_net: totalCpmNet,
         cpm_client: totalCpmClient,

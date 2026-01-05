@@ -4,6 +4,11 @@ import { readSessionFromRequest } from "./auth-utils.js";
 // api/reports.ts
 export default async function handler(req: any, res: any) {
   try {
+    const roundMoney = (value: number) =>
+      Number.isFinite(value)
+        ? Math.round((value + Number.EPSILON) * 100) / 100
+        : 0;
+
     const session = readSessionFromRequest(req);
     if (!session) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -74,7 +79,7 @@ export default async function handler(req: any, res: any) {
 
     const items = rows.map((r) => {
       const amount_client_raw = (r.amount ?? 0) * markupMultiplier;
-      const amount_client = Number(amount_client_raw.toFixed(2));
+      const amount_client = roundMoney(amount_client_raw);
       return { ...r, amount_client };
     });
 
@@ -90,8 +95,8 @@ export default async function handler(req: any, res: any) {
       0
     );
 
-    const total_amount_net = Number(total_amount_net_raw.toFixed(2));
-    const total_amount_client = Number(total_amount_client_raw.toFixed(2));
+    const total_amount_net = roundMoney(total_amount_net_raw);
+    const total_amount_client = roundMoney(total_amount_client_raw);
 
     const cpm_net =
       total_views > 0 ? Number(((total_amount_net * 1000) / total_views).toFixed(2)) : 0;
