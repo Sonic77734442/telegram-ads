@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import Container from "./Container";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
@@ -96,7 +95,7 @@ const Header = () => {
 
   return (
     <header className="bg-white h-[48px]">
-      <Container className="px-0">
+      <div className="w-full max-w-[842px] mx-auto">
         <div className="flex items-center justify-between h-[48px]">
           <Link
             to="/dashboard"
@@ -131,7 +130,7 @@ const Header = () => {
             </div>
           </div>
         </div>
-      </Container>
+      </div>
     </header>
   );
 };

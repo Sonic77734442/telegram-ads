@@ -693,7 +693,7 @@ export default function AdTable() {
                             <button
                               type="button"
                               onClick={() => openStatusModal(ad)}
-                              className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[13px] font-medium text-blue-600 hover:bg-blue-100"
+                              className="inline-flex items-center px-3 py-1 text-[13px] font-medium text-blue-600 whitespace-nowrap"
                             >
                               {ad.status || "Active"}
                             </button>
