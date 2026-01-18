@@ -74,7 +74,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "VIEWS",
     sortable: true,
     align: "right",
-    widthClass: "w-[90px]",
+    widthClass: "w-[76.2px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
@@ -83,6 +83,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "OPENED",
     sortable: true,
     align: "right",
+    widthClass: "w-[73.98px]",
     defaultVisible: false,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
@@ -91,6 +92,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "CLICKS",
     sortable: true,
     align: "right",
+    widthClass: "w-[69.3px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
@@ -99,6 +101,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "ACTIONS",
     sortable: true,
     align: "right",
+    widthClass: "w-[78.47px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
@@ -108,6 +111,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    widthClass: "w-[65px]",
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
   },
   {
@@ -116,6 +120,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: false,
+    widthClass: "w-[65px]",
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
   },
   {
@@ -124,6 +129,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    widthClass: "w-[65px]",
     format: (v, row) => {
       const cpm =
         Number(v) ||
@@ -140,6 +146,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    widthClass: "w-[65px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
@@ -148,6 +155,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: false,
+    widthClass: "w-[65px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
@@ -156,6 +164,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    widthClass: "w-[85px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
@@ -164,6 +173,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    widthClass: "w-[85px]",
     render: (row: AdRow) => (
       <div className="flex flex-col items-end leading-tight">
         {/* Верхняя строка — общий бюджет кампании */}
@@ -186,6 +196,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: false,
     align: "left",
     defaultVisible: true,
+    widthClass: "w-[140px]",
     format: (v) => {
       if (!v) return "—";
       const parts = String(v)
@@ -208,6 +219,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "left",
     defaultVisible: true,
+    widthClass: "w-[85px]",
   },
   {
     id: "created_at",
@@ -215,6 +227,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "left",
     defaultVisible: true,
+    widthClass: "w-[114px]",
     format: (v) => {
       if (!v) return "";
       const d = new Date(String(v));
