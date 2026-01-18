@@ -519,7 +519,7 @@ export default function AdTable() {
       {/* Таблица */}
       <div className="tg-root w-full flex justify-center">
         <div className="w-full max-w-[1365px]">
-          <table className="w-full text-[13px] text-gray-800 table-fixed border-collapse">
+          <table className="w-full text-[13px] leading-[15px] text-gray-800 table-fixed border-collapse">
             <thead className="text-[11px] font-semibold text-gray-600 border-b border-gray-200">
               <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
@@ -597,7 +597,7 @@ export default function AdTable() {
                               <div className="flex flex-col w-full">
                                 <Link
                                   to={`/create?id=${ad.id}`}
-                                  className="block text-[13px] font-medium text-black-600 hover:underline truncate"
+                                  className="block text-[13px] font-semibold text-black hover:underline truncate"
                                 >
                                   {ad.title || "Untitled"}
                                 </Link>
