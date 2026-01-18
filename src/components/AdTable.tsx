@@ -7,6 +7,10 @@ const GEAR_ICON_SRC =
 
 const PERSONS_ICON =
   "data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48c3R5bGU+LmF7ZmlsbDojN2Q4MWFiO308L3N0eWxlPjwvZGVmcz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMiAtMikiPjxwYXRoIGNsYXNzPSJhIiBkPSJNMTIgMi41QTMuNSAzLjUgMCAxIDAgMTUuNSwgNUEzLjUzIDMuNTMgMCAwIDAgMTIsIDIuNVptMCA1QTEuNSAxLjUgMCAxIDEgMTMuNSwgNiwxLjUxIDEuNTEgMCAwIDEgMTIsIDcuNVpNMTIgMTFhNS41IDUuNSAwIDAgMC00LjY4LDIuNDdBMSAxIDAgMCAwIDcuOTMsMTVoOC4xN0ExIDEgMCAwIDAgMTYsMTMuNDdBNS41IDUuNSAwIDAgMCwxMiwgMTFaTTcuNSwxMGEzLjUgMy41IDAgMCAxIDcuMCwwQTQuNSA0LjUgMCAwIDAgMTIsIDlzLTIuNjQsLjA5LTQuNSwxLjQ5QTEuNSAxLjUgMCAwIDEgNy41LDEwWiIvPjxnIGNsYXNzPSJhIj48cGF0aCBkPSJNNSAxNC4yNUEyLjI1IDIuMjUgMCAwIDEgNy4yNSAxMmgzLjVhMi4yNSAyLjI1IDAgMCAxIDIuMjUgMi4yNVYxNUg1WiIvPjwvZz48L2c+PC9zdmc+";
+const BOT_ICON =
+  "data:image/svg+xml,%3Csvg%20height%3D%2218%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22%232b2b2b%22%20fill-rule%3D%22evenodd%22%3E%3Cpath%20d%3D%22m9%203.33c2.34%200%204.24%201.9%204.24%204.25v4.4c0%201.1-.89%202-2%202h-4.48c-1.11%200-2-.9-2-2v-4.4c0-2.35%201.9-4.25%204.24-4.25zm0%201c-1.79%200-3.23%201.42-3.23%203.18v.39c0%20.66.54%201.2%201.21%201.2h4.04c.67%200%201.21-.54%201.21-1.2v-.39c0-1.76-1.44-3.18-3.23-3.18z%22%2F%3E%3Crect%20height%3D%224.37%22%20rx%3D%22.81%22%20width%3D%221.62%22%20x%3D%2214.05%22%20y%3D%227.71%22%2F%3E%3Crect%20height%3D%224.37%22%20rx%3D%22.81%22%20width%3D%221.62%22%20x%3D%222.33%22%20y%3D%227.71%22%2F%3E%3Cellipse%20cx%3D%2210.41%22%20cy%3D%227.11%22%20rx%3D%221%22%20ry%3D%221%22%2F%3E%3Cellipse%20cx%3D%227.59%22%20cy%3D%227.11%22%20rx%3D%221%22%20ry%3D%221%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
+const SEARCH_ICON =
+  "data:image/svg+xml,%3Csvg%20height%3D%2218%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%232b2b2b%22%20stroke-width%3D%222%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%228%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22m7%2011-3%203%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
 type AdRow = {
   id: string;
@@ -48,6 +52,7 @@ type AdRow = {
   cpv?: number;
 
   url?: string | null;
+  type?: string | null;
 };
 
 type ColumnConfig<Key extends keyof AdRow = keyof AdRow> = {
@@ -428,6 +433,7 @@ export default function AdTable() {
         spend_with_markup: c.spend_client,
 
         url: c.url,
+        type: c.type,
       }));
 
       setAds(rows);
@@ -617,7 +623,14 @@ export default function AdTable() {
                             <div className="flex items-center gap-[6px] w-[200px] h-[38px]">
                               <div className="flex h-[18px] w-[18px] items-center justify-center rounded bg-gray-100 flex-shrink-0">
                                 <img
-                                  src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjMmIyYjJiIj48cGF0aCBkPSJNIDEyLjEgOS40NSBDIDEzLjEyIDkuNDUgMTMuOTQgOC43MSAxMy45NCA3LjggQyAxMy45NCA2Ljg4IDEzLjEyIDYuMTUgMTIuMSA2LjE1IEMgMTEuMDcgNi4xNSAxMC4yNSA2Ljg4IDEwLjI1IDcuOCBDIDEwLjI1IDguNzEgMTEuMDcgOS40NSAxMi4xIDkuNDUgWiBNIDYuNzkgOS4yNSBDIDguMDIgOS4yNSA5IDguMyA5IDcuMTIgUyA4LjAyIDUgNi43OSA1IFMgNC41NyA1Ljk1IDQuNTcgNy4xMiBTIDUuNTYgOS4yNSA2Ljc5IDkuMjUgWiBNIDYuNjggMTAuMTYgQyA1LjEyIDEwLjE2IDIgMTAuODkgMiAxMi4zNiBWIDEzLjA4IEMgMiAxMy40MyAyLjUzIDEzLjkzIDIuOSAxMy45MyBIIDEwLjY4IEMgMTEuMDUgMTMuOTMgMTEuMzUgMTMuNjUgMTEuMzUgMTMuMyBWIDEyLjM2IEMgMTEuMzUgMTAuODkgOC4yMyAxMC4xNiA2LjY4IDEwLjE2IFogTSAxMS44OSAxMC40NiBDIDExLjcyIDEwLjQ2IDExLjUzIDEwLjQ3IDExLjMyIDEwLjQ5IEMgMTEuMzQgMTAuNSAxMS4zNCAxMC41MSAxMS4zNSAxMC41MSBDIDEyLjAyIDExIDEyLjczIDExLjY2IDEyLjczIDEyLjUzIFYgMTMuNDEgQyAxMi43MyAxMy42MiAxMi42OSAxMy44MiAxMi42MiAxNCBIIDE1LjE5IEMgMTUuNTEgMTQgMTYgMTMuNTEgMTYgMTMuMTkgViAxMi41MyBDIDE2IDExLjE1IDEzLjI2IDEwLjQ2IDExLjg5IDEwLjQ2IFoiLz48L2c+PC9zdmc+"
+                                  src={
+                                    (ad.type || "").toLowerCase() === "bot" ||
+                                    (ad.type || "").toLowerCase() === "bots"
+                                      ? BOT_ICON
+                                      : (ad.type || "").toLowerCase() === "search"
+                                      ? SEARCH_ICON
+                                      : PERSONS_ICON
+                                  }
                                   className="h-[18px] w-[18px]"
                                   alt=""
                                 />
