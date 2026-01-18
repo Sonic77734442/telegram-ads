@@ -55,6 +55,7 @@ type ColumnConfig<Key extends keyof AdRow = keyof AdRow> = {
   label: string;
   sortable?: boolean;
   align?: "left" | "right" | "center";
+  widthClass?: string;
   defaultVisible?: boolean;
   format?: (value: AdRow[Key], row: AdRow) => JSX.Element | string | number;
 };
@@ -73,6 +74,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "VIEWS",
     sortable: true,
     align: "right",
+    widthClass: "w-[90px]",
     defaultVisible: true,
   },
   {
@@ -519,13 +521,13 @@ export default function AdTable() {
       {/* Таблица */}
       <div className="tg-root w-full flex justify-center">
         <div className="w-full max-w-[1365px]">
-          <table className="w-full text-[13px] leading-[15px] text-gray-800 table-fixed border-collapse">
+          <table className="w-full text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
             <thead className="text-[11px] font-semibold text-gray-600 border-b border-gray-200">
               <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
                   <th
                     key={col.id as string}
-                    className={`px-3 ${col.id === "title" ? "w-[200px]" : ""} ${
+                    className={`px-3 ${col.id === "title" ? "w-[200px]" : ""} ${col.widthClass || ""} ${
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
@@ -583,7 +585,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className="px-3 py-2 align-top w-[200px]"
+                            className={`px-3 py-2 align-top w-[200px] ${col.widthClass || ""}`}
                           >
                             <div className="flex items-start gap-2 w-full">
                               <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
@@ -631,7 +633,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className="px-3 py-2 text-right whitespace-nowrap"
+                            className={`px-3 py-2 text-right whitespace-nowrap ${col.widthClass || ""}`}
                           >
                             {/* верх — общий бюджет (Increase Budget) */}
                             <button
@@ -659,7 +661,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className="px-3 py-2 text-left"
+                            className={`px-3 py-2 text-left ${col.widthClass || ""}`}
                           >
                             <button
                               type="button"
@@ -686,7 +688,7 @@ export default function AdTable() {
                       return (
                         <td
                           key={col.id as string}
-                          className={`px-3 py-2 ${baseClass}`}
+                          className={`px-3 py-2 ${baseClass} ${col.widthClass || ""}`}
                         >
                           {display === "" ||
                           display === null ||
