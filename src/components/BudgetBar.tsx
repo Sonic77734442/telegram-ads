@@ -52,6 +52,7 @@ const BudgetBar: React.FC = () => {
                 bg-[#139af5]
                 text-white font-semibold text-[14px] leading-[20px] rounded-[6px] transition
               "
+              style={{ fontFamily: "Roboto, sans-serif" }}
             >
               Manage budget
             </Link>
@@ -65,6 +66,7 @@ const BudgetBar: React.FC = () => {
                 bg-[#139af5]
                 text-white font-semibold text-[14px] leading-[20px] rounded-[6px] transition
               "
+              style={{ fontFamily: "Roboto, sans-serif" }}
             >
               Create a new ad
             </Link>
