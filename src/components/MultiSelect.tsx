@@ -63,23 +63,17 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
         ))}
       </div>
 
-      {/* Обёртка с иконкой ▼ */}
-		<div className="relative mt-1">
-		  <input
-			ref={inputRef}
-			type="text"
-			placeholder="Select…"
-			className="w-full text-sm px-2 py-1 pr-6 border border-gray-200 rounded focus:outline-none appearance-none"
-			onFocus={() => setOpen(true)}
-			value={filter}
-			onChange={(e) => setFilter(e.target.value)}
-		  />
-
-		  {/* Стрелка ▼ */}
-		  <div className="pointer-events-none absolute right-2 inset-y-0 flex items-center text-gray-400 text-xs">
-			▼
-		  </div>
-		</div>
+      <div className="relative mt-1">
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Select…"
+          className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none appearance-none"
+          onFocus={() => setOpen(true)}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      </div>
 
       {/* Дропдаун */}
       {open && filteredOptions.length > 0 && (
