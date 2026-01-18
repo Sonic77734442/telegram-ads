@@ -597,7 +597,7 @@ export default function AdTable() {
                               <div className="flex flex-col w-full">
                                 <Link
                                   to={`/create?id=${ad.id}`}
-                                  className="block text-[13px] font-semibold text-black hover:underline truncate"
+                                  className="block text-[13px] font-semibold text-black hover:text-black no-underline truncate"
                                 >
                                   {ad.title || "Untitled"}
                                 </Link>
