@@ -529,7 +529,7 @@ export default function AdTable() {
       {/* Таблица */}
       <div className="tg-root w-full flex justify-center">
         <div className="w-full max-w-[1365px]">
-          <table className="w-max text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
+          <table className="w-max mx-auto text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
             <thead className="text-[11px] font-semibold text-gray-600">
               <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
