@@ -76,13 +76,15 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "right",
     widthClass: "w-[90px]",
     defaultVisible: true,
+    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
   {
     id: "opened",
     label: "OPENED",
     sortable: true,
     align: "right",
-    defaultVisible: true,
+    defaultVisible: false,
+    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
   {
     id: "clicks",
@@ -90,6 +92,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
   {
     id: "actions",
@@ -97,6 +100,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
+    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
   },
   {
     id: "ctr",
@@ -111,7 +115,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "CVR",
     sortable: true,
     align: "right",
-    defaultVisible: true,
+    defaultVisible: false,
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
   },
   {
@@ -130,37 +134,6 @@ const TABLE_COLUMNS: ColumnConfig[] = [
       return `€ ${cpm.toFixed(2)}`;
     },
   },
-
-{
-  id: "budget",
-  label: "BUDGET",
-  sortable: true,
-  align: "right",
-  defaultVisible: true,
-  render: (row: AdRow) => (
-    <div className="flex flex-col items-end leading-tight">
-      {/* Верхняя строка — общий бюджет кампании */}
-      <div>€ {(Number(row.budget) || 0).toFixed(2)}</div>
-
-      {/* Нижняя строка — дневной бюджет, открывает модалку */}
-      <button
-        type="button"
-        className="text-xs text-blue-500 underline"
-        onClick={() => openBudgetModal("edit", row)}
-      >
-        € {(Number((row as any).daily_budget ?? 0) || 0).toFixed(2)}
-      </button>
-    </div>
-  ),
-},
-  {
-    id: "spend",
-    label: "SPENT",
-    sortable: true,
-    align: "right",
-    defaultVisible: true,
-    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
-  },
   {
     id: "cpc",
     label: "CPC",
@@ -174,16 +147,38 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     label: "CPA",
     sortable: true,
     align: "right",
-    defaultVisible: true,
+    defaultVisible: false,
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
-    id: "cpv",
-    label: "CPV",
+    id: "spend",
+    label: "SPENT",
     sortable: true,
     align: "right",
     defaultVisible: true,
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
+  },
+  {
+    id: "budget",
+    label: "BUDGET",
+    sortable: true,
+    align: "right",
+    defaultVisible: true,
+    render: (row: AdRow) => (
+      <div className="flex flex-col items-end leading-tight">
+        {/* Верхняя строка — общий бюджет кампании */}
+        <div>€ {(Number(row.budget) || 0).toFixed(2)}</div>
+
+        {/* Нижняя строка — дневной бюджет, открывает модалку */}
+        <button
+          type="button"
+          className="text-xs text-blue-500 underline"
+          onClick={() => openBudgetModal("edit", row)}
+        >
+          € {(Number((row as any).daily_budget ?? 0) || 0).toFixed(2)}
+        </button>
+      </div>
+    ),
   },
   {
     id: "target",
@@ -540,9 +535,9 @@ export default function AdTable() {
                   >
                     <span className="inline-flex items-center gap-1 tracking-wide">
                       {col.label}
-                      {sortBy?.id === col.id && (
-                        <span className="text-gray-500">
-                          {sortBy.dir === "asc" ? "▲" : "▼"}
+                      {col.sortable && col.id !== "target" && col.id !== "status" && (
+                        <span className="text-black">
+                          {sortBy?.id === col.id ? (sortBy.dir === "asc" ? "▲" : "▼") : "▲▼"}
                         </span>
                       )}
                     </span>
