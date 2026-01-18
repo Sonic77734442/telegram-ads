@@ -7,8 +7,8 @@ import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 
 /* ──────────────── constants ──────────────── */
-const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia"] as const;
-const LANGS = ["English", "Russian", "Uzbek"] as const;
+const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia"];
+const LANGS = ["English", "Russian", "Uzbek"];
 const TOPICS = [
   "Finance",
   "Technology",
@@ -17,18 +17,8 @@ const TOPICS = [
   "Crypto",
   "Food & Cooking",
   "Health & Medicine",
-] as const;
-const DEVICES = ["All devices", "Mobile", "Desktop", "iOS", "Android"] as const;
-
-/* ──────────────── hook ──────────────── */
-function useMulti<T extends string>(initial: T[]) {
-  const [value, setValue] = useState<T[]>(initial);
-  const select = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const arr = Array.from(e.target.selectedOptions).map((o) => o.value as T);
-    setValue(arr);
-  };
-  return { value, select };
-}
+];
+const DEVICES = ["All devices", "Mobile", "Desktop", "iOS", "Android"];
 
 /* ──────────────── component ──────────────── */
 export default function UserAdForm() {
@@ -55,11 +45,11 @@ export default function UserAdForm() {
   const [markupLoaded, setMarkupLoaded] = useState(role !== "client");
   const multiplier = role === "client" && markupPercent > 0 ? 1 + markupPercent / 100 : 1;
 
-  const countries = useMulti<typeof COUNTRIES[number]>([]);
-  const langs = useMulti<typeof LANGS[number]>([]);
-  const topics = useMulti<typeof TOPICS[number]>([]);
-  const exTopics = useMulti<typeof TOPICS[number]>([]);
-  const devices = useMulti<typeof DEVICES[number]>(["All devices"]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [langs, setLangs] = useState<string[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
+  const [exTopics, setExTopics] = useState<string[]>([]);
+  const [devices, setDevices] = useState<string[]>(["All devices"]);
 
   const [targetChannels, setTargetChannels] = useState<string[]>([]);
   const [excludeChannels, setExcludeChannels] = useState<string[]>([]);
@@ -158,18 +148,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setMediaType(data.media_type || null);
       setTargetChannels(data.channels || []);
       setExcludeChannels(data.exclude_channels || []);
-      countries.select({
-        target: { selectedOptions: (data.countries || []).map((v: string) => ({ value: v })) },
-      } as any);
-      langs.select({
-        target: { selectedOptions: (data.langs || []).map((v: string) => ({ value: v })) },
-      } as any);
-      topics.select({
-        target: { selectedOptions: (data.topics || []).map((v: string) => ({ value: v })) },
-      } as any);
-      exTopics.select({
-        target: { selectedOptions: (data.ex_topics || []).map((v: string) => ({ value: v })) },
-      } as any);
+      setCountries(data.countries || []);
+      setLangs(data.langs || []);
+      setTopics(data.topics || []);
+      setExTopics(data.ex_topics || []);
+      setDevices(data.devices || ["All devices"]);
     };
     fetchAd();
   }, [adId, markupLoaded]);
@@ -187,10 +170,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setAgreeTerms(false);
     setMediaUrl("");
     setMediaType(null);
-    countries.select({ target: { selectedOptions: [] } } as any);
-    langs.select({ target: { selectedOptions: [] } } as any);
-    topics.select({ target: { selectedOptions: [] } } as any);
-    exTopics.select({ target: { selectedOptions: [] } } as any);
+    setCountries([]);
+    setLangs([]);
+    setTopics([]);
+    setExTopics([]);
+    setDevices(["All devices"]);
     setTargetChannels([]);
     setExcludeChannels([]);
     setPoliticsOnly(false);
@@ -242,12 +226,13 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           end_date: endDate || null,
           media_url: mediaUrl,
           media_type: mediaType,
-          countries: countries.value,
-          langs: langs.value,
-          topics: topics.value,
-          ex_topics: exTopics.value,
+          countries,
+          langs,
+          topics,
+          ex_topics: exTopics,
           channels: targetChannels,
           exclude_channels: excludeChannels,
+          devices,
           politics_only: politicsOnly,
           exclude_politics: excludePolitics,
           updated_at: new Date().toISOString(),
@@ -277,12 +262,13 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         end_date: endDate || null,
         media_url: mediaUrl,
         media_type: mediaType,
-        countries: countries.value,
-        langs: langs.value,
-        topics: topics.value,
-        ex_topics: exTopics.value,
+        countries,
+        langs,
+        topics,
+        ex_topics: exTopics,
         channels: targetChannels,
         exclude_channels: excludeChannels,
+        devices,
         politics_only: politicsOnly,
         exclude_politics: excludePolitics,
         created_at: new Date().toISOString(),
@@ -447,11 +433,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           {/* ─── Targeting section ───────────────────────────── */}
           <div className="flex flex-col gap-5 text-[13px] mt-4">
             <Field label="Target channel languages" info>
-              <MultiSelect value={langs.value} options={LANGS as string[]} onChange={langs.select} />
+              <MultiSelect value={langs} options={LANGS} onChange={setLangs} />
             </Field>
 
             <Field label="Target topics" info>
-              <MultiSelect value={topics.value} options={TOPICS as string[]} onChange={topics.select} />
+              <MultiSelect value={topics} options={TOPICS} onChange={setTopics} />
             </Field>
 
             <Field label="Target specific channels" info>
@@ -463,7 +449,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </Field>
 
             <Field label="Exclude topics" info>
-              <MultiSelect value={exTopics.value} options={TOPICS as string[]} onChange={exTopics.select} />
+              <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} />
             </Field>
 
             <Field label="Exclude specific channels" info>
