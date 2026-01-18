@@ -43,7 +43,7 @@ const BudgetBar: React.FC = () => {
           </div>
 
           {/* ----- Кнопки ----- */}
-          <div className="flex gap-2">
+          <div className="flex gap-[20px]">
             <Link
               to="/budget"
               className="

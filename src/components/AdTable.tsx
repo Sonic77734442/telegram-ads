@@ -529,7 +529,7 @@ export default function AdTable() {
       {/* Таблица */}
       <div className="tg-root w-full flex justify-center">
         <div className="w-full max-w-[1365px]">
-          <table className="w-full text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
+          <table className="w-max text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
             <thead className="text-[11px] font-semibold text-gray-600">
               <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
@@ -602,7 +602,7 @@ export default function AdTable() {
                 sortedAds.map((ad, index) => (
                   <tr
                     key={ad.id}
-                    className={`h-[38px] ${index % 2 === 0 ? "bg-transparent" : "bg-[#f6f7f9]"} hover:bg-[#e9f0f7]`}
+                    className={`h-[38px] ${index % 2 === 0 ? "bg-[#f6f7f9]" : "bg-transparent"} hover:bg-[#e9f0f7]`}
                   >
                     {columnsToRender.map((col) => {
                       const value = ad[col.id];
