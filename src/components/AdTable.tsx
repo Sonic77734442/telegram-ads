@@ -137,7 +137,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
         Number((row as any).cpm_base) ||
         0;
 
-      return `€ ${cpm.toFixed(2)}`;
+      return <span className="text-[#139af5] font-normal">€ {cpm.toFixed(2)}</span>;
     },
   },
   {
@@ -666,7 +666,7 @@ export default function AdTable() {
                             <button
                               type="button"
                               onClick={() => openBudgetModal("increase", ad)}
-                              className="text-primary font-medium hover:underline"
+                              className="text-[#139af5] font-normal hover:underline"
                             >
                               € {Number(totalBudget || 0).toFixed(2)}
                             </button>
@@ -675,7 +675,7 @@ export default function AdTable() {
                             <button
                               type="button"
                               onClick={() => openBudgetModal("edit", ad)}
-                              className="block text-[11px] leading-[15px] text-blue-500 hover:underline text-right"
+                              className="block text-[11px] leading-[15px] text-[#139af5] font-normal hover:underline text-left"
                             >
                               € {Number(dailyBudget || 0).toFixed(2)}
                             </button>
@@ -693,7 +693,7 @@ export default function AdTable() {
                             <button
                               type="button"
                               onClick={() => openStatusModal(ad)}
-                              className="inline-flex items-center px-3 py-1 text-[13px] font-medium text-blue-600 whitespace-nowrap"
+                              className="inline-flex items-center px-3 py-1 text-[13px] font-normal text-blue-600 whitespace-nowrap"
                             >
                               {ad.status || "Active"}
                             </button>
@@ -710,7 +710,7 @@ export default function AdTable() {
                       return (
                         <td
                           key={col.id as string}
-                          className={`px-3 py-[4px] ${baseClass} ${col.widthClass || ""}`}
+                          className={`px-3 py-[4px] ${baseClass} ${col.widthClass || ""} ${col.id === "created_at" ? "whitespace-nowrap" : ""}`}
                         >
                           {display === "" ||
                           display === null ||
