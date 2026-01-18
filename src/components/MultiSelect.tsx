@@ -41,11 +41,15 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
 
   return (
     <div
-      className="relative border border-gray-300 rounded-md px-3 py-2 bg-white"
+      className="relative border border-gray-300 rounded-md px-2 py-2 bg-white min-h-[34px] cursor-text"
       ref={wrapperRef}
+      onClick={() => {
+        setOpen(true);
+        inputRef.current?.focus();
+      }}
     >
-      {/* Теги */}
-      <div className="flex flex-wrap gap-1">
+      {/* Теги + инпут в одной строке */}
+      <div className="flex flex-wrap gap-1 items-center">
         {value.map((v) => (
           <span
             key={v}
@@ -61,14 +65,12 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
             </button>
           </span>
         ))}
-      </div>
 
-      <div className="relative mt-1">
         <input
           ref={inputRef}
           type="text"
-          placeholder="Select…"
-          className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none appearance-none"
+          placeholder=""
+          className="flex-1 min-w-[120px] text-sm px-1 py-1 bg-transparent border-none focus:outline-none"
           onFocus={() => setOpen(true)}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
