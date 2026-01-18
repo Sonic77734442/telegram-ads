@@ -1,34 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Container from "../components/Container";
-import MultiSelect from "../components/MultiSelect";
 import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
-
-/* ──────────────── constants ──────────────── */
-const LANGS = ["English", "Russian", "Uzbek"];
-const TOPICS = [
-  "Finance",
-  "Technology",
-  "Entertainment",
-  "Sports",
-  "Crypto",
-  "Food & Cooking",
-  "Health & Medicine",
-  "Politics & Incidents",
-  "Bets & Gambling",
-  "Religion & Spirituality",
-];
-const DEVICES = ["All devices", "Mobile", "Desktop", "iOS", "Android"];
-const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia", "Other"];
-const CITIES_BY_COUNTRY: Record<string, string[]> = {
-  Kazakhstan: ["Almaty", "Astana", "Shymkent", "Karaganda", "Atyrau", "Aktau", "Kostanay"],
-  Uzbekistan: ["Tashkent", "Samarkand", "Bukhara", "Namangan", "Andijan", "Fergana", "Nukus"],
-  Russia: ["Moscow", "Saint Petersburg", "Kazan", "Novosibirsk", "Yekaterinburg", "Sochi"],
-  Armenia: ["Yerevan", "Gyumri", "Vanadzor"],
-  Other: [],
-};
 
 /* ──────────────── component ──────────────── */
 export default function SearchAdForm() {
@@ -38,38 +13,23 @@ export default function SearchAdForm() {
 
   /* form state */
   const [title, setTitle] = useState("");
-  const [text, setText] = useState("");
   const [url, setUrl] = useState("");
-  const [placement, setPlacement] = useState<"message" | "banner">("message");
-
   const [cpm, setCpm] = useState("0.00");
   const [budget, setBudget] = useState("0.00");
   const [dailyViews, setDailyViews] = useState(1);
   const [status, setStatus] = useState<"active" | "hold">("hold");
   const [schedule, setSchedule] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [otherInfo, setOtherInfo] = useState("");
+  const [targetQueries, setTargetQueries] = useState<string[]>([]);
   const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const [markupPercent, setMarkupPercent] = useState(0);
   const [markupLoaded, setMarkupLoaded] = useState(role !== "client");
   const multiplier = role === "client" && markupPercent > 0 ? 1 + markupPercent / 100 : 1;
 
-  const [countries, setCountries] = useState<string[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-  const [langs, setLangs] = useState<string[]>([]);
-  const [topics, setTopics] = useState<string[]>([]);
-  const [exTopics, setExTopics] = useState<string[]>([]);
-  const [targetChannels, setTargetChannels] = useState<string[]>([]);
-  const [excludeChannels, setExcludeChannels] = useState<string[]>([]);
-  const [devices, setDevices] = useState<string[]>(["All devices"]);
-  const [politicsOnly, setPoliticsOnly] = useState(false);
-  const [excludePolitics, setExcludePolitics] = useState(false);
   /* ──────────────── date schedule states ──────────────── */
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Load client markup to show CPM/budget with markup for client role.
   useEffect(() => {
@@ -110,6 +70,17 @@ export default function SearchAdForm() {
     return Number(effective || 0).toFixed(2);
   };
 
+  const parseTargetQueries = (value: unknown) => {
+    if (Array.isArray(value)) return value.filter((item) => typeof item === "string") as string[];
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  };
+
   /* load existing */
   useEffect(() => {
     const fetchAd = async () => {
@@ -118,7 +89,6 @@ export default function SearchAdForm() {
       if (!data) return;
 
       setTitle(data.title || "");
-      setText(data.text || "");
       setUrl(data.url || "");
       setCpm(resolveValueForInput(data.cpm_client ?? data.cpm_net, data.cpm));
       const budgetValue = data.budget_client ?? data.budget_net ?? data.budget ?? 0;
@@ -126,21 +96,10 @@ export default function SearchAdForm() {
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
       setSchedule(data.schedule_enabled || false);
-      setOtherInfo(data.other_info || "");
       setStartDate(data.start_date || "");
       setEndDate(data.end_date || "");
       setShowDatePicker(Boolean(data.start_date || data.end_date));
-      setCountries(data.countries || []);
-      setLangs(data.langs || []);
-      setTopics(data.topics || []);
-      setExTopics(data.ex_topics || []);
-      setTargetChannels(data.channels || []);
-      setExcludeChannels(data.exclude_channels || []);
-      setDevices(data.devices || ["All devices"]);
-      setPoliticsOnly(data.politics_only || false);
-      setExcludePolitics(data.exclude_politics || false);
-      setPlacement(data.placement || "message");
-      setLocations(data.locations || []);
+      setTargetQueries(parseTargetQueries(data.target));
     };
     fetchAd();
   }, [adId, markupLoaded]);
@@ -148,24 +107,13 @@ export default function SearchAdForm() {
   /* clear */
   const onClear = () => {
     setTitle("");
-    setText("");
     setUrl("");
     setCpm("0.00");
     setBudget("0.00");
     setDailyViews(1);
     setStatus("hold");
     setSchedule(false);
-    setAgreeTerms(false);
-    setCountries([]);
-    setLangs([]);
-    setTopics([]);
-    setExTopics([]);
-    setTargetChannels([]);
-    setExcludeChannels([]);
-    setDevices(["All devices"]);
-    setPoliticsOnly(false);
-    setExcludePolitics(false);
-    setOtherInfo("");
+    setTargetQueries([]);
     setShowDatePicker(false);
     setStartDate("");
     setEndDate("");
@@ -174,11 +122,6 @@ export default function SearchAdForm() {
 
   /* create/update */
   const onCreate = async () => {
-    if (!agreeTerms) {
-      alert("❌ Please agree with the Terms of Service before creating an ad.");
-      return;
-    }
-
     if (!clientId) {
       alert("❌ Ошибка: user_id отсутствует в localStorage");
       return;
@@ -186,6 +129,7 @@ export default function SearchAdForm() {
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+    const scheduleEnabled = schedule || Boolean(startDate || endDate);
 
     const { data: userData } = await supabase
       .from("users")
@@ -195,10 +139,8 @@ export default function SearchAdForm() {
 
     const agency_id = userData?.agency_id || null;
 
-    const scheduleEnabled = schedule || Boolean(startDate || endDate);
     const adData = {
       title,
-      text,
       url,
       cpm: Number(cpmNet.toFixed(4)),
       budget: Number(budgetNumber.toFixed(4)),
@@ -207,18 +149,7 @@ export default function SearchAdForm() {
       schedule_enabled: scheduleEnabled,
       start_date: startDate || null,
       end_date: endDate || null,
-      countries,
-      locations,
-      langs,
-      topics,
-      ex_topics: exTopics,
-      channels: targetChannels,
-      exclude_channels: excludeChannels,
-      devices,
-      politics_only: politicsOnly,
-      exclude_politics: excludePolitics,
-      placement,
-      other_info: otherInfo,
+      target: targetQueries.join(", "),
       updated_at: new Date().toISOString(),
       client_id: clientId,
       agency_id,
@@ -245,24 +176,23 @@ export default function SearchAdForm() {
   };
 
   /* UI */
+  const showPreview = Boolean(title && url);
+
   return (
     <Container>
       <div className="flex gap-10 py-6">
         {/* LEFT */}
         <form className="w-[320px] flex flex-col gap-5 text-[13px]">
           <Field label="Ad title" info>
-            <Input placeholder="E.g. My first ad" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </Field>
-
-          <Field label="Ad text">
-            <Textarea rows={3} placeholder="Enter your ad text" value={text} onChange={(e) => setText(e.target.value)} />
-            <Hint>
-              You can add custom emoji using <code>@AdsMarkdownBot</code>.
-            </Hint>
+            <Input placeholder="E.g., My first ad" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
 
           <Field label="URL you want to promote" info>
-            <Input placeholder="t.me/yourchannel" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <Input
+              placeholder="URL of the channel, post or bot you promote"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
           </Field>
 
           <Field label="CPM in Euro" info>
@@ -299,6 +229,7 @@ export default function SearchAdForm() {
               <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
             </div>
           </Field>
+
           <Field label="Start date" info>
             {showDatePicker ? (
               <div className="flex flex-col gap-2">
@@ -358,92 +289,33 @@ export default function SearchAdForm() {
             )}
           </Field>
 
-          <Field label="Other information">
-            <Input placeholder="E.g., ad identifier (optional)" value={otherInfo} onChange={(e) => setOtherInfo(e.target.value)} />
+          <Field label="Ad Schedule">
+            <Checkbox
+              label="Run this ad on schedule"
+              checked={schedule}
+              onChange={(e) => setSchedule(e.target.checked)}
+            />
           </Field>
-
-          <Checkbox
-            label="I have read and agree with the Telegram Ad Platform Terms of Service"
-            checked={agreeTerms}
-            onChange={(e) => setAgreeTerms(e.target.checked)}
-          />
         </form>
 
         {/* RIGHT */}
         <div className="flex flex-col gap-5 text-[13px] flex-1">
           <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
-          <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" />
-
-          <Field label="Ad placement">
-            <div className="flex flex-col gap-2 pl-6">
-              <Radio label="Message in Channel" checked={placement === "message"} onChange={() => setPlacement("message")} />
-              <Radio label="Banner in Video" checked={placement === "banner"} onChange={() => setPlacement("banner")} />
+          {showPreview ? (
+            <TelegramAdPreview title={title} text="" button="SEND MESSAGE" />
+          ) : (
+            <div className="border border-dashed border-[#d9d9d9] rounded-md p-4 text-gray-600 text-sm">
+              Fill the required fields to preview your ad
             </div>
-          </Field>
+          )}
 
-          <Field label="Target countries">
-            <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} />
-          </Field>
-
-          <Field label="Target locations" info>
-            <MultiSelect
-              value={locations}
-              options={
-                countries.length === 0
-                  ? []
-                  : countries.flatMap((c) => CITIES_BY_COUNTRY[c] || [])
-              }
-              onChange={setLocations}
-            />
-            <Hint>
-              {countries.length === 0
-                ? "Select a country to see available cities."
-                : `Cities available for ${countries.join(", ")}.`}
-            </Hint>
-          </Field>
-
-          <Field label="Target user languages">
-            <MultiSelect value={langs} options={LANGS} onChange={setLangs} />
-          </Field>
-
-          <Field label="Target topics">
-            <MultiSelect value={topics} options={TOPICS} onChange={setTopics} />
-          </Field>
-
-          <Field label="Target channel audiences">
-            <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" />
-          </Field>
-
-          <Field label="Target device type">
-            <MultiSelect value={devices} options={DEVICES} onChange={setDevices} />
-          </Field>
-
-          <Field label="Exclude topics">
-            <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} />
-          </Field>
-
-          <Field label="Exclude channel audiences" info>
+          <Field label="Target search queries">
             <TagInput
-              value={excludeChannels}
-              onChange={setExcludeChannels}
-              placeholder="t.me channel URL to exclude (optional)"
+              value={targetQueries}
+              onChange={setTargetQueries}
+              placeholder="Search query"
             />
           </Field>
-
-          <Field label="Exclude audiences" info>
-            <MultiSelect
-              value={[]}
-              options={["Crypto traders", "Gamers", "Investors", "Developers", "Marketing professionals"]}
-              onChange={() => {}}
-            />
-            <Hint>Only users from Uzbekistan will be affected.</Hint>
-          </Field>
-
-          <Checkbox
-            label="Do not show this ad in channels related to Politics & Incidents"
-            checked={excludePolitics}
-            onChange={(e) => setExcludePolitics(e.target.checked)}
-          />
 
           <p className="text-xs text-red-600">⚠ Will not be shown anywhere.</p>
           <p className="text-xs text-amber-600">⚠ Target parameters can't be changed after the ad is created.</p>
@@ -486,13 +358,6 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input
     {...props}
     className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-  />
-);
-
-const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea
-    {...props}
-    className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] resize-none bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
   />
 );
 
