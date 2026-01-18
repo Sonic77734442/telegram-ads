@@ -7,7 +7,7 @@ const BudgetBar: React.FC = () => {
 
   return (
     <div className="bg-white h-[65px]">
-      <div className="w-full max-w-[842px] mx-auto h-[65px]">
+      <div className="w-full max-w-[842px] mx-auto h-[65px]" style={{ fontFamily: "Roboto, sans-serif" }}>
         <div className="flex items-center justify-between h-[65px]">
           {/* ----- Поиск ----- */}
           <div className="relative w-[395px] h-[40px] flex-shrink-0 mr-[5px]">

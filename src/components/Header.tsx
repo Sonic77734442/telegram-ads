@@ -95,7 +95,7 @@ const Header = () => {
 
   return (
     <header className="bg-white h-[48px]">
-      <div className="w-full max-w-[842px] mx-auto">
+      <div className="w-full max-w-[842px] mx-auto" style={{ fontFamily: "Roboto, sans-serif" }}>
         <div className="flex items-center justify-between h-[48px]">
           <Link
             to="/dashboard"
