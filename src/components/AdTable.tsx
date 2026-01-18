@@ -167,7 +167,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
-    format: (v) => `€ ${(Number(v) || 0).toFixed(4)}`,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
     id: "cpa",
@@ -175,7 +175,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
-    format: (v) => `€ ${(Number(v) || 0).toFixed(4)}`,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
     id: "cpv",
@@ -183,7 +183,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     sortable: true,
     align: "right",
     defaultVisible: true,
-    format: (v) => `€ ${(Number(v) || 0).toFixed(5)}`,
+    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
   },
   {
     id: "target",
@@ -553,9 +553,9 @@ export default function AdTable() {
                   <button
                     type="button"
                     onClick={() => setIsCustomizeOpen(true)}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-gray-100"
+                    className="inline-flex h-[23.99px] w-[23.99px] items-center justify-center rounded hover:bg-gray-100"
                   >
-                    <img src={GEAR_ICON_SRC} className="h-4 w-4" alt="settings" />
+                    <img src={GEAR_ICON_SRC} className="h-[23.99px] w-[23.99px]" alt="settings" />
                   </button>
                 </th>
               </tr>
@@ -591,7 +591,7 @@ export default function AdTable() {
                               <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
                                 <img
                                   src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyBoZWlnaHQ9IjE4IiB2aWV3Qm94PSIwIDAgMTggMTgiIHdpZHRoPSIxOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjMmIyYjJiIj48cGF0aCBkPSJNIDEyLjEgOS40NSBDIDEzLjEyIDkuNDUgMTMuOTQgOC43MSAxMy45NCA3LjggQyAxMy45NCA2Ljg4IDEzLjEyIDYuMTUgMTIuMSA2LjE1IEMgMTEuMDcgNi4xNSAxMC4yNSA2Ljg4IDEwLjI1IDcuOCBDIDEwLjI1IDguNzEgMTEuMDcgOS40NSAxMi4xIDkuNDUgWiBNIDYuNzkgOS4yNSBDIDguMDIgOS4yNSA5IDguMyA5IDcuMTIgUyA4LjAyIDUgNi43OSA1IFMgNC41NyA1Ljk1IDQuNTcgNy4xMiBTIDUuNTYgOS4yNSA2Ljc5IDkuMjUgWiBNIDYuNjggMTAuMTYgQyA1LjEyIDEwLjE2IDIgMTAuODkgMiAxMi4zNiBWIDEzLjA4IEMgMiAxMy40MyAyLjUzIDEzLjkzIDIuOSAxMy45MyBIIDEwLjY4IEMgMTEuMDUgMTMuOTMgMTEuMzUgMTMuNjUgMTEuMzUgMTMuMyBWIDEyLjM2IEMgMTEuMzUgMTAuODkgOC4yMyAxMC4xNiA2LjY4IDEwLjE2IFogTSAxMS44OSAxMC40NiBDIDExLjcyIDEwLjQ2IDExLjUzIDEwLjQ3IDExLjMyIDEwLjQ5IEMgMTEuMzQgMTAuNSAxMS4zNCAxMC41MSAxMS4zNSAxMC41MSBDIDEyLjAyIDExIDEyLjczIDExLjY2IDEyLjczIDEyLjUzIFYgMTMuNDEgQyAxMi43MyAxMy42MiAxMi42OSAxMy44MiAxMi42MiAxNCBIIDE1LjE5IEMgMTUuNTEgMTQgMTYgMTMuNTEgMTYgMTMuMTkgViAxMi41MyBDIDE2IDExLjE1IDEzLjI2IDEwLjQ2IDExLjg5IDEwLjQ2IFoiLz48L2c+PC9zdmc+"
-                                  className="h-4 w-4"
+                                  className="h-[18px] w-[18px]"
                                   alt=""
                                 />
                               </div>
