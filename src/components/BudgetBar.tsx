@@ -50,8 +50,8 @@ const BudgetBar: React.FC = () => {
                 flex-shrink-0
                 inline-flex items-center justify-center
                 w-[140px] h-[36px]
-                bg-[#2481cc]
-                text-white font-semibold text-[14px] leading-[20px] rounded transition
+                bg-[#4ca3e2]
+                text-white font-semibold text-[14px] leading-[20px] rounded-[6px] transition
               "
             >
               Manage budget
@@ -63,8 +63,8 @@ const BudgetBar: React.FC = () => {
                 flex-shrink-0
                 inline-flex items-center justify-center
                 w-[140.57px] h-[36px]
-                bg-[#2481cc]
-                text-white font-semibold text-[14px] leading-[20px] rounded transition
+                bg-[#4ca3e2]
+                text-white font-semibold text-[14px] leading-[20px] rounded-[6px] transition
               "
             >
               Create a new ad
