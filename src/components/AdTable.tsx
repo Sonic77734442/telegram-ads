@@ -521,11 +521,11 @@ export default function AdTable() {
         <div className="w-full max-w-[1365px]">
           <table className="w-full text-[13px] text-gray-800 table-fixed border-collapse">
             <thead className="text-[11px] font-semibold text-gray-600 border-b border-gray-200">
-              <tr className="h-9">
+              <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
                   <th
                     key={col.id as string}
-                    className={`px-3 ${
+                    className={`px-3 ${col.id === "title" ? "w-[200px]" : ""} ${
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
@@ -570,8 +570,11 @@ export default function AdTable() {
                   </td>
                 </tr>
               ) : (
-                sortedAds.map((ad) => (
-                  <tr key={ad.id} className="bg-[#f6f7f9] hover:bg-[#e9f0f7]">
+                sortedAds.map((ad, index) => (
+                  <tr
+                    key={ad.id}
+                    className={`h-[38px] ${index % 2 === 0 ? "bg-transparent" : "bg-[#f6f7f9]"} hover:bg-[#e9f0f7]`}
+                  >
                     {columnsToRender.map((col) => {
                       const value = ad[col.id];
 
@@ -580,7 +583,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className="px-3 py-2 align-top w-[280px]"
+                            className="px-3 py-2 align-top w-[200px]"
                           >
                             <div className="flex items-start gap-2 w-full">
                               <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
