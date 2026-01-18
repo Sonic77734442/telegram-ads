@@ -626,7 +626,7 @@ export default function AdTable() {
                               <div className="flex flex-col justify-center w-[175px] h-[31px]">
                                 <Link
                                   to={`/create?id=${ad.id}`}
-                                  className="tg-title-link block text-[13px] font-semibold text-black truncate"
+                                  className="tg-title-link block text-[13px] font-semibold text-black truncate leading-[15px]"
                                 >
                                   {ad.title || "Untitled"}
                                 </Link>
@@ -636,7 +636,7 @@ export default function AdTable() {
                                     href={ad.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="block text-[11px] text-blue-600 hover:underline truncate"
+                                    className="block text-[11px] text-blue-600 hover:underline truncate leading-[15px]"
                                   >
                                     {ad.url}
                                   </a>
@@ -660,7 +660,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-[6px] text-left whitespace-nowrap ${col.widthClass || ""}`}
+                            className={`px-3 py-[4px] text-left whitespace-nowrap ${col.widthClass || ""}`}
                           >
                             {/* верх — общий бюджет (Increase Budget) */}
                             <button
@@ -672,13 +672,13 @@ export default function AdTable() {
                             </button>
 
                             {/* низ — дневной бюджет (Edit Daily Budget) */}
-							<button
-							  type="button"
-							  onClick={() => openBudgetModal("edit", ad)}
-							  className="block text-xs text-blue-500 hover:underline text-right"
-							>
-							  € {Number(dailyBudget || 0).toFixed(2)}
-							</button>
+                            <button
+                              type="button"
+                              onClick={() => openBudgetModal("edit", ad)}
+                              className="block text-[11px] leading-[15px] text-blue-500 hover:underline text-right"
+                            >
+                              € {Number(dailyBudget || 0).toFixed(2)}
+                            </button>
                           </td>
                         );
                       }
@@ -688,7 +688,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-[6px] text-left ${col.widthClass || ""}`}
+                            className={`px-3 py-[4px] text-left ${col.widthClass || ""}`}
                           >
                             <button
                               type="button"
@@ -710,7 +710,7 @@ export default function AdTable() {
                       return (
                         <td
                           key={col.id as string}
-                          className={`px-3 py-[6px] ${baseClass} ${col.widthClass || ""}`}
+                          className={`px-3 py-[4px] ${baseClass} ${col.widthClass || ""}`}
                         >
                           {display === "" ||
                           display === null ||

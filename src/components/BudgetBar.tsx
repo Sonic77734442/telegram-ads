@@ -7,9 +7,9 @@ const BudgetBar: React.FC = () => {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="bg-white">
-      <Container>
-        <div className="flex items-center justify-between py-3">
+    <div className="bg-white h-[65px]">
+      <Container className="px-0">
+        <div className="flex items-center justify-between h-[65px]">
           {/* ----- Поиск ----- */}
           <div className="relative w-[395px] h-[40px] flex-shrink-0 mr-[5px]">
 			<svg
