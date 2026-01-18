@@ -59,6 +59,31 @@ export default function AdEditForm({
   channels, setChannels,
   excludeSensitiveCategories, setExcludeSensitiveCategories
 }: Props) {
+  const resetMulti = (multi: { select: (e: React.ChangeEvent<HTMLSelectElement>) => void }, values: string[]) => {
+    multi.select({
+      target: { selectedOptions: values.map((value) => ({ value })) },
+    } as any);
+  };
+
+  const onClearDraft = () => {
+    setTitle("");
+    setText("");
+    setUrl("");
+    setWebsiteName("");
+    setButton("");
+    setCpm("0.00");
+    setBudget("0.00");
+    setDailyViews(1);
+    setTarget("Message in Channel");
+    setChannels([]);
+    setExcludeSensitiveCategories(false);
+    resetMulti(c, []);
+    resetMulti(l, []);
+    resetMulti(t, []);
+    resetMulti(exTopics, []);
+    resetMulti(devices, ["All devices"]);
+  };
+
   return (
     <Container>
       {
@@ -238,25 +263,6 @@ export default function AdEditForm({
               moderators.
             </p>
 
-<div className="flex gap-3 mt-6">
-  <button
-    type="button"
-    onClick={onCreate} // функция создания рекламы
-    className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold text-sm px-5 h-[40px] rounded-[6px] transition"
-  >
-    Create Ad
-  </button>
-
-  <button
-    type="button"
-    onClick={onSave} // функция сохранения
-    className="bg-[#E5E7EB] hover:bg-[#D1D5DB] text-gray-800 font-semibold text-sm px-5 h-[40px] rounded-[6px] transition"
-  >
-    Save Changes
-  </button>
-</div>
-
-
           </form>
 
           {/* right column */}
@@ -362,6 +368,28 @@ export default function AdEditForm({
                 {t.value.join(" or ")}
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center border-t pt-4 mt-6">
+          <span onClick={onClearDraft} className="text-blue-600 text-[12px] cursor-pointer hover:underline">
+            Clear Draft
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onCreate}
+              className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold text-sm px-5 h-[40px] rounded-[6px] transition"
+            >
+              Create Ad
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              className="bg-[#E5E7EB] hover:bg-[#D1D5DB] text-gray-800 font-semibold text-sm px-5 h-[40px] rounded-[6px] transition"
+            >
+              Save Changes
+            </button>
           </div>
         </div>}
     </Container>

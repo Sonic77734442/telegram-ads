@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Container from "../components/Container";
 import MultiSelect from "../components/MultiSelect";
@@ -30,9 +30,8 @@ const CITIES_BY_COUNTRY: Record<string, string[]> = {
   Other: [],
 };
 
-
 /* ──────────────── component ──────────────── */
-export default function ChannelAdForm() {
+export default function SearchAdForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const adId = searchParams.get("id");
@@ -41,11 +40,7 @@ export default function ChannelAdForm() {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
-  const [showUserPic, setShowUserPic] = useState(false);
-  const [mediaUrl, setMediaUrl] = useState<string>("");
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
   const [placement, setPlacement] = useState<"message" | "banner">("message");
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [cpm, setCpm] = useState("0.00");
   const [budget, setBudget] = useState("0.00");
@@ -70,11 +65,11 @@ export default function ChannelAdForm() {
   const [devices, setDevices] = useState<string[]>(["All devices"]);
   const [politicsOnly, setPoliticsOnly] = useState(false);
   const [excludePolitics, setExcludePolitics] = useState(false);
-  		/* ──────────────── date schedule states ──────────────── */
-const [showDatePicker, setShowDatePicker] = useState(false);
-const [startDate, setStartDate] = useState<string>("");
-const [endDate, setEndDate] = useState<string>("");
-const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  /* ──────────────── date schedule states ──────────────── */
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Load client markup to show CPM/budget with markup for client role.
   useEffect(() => {
@@ -115,26 +110,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     return Number(effective || 0).toFixed(2);
   };
 
-
-  /* upload */
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const filePath = `ads/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage
-      .from("media")
-      .upload(filePath, file, { contentType: file.type });
-
-    if (!error) {
-      const url = supabase.storage.from("media").getPublicUrl(filePath).data?.publicUrl;
-      if (url) {
-        setMediaUrl(url);
-        setMediaType(file.type.startsWith("video") ? "video" : "image");
-      }
-    }
-  };
-
   /* load existing */
   useEffect(() => {
     const fetchAd = async () => {
@@ -164,10 +139,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setDevices(data.devices || ["All devices"]);
       setPoliticsOnly(data.politics_only || false);
       setExcludePolitics(data.exclude_politics || false);
-      setMediaUrl(data.media_url || "");
-      setMediaType(data.media_type || null);
       setPlacement(data.placement || "message");
-	  setLocations(data.locations || []);
+      setLocations(data.locations || []);
     };
     fetchAd();
   }, [adId, markupLoaded]);
@@ -183,8 +156,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setStatus("hold");
     setSchedule(false);
     setAgreeTerms(false);
-    setMediaUrl("");
-    setMediaType(null);
     setCountries([]);
     setLangs([]);
     setTopics([]);
@@ -192,7 +163,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setTargetChannels([]);
     setExcludeChannels([]);
     setDevices(["All devices"]);
-    setShowUserPic(false);
     setPoliticsOnly(false);
     setExcludePolitics(false);
     setOtherInfo("");
@@ -216,7 +186,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
-    const scheduleEnabled = schedule || Boolean(startDate || endDate);
 
     const { data: userData } = await supabase
       .from("users")
@@ -226,6 +195,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const agency_id = userData?.agency_id || null;
 
+    const scheduleEnabled = schedule || Boolean(startDate || endDate);
     const adData = {
       title,
       text,
@@ -237,10 +207,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       schedule_enabled: scheduleEnabled,
       start_date: startDate || null,
       end_date: endDate || null,
-      media_url: mediaUrl,
-      media_type: mediaType,
       countries,
-	  locations, 
+      locations,
       langs,
       topics,
       ex_topics: exTopics,
@@ -297,27 +265,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <Input placeholder="t.me/yourchannel" value={url} onChange={(e) => setUrl(e.target.value)} />
           </Field>
 
-          <Checkbox label="Show picture" checked={showUserPic} onChange={(e) => setShowUserPic(e.target.checked)} />
-
-          <Field label="Ad photo or video">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer"
-            >
-              Upload Photo or Video
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
-            {mediaUrl && (
-              <div className="mt-2 rounded-md overflow-hidden border">
-                {mediaType === "video" ? (
-                  <video src={mediaUrl} controls className="w-full h-[160px] object-cover" />
-                ) : (
-                  <img src={mediaUrl} className="w-full h-[160px] object-cover" alt="Preview" />
-                )}
-              </div>
-            )}
-          </Field>
-
           <Field label="CPM in Euro" info>
             <Input type="number" step="0.01" placeholder="€ 0.00" value={cpm} onChange={(e) => setCpm(e.target.value)} />
           </Field>
@@ -352,64 +299,64 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
               <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
             </div>
           </Field>
-		<Field label="Start date" info>
-		  {showDatePicker ? (
-			<div className="flex flex-col gap-2">
-			  <div className="flex gap-2 items-center">
-				<input
-				  type="date"
-				  value={startDate ? startDate.split("T")[0] : ""}
-				  onChange={(e) => setStartDate(e.target.value + "T00:00")}
-				  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-				/>
-				<input
-				  type="time"
-				  value={startDate ? startDate.split("T")[1]?.slice(0, 5) : ""}
-				  onChange={(e) =>
-					setStartDate(
-					  startDate.split("T")[0] + "T" + e.target.value
-					)
-				  }
-				  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-				/>
-				<span className="text-[12px] text-gray-600">UTC+5:00</span>
-				<LinkLbl onClick={() => { setShowDatePicker(false); setStartDate(""); setEndDate(""); }}>
-				  Remove
-				</LinkLbl>
-			  </div>
+          <Field label="Start date" info>
+            {showDatePicker ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={startDate ? startDate.split("T")[0] : ""}
+                    onChange={(e) => setStartDate(e.target.value + "T00:00")}
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  />
+                  <input
+                    type="time"
+                    value={startDate ? startDate.split("T")[1]?.slice(0, 5) : ""}
+                    onChange={(e) =>
+                      setStartDate(
+                        startDate.split("T")[0] + "T" + e.target.value
+                      )
+                    }
+                    className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  />
+                  <span className="text-[12px] text-gray-600">UTC+5:00</span>
+                  <LinkLbl onClick={() => { setShowDatePicker(false); setStartDate(""); setEndDate(""); }}>
+                    Remove
+                  </LinkLbl>
+                </div>
 
-			  {endDate && (
-				<div className="flex gap-2 items-center mt-1">
-				  <input
-					type="date"
-					value={endDate ? endDate.split("T")[0] : ""}
-					onChange={(e) => setEndDate(e.target.value + "T00:00")}
-					className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-				  />
-				  <input
-					type="time"
-					value={endDate ? endDate.split("T")[1]?.slice(0, 5) : ""}
-					onChange={(e) =>
-					  setEndDate(
-						endDate.split("T")[0] + "T" + e.target.value
-					  )
-					}
-					className="border border-gray-300 rounded-md px-2 py-1 text-sm"
-				  />
-				  <span className="text-[12px] text-gray-600">UTC+5:00</span>
-				</div>
-			  )}
+                {endDate && (
+                  <div className="flex gap-2 items-center mt-1">
+                    <input
+                      type="date"
+                      value={endDate ? endDate.split("T")[0] : ""}
+                      onChange={(e) => setEndDate(e.target.value + "T00:00")}
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="time"
+                      value={endDate ? endDate.split("T")[1]?.slice(0, 5) : ""}
+                      onChange={(e) =>
+                        setEndDate(
+                          endDate.split("T")[0] + "T" + e.target.value
+                        )
+                      }
+                      className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                    />
+                    <span className="text-[12px] text-gray-600">UTC+5:00</span>
+                  </div>
+                )}
 
-			  {!endDate && (
-				<LinkLbl onClick={() => setEndDate(new Date().toISOString())}>
-				  Set end date
-				</LinkLbl>
-			  )}
-			</div>
-		  ) : (
-			<LinkLbl onClick={() => setShowDatePicker(true)}>Set start date</LinkLbl>
-		  )}
-		</Field>
+                {!endDate && (
+                  <LinkLbl onClick={() => setEndDate(new Date().toISOString())}>
+                    Set end date
+                  </LinkLbl>
+                )}
+              </div>
+            ) : (
+              <LinkLbl onClick={() => setShowDatePicker(true)}>Set start date</LinkLbl>
+            )}
+          </Field>
 
           <Field label="Other information">
             <Input placeholder="E.g., ad identifier (optional)" value={otherInfo} onChange={(e) => setOtherInfo(e.target.value)} />
@@ -425,7 +372,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         {/* RIGHT */}
         <div className="flex flex-col gap-5 text-[13px] flex-1">
           <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
-          <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
+          <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" />
 
           <Field label="Ad placement">
             <div className="flex flex-col gap-2 pl-6">
@@ -437,25 +384,23 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <Field label="Target countries">
             <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} />
           </Field>
-		  
-		<Field label="Target locations" info>
-		  <MultiSelect
-			value={locations}
-			options={
-			  countries.length === 0
-				? []
-				: countries.flatMap((c) => CITIES_BY_COUNTRY[c] || [])
-			}
-			onChange={setLocations}
-		  />
-		  <Hint>
-			{countries.length === 0
-			  ? "Select a country to see available cities."
-			  : `Cities available for ${countries.join(", ")}.`}
-		  </Hint>
-		</Field>
 
-
+          <Field label="Target locations" info>
+            <MultiSelect
+              value={locations}
+              options={
+                countries.length === 0
+                  ? []
+                  : countries.flatMap((c) => CITIES_BY_COUNTRY[c] || [])
+              }
+              onChange={setLocations}
+            />
+            <Hint>
+              {countries.length === 0
+                ? "Select a country to see available cities."
+                : `Cities available for ${countries.join(", ")}.`}
+            </Hint>
+          </Field>
 
           <Field label="Target user languages">
             <MultiSelect value={langs} options={LANGS} onChange={setLangs} />
@@ -476,30 +421,29 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <Field label="Exclude topics">
             <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} />
           </Field>
-		  
-		  <Field label="Exclude channel audiences" info>
-		  <TagInput
-			value={excludeChannels}
-			onChange={setExcludeChannels}
-			placeholder="t.me channel URL to exclude (optional)"
-		  />
-		</Field>
 
-		<Field label="Exclude audiences" info>
-		  <MultiSelect
-			value={[]}
-			options={["Crypto traders", "Gamers", "Investors", "Developers", "Marketing professionals"]}
-			onChange={() => {}}
-		  />
-		  <Hint>Only users from Uzbekistan will be affected.</Hint>
-		</Field>
-		
-		 <Checkbox
+          <Field label="Exclude channel audiences" info>
+            <TagInput
+              value={excludeChannels}
+              onChange={setExcludeChannels}
+              placeholder="t.me channel URL to exclude (optional)"
+            />
+          </Field>
+
+          <Field label="Exclude audiences" info>
+            <MultiSelect
+              value={[]}
+              options={["Crypto traders", "Gamers", "Investors", "Developers", "Marketing professionals"]}
+              onChange={() => {}}
+            />
+            <Hint>Only users from Uzbekistan will be affected.</Hint>
+          </Field>
+
+          <Checkbox
             label="Do not show this ad in channels related to Politics & Incidents"
             checked={excludePolitics}
             onChange={(e) => setExcludePolitics(e.target.checked)}
           />
-		
 
           <p className="text-xs text-red-600">⚠ Will not be shown anywhere.</p>
           <p className="text-xs text-amber-600">⚠ Target parameters can't be changed after the ad is created.</p>

@@ -5,6 +5,7 @@ import Container from "../components/Container";
 import ChannelAdForm from "../forms/ChannelAdForm";
 import UserAdForm from "../forms/UserAdForm";
 import BotAdForm from "../forms/BotAdForm";
+import SearchAdForm from "../forms/SearchAdForm";
 import TabBar from "../components/TabBar"; // ✅ добавляем TabBar
 
 export default function CreateAdPage() {
@@ -55,11 +56,7 @@ export default function CreateAdPage() {
           {activeTab === "channels" && <ChannelAdForm />}
           {activeTab === "users" && <UserAdForm />}
           {activeTab === "bots" && <BotAdForm />}
-          {activeTab === "search" && (
-            <div className="bg-white p-6 rounded-md text-gray-600 text-sm shadow-sm">
-              <p>Search targeting form — coming soon.</p>
-            </div>
-          )}
+          {activeTab === "search" && <SearchAdForm />}
         </div>
       </Container>
     </div>

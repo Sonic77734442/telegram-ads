@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Container from "../components/Container";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
@@ -9,8 +9,6 @@ export default function BotAdForm() {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
-  const [mediaUrl, setMediaUrl] = useState<string>("");
-  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
   const [cpm, setCpm] = useState("0.00");
   const [budget, setBudget] = useState("0.00");
   const [dailyViews, setDailyViews] = useState(1);
@@ -18,7 +16,6 @@ export default function BotAdForm() {
   const [schedule, setSchedule] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [targetBots, setTargetBots] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const [markupPercent, setMarkupPercent] = useState(0);
@@ -47,25 +44,6 @@ export default function BotAdForm() {
 
     loadMarkup();
   }, [role, clientId]);
-
-  /* ──────────────── upload handler ──────────────── */
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const filePath = `ads/${Date.now()}-${file.name}`;
-    const { data, error } = await supabase.storage
-      .from("media")
-      .upload(filePath, file, { contentType: file.type });
-
-    if (!error) {
-      const url = supabase.storage.from("media").getPublicUrl(filePath).data?.publicUrl;
-      if (url) {
-        setMediaUrl(url);
-        setMediaType(file.type.startsWith("video") ? "video" : "image");
-      }
-    }
-  };
 
   /* ──────────────── create handler ──────────────── */
   const onCreate = async () => {
@@ -106,8 +84,6 @@ const agency_id = userData?.agency_id || null;
 		daily_views: dailyViews,
 		status,
 		schedule_enabled: schedule,
-		media_url: mediaUrl,
-		media_type: mediaType,
 		target_bots: targetBots,
 		created_at: new Date().toISOString(),
 		client_id: clientId,
@@ -153,31 +129,6 @@ const agency_id = userData?.agency_id || null;
           </Field>
 
           <Checkbox label="Show user picture" />
-
-          <Field label="Ad photo or video">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer"
-            >
-              Upload Photo or Video
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            {mediaUrl && (
-              <div className="mt-2 rounded-md overflow-hidden border">
-                {mediaType === "video" ? (
-                  <video src={mediaUrl} controls className="w-full h-[160px] object-cover" />
-                ) : (
-                  <img src={mediaUrl} className="w-full h-[160px] object-cover" alt="Preview" />
-                )}
-              </div>
-            )}
-          </Field>
 
           <Field label="CPM in Euro" info>
             <Input
@@ -249,8 +200,6 @@ const agency_id = userData?.agency_id || null;
               title={title}
               text={text}
               button="SEND MESSAGE"
-              mediaUrl={mediaUrl}
-              mediaType={mediaType || undefined}
             />
           </div>
 

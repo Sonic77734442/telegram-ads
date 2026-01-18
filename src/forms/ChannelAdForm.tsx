@@ -151,6 +151,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
       setSchedule(data.schedule_enabled || false);
+      setStartDate(data.start_date || "");
+      setEndDate(data.end_date || "");
+      setShowDatePicker(Boolean(data.start_date || data.end_date));
       setMediaUrl(data.media_url || "");
       setMediaType(data.media_type || null);
       setTargetChannels(data.channels || []);
@@ -192,6 +195,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setExcludeChannels([]);
     setPoliticsOnly(false);
     setExcludePolitics(false);
+    setShowDatePicker(false);
+    setStartDate("");
+    setEndDate("");
     alert("🧹 Черновик очищен");
   };
 
@@ -209,6 +215,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+    const scheduleEnabled = schedule || Boolean(startDate || endDate);
 
     const { data: userData } = await supabase
       .from("users")
@@ -230,7 +237,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           budget: Number(budgetNumber.toFixed(4)),
           daily_views: dailyViews,
           status,
-          schedule_enabled: schedule,
+          schedule_enabled: scheduleEnabled,
+          start_date: startDate || null,
+          end_date: endDate || null,
           media_url: mediaUrl,
           media_type: mediaType,
           countries: countries.value,
@@ -263,7 +272,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         budget: Number(budgetNumber.toFixed(4)),
         daily_views: dailyViews,
         status,
-        schedule_enabled: schedule,
+        schedule_enabled: scheduleEnabled,
+        start_date: startDate || null,
+        end_date: endDate || null,
         media_url: mediaUrl,
         media_type: mediaType,
         countries: countries.value,
@@ -426,10 +437,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             onChange={(e) => setAgreeTerms(e.target.checked)}
           />
 
-          <div className="flex justify-between mt-2">
-            <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
-            <Button onClick={onCreate}>{adId ? "Save Changes" : "Create Ad"}</Button>
-          </div>
         </form>
 
         {/* Правая колонка */}
@@ -473,6 +480,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="flex justify-between items-center border-t pt-4 mt-6">
+        <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
+        <Button onClick={onCreate}>{adId ? "Save Changes" : "Create Ad"}</Button>
       </div>
     </Container>
   );
