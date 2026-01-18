@@ -63,3 +63,12 @@ html, body {
   color: #1a69a5 !important;
   text-decoration: underline;
 }
+
+.tg-root a.tg-title-link {
+  color: #000 !important;
+  text-decoration: none !important;
+}
+.tg-root a.tg-title-link:hover {
+  color: #000 !important;
+  text-decoration: none !important;
+}
