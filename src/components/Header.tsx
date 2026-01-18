@@ -95,7 +95,7 @@ const Header = () => {
   const remainingBalance = balance - totalSpend;
 
   return (
-    <header className="border-b border-[#e6e6e6] bg-white">
+    <header className="bg-white">
       <Container>
         <div className="flex items-center justify-between h-12">
           <Link

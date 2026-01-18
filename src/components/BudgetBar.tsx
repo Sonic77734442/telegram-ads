@@ -7,11 +7,11 @@ const BudgetBar: React.FC = () => {
   const [query, setQuery] = useState("");
 
   return (
-    <div className="border-b bg-white">
+    <div className="bg-white">
       <Container>
         <div className="flex items-center justify-between py-3">
           {/* ----- Поиск ----- */}
-          <div className="relative w-[260px] flex-shrink-0 mr-[5px]">
+          <div className="relative w-[395px] h-[40px] flex-shrink-0 mr-[5px]">
 			<svg
 			  className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
 			  xmlns="http://www.w3.org/2000/svg"
@@ -34,7 +34,7 @@ const BudgetBar: React.FC = () => {
               placeholder="Search ads by name or link"
               autoComplete="off"
               className="
-                w-full pl-10 pr-3 py-[6px]
+                w-full h-full pl-10 pr-3
                 text-sm text-gray-700 placeholder-gray-500
                 border border-gray-300 rounded
                 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
@@ -48,8 +48,10 @@ const BudgetBar: React.FC = () => {
               to="/budget"
               className="
                 flex-shrink-0
-                bg-blue-500 hover:bg-blue-600
-                text-white px-4 py-2 text-sm rounded transition
+                inline-flex items-center justify-center
+                w-[140px] h-[36px]
+                bg-[#2481cc]
+                text-white font-semibold text-[14px] leading-[20px] rounded transition
               "
             >
               Manage budget
@@ -59,8 +61,10 @@ const BudgetBar: React.FC = () => {
               to="/ad/new"
               className="
                 flex-shrink-0
-                bg-blue-500 hover:bg-blue-600
-                text-white px-4 py-2 text-sm rounded transition
+                inline-flex items-center justify-center
+                w-[140.57px] h-[36px]
+                bg-[#2481cc]
+                text-white font-semibold text-[14px] leading-[20px] rounded transition
               "
             >
               Create a new ad
