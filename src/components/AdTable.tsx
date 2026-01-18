@@ -73,7 +73,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "views",
     label: "VIEWS",
     sortable: true,
-    align: "right",
+    align: "left",
     widthClass: "w-[76.2px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
@@ -82,7 +82,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "opened",
     label: "OPENED",
     sortable: true,
-    align: "right",
+    align: "left",
     widthClass: "w-[73.98px]",
     defaultVisible: false,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
@@ -91,7 +91,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "clicks",
     label: "CLICKS",
     sortable: true,
-    align: "right",
+    align: "left",
     widthClass: "w-[69.3px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
@@ -100,7 +100,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "actions",
     label: "ACTIONS",
     sortable: true,
-    align: "right",
+    align: "left",
     widthClass: "w-[78.47px]",
     defaultVisible: true,
     format: (v) => (Number(v) || 0).toLocaleString("en-US"),
@@ -109,7 +109,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "ctr",
     label: "CTR",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: true,
     widthClass: "w-[65px]",
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
@@ -118,7 +118,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "cvr",
     label: "CVR",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: false,
     widthClass: "w-[65px]",
     format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
@@ -127,7 +127,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "cpm",
     label: "CPM",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: true,
     widthClass: "w-[65px]",
     format: (v, row) => {
@@ -144,7 +144,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "cpc",
     label: "CPC",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: true,
     widthClass: "w-[65px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
@@ -153,7 +153,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "cpa",
     label: "CPA",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: false,
     widthClass: "w-[65px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
@@ -162,7 +162,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "spend",
     label: "SPENT",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: true,
     widthClass: "w-[85px]",
     format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
@@ -171,7 +171,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     id: "budget",
     label: "BUDGET",
     sortable: true,
-    align: "right",
+    align: "left",
     defaultVisible: true,
     widthClass: "w-[85px]",
     render: (row: AdRow) => (
@@ -660,7 +660,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-[6px] text-right whitespace-nowrap ${col.widthClass || ""}`}
+                            className={`px-3 py-[6px] text-left whitespace-nowrap ${col.widthClass || ""}`}
                           >
                             {/* верх — общий бюджет (Increase Budget) */}
                             <button
@@ -701,12 +701,7 @@ export default function AdTable() {
                         );
                       }
 
-                      const baseClass =
-                        col.align === "right"
-                          ? "text-right"
-                          : col.align === "center"
-                          ? "text-center"
-                          : "text-left";
+                        const baseClass = "text-left";
 
                       const display = col.format
                         ? col.format(value as any, ad)
