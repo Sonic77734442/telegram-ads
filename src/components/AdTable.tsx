@@ -536,8 +536,27 @@ export default function AdTable() {
                     <span className="inline-flex items-center gap-1 tracking-wide">
                       {col.label}
                       {col.sortable && col.id !== "target" && col.id !== "status" && (
-                        <span className="text-black">
-                          {sortBy?.id === col.id ? (sortBy.dir === "asc" ? "▲" : "▼") : "▲▼"}
+                        <span className="inline-flex flex-col gap-[1px] text-black">
+                          {sortBy?.id === col.id ? (
+                            sortBy.dir === "asc" ? (
+                              <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
+                                <polygon points="3.5,0 7,4 0,4" fill="currentColor" />
+                              </svg>
+                            ) : (
+                              <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
+                                <polygon points="0,0 7,0 3.5,4" fill="currentColor" />
+                              </svg>
+                            )
+                          ) : (
+                            <>
+                              <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
+                                <polygon points="3.5,0 7,4 0,4" fill="currentColor" />
+                              </svg>
+                              <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
+                                <polygon points="0,0 7,0 3.5,4" fill="currentColor" />
+                              </svg>
+                            </>
+                          )}
                         </span>
                       )}
                     </span>
@@ -580,7 +599,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-2 align-top w-[200px] ${col.widthClass || ""}`}
+                            className={`px-3 py-[6px] align-middle w-[200px] ${col.widthClass || ""}`}
                           >
                             <div className="flex items-start gap-2 w-full">
                               <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded bg-gray-100 flex-shrink-0">
@@ -628,7 +647,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-2 text-right whitespace-nowrap ${col.widthClass || ""}`}
+                            className={`px-3 py-[6px] text-right whitespace-nowrap ${col.widthClass || ""}`}
                           >
                             {/* верх — общий бюджет (Increase Budget) */}
                             <button
@@ -656,7 +675,7 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-2 text-left ${col.widthClass || ""}`}
+                            className={`px-3 py-[6px] text-left ${col.widthClass || ""}`}
                           >
                             <button
                               type="button"
@@ -683,7 +702,7 @@ export default function AdTable() {
                       return (
                         <td
                           key={col.id as string}
-                          className={`px-3 py-2 ${baseClass} ${col.widthClass || ""}`}
+                          className={`px-3 py-[6px] ${baseClass} ${col.widthClass || ""}`}
                         >
                           {display === "" ||
                           display === null ||
