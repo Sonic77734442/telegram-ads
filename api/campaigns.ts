@@ -192,7 +192,6 @@ export default async function handler(req: any, res: any) {
         media_type: row.media_type,
         status: row.status,
         target: row.target,
-        target_bots: row.target_bots,
         created_at: row.created_at,
         updated_at: row.updated_at,
         client_id: row.client_id,

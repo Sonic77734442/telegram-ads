@@ -84,7 +84,7 @@ const agency_id = userData?.agency_id || null;
 		daily_views: dailyViews,
 		status,
 		schedule_enabled: schedule,
-		target_bots: targetBots,
+		target: targetBots.join(", "),
 		created_at: new Date().toISOString(),
 		client_id: clientId,
 		agency_id, // ✅ вот это — ключевой момент!

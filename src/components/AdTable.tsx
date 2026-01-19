@@ -17,7 +17,6 @@ type AdRow = {
   title: string | null;
   status: string | null;
   target?: string | null;
-  target_bots?: string[] | string | null;
   created_at: string;
 
   // метрики
@@ -227,10 +226,11 @@ const TABLE_COLUMNS: ColumnConfig[] = [
         return [];
       };
 
-      const botList = parseTargets(row.target_bots);
-      if (botList.length > 0) return `${botList.length} bots`;
-
       const targetList = parseTargets(v);
+      if ((row.type || "").toLowerCase() === "bot" || (row.type || "").toLowerCase() === "bots") {
+        return targetList.length > 0 ? `${targetList.length} bots` : "—";
+      }
+
       if (targetList.length > 0) return `${targetList.length} queries`;
 
       return "—";
@@ -452,7 +452,6 @@ export default function AdTable() {
 
         url: c.url,
         type: c.type,
-        target_bots: c.target_bots,
       }));
 
       setAds(rows);
