@@ -27,7 +27,7 @@ export default async function handler(req: any, res: any) {
 
     const { data: campaignRow, error: campaignError } = await supabase
       .from("ad_campaigns")
-      .select("client_id, agency_id")
+      .select("client_id, agency_id, cpm")
       .eq("id", ad_id)
       .single();
 
@@ -71,11 +71,36 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: error.message });
     }
 
-    const rows = (data || []) as {
+    let rows = (data || []) as {
       day: string;
       views: number;
       amount: number;
     }[];
+
+    // Fallback for search/bot campaigns without reports: estimate from daily stats * CPM.
+    if (rows.length === 0) {
+      const { data: statsData, error: statsError } = await supabase.rpc(
+        "get_daily_ad_stats",
+        { input_ad_id: ad_id }
+      );
+
+      if (!statsError && Array.isArray(statsData)) {
+        const cpmNet = Number(campaignRow?.cpm ?? 0);
+        const fallback = statsData
+          .filter((r: any) => String(r.date || "").startsWith(`${ym}-`))
+          .map((r: any) => {
+            const views = Number(r.views ?? 0);
+            const amount = (views / 1000) * cpmNet;
+            return {
+              day: r.date,
+              views,
+              amount,
+            };
+          });
+
+        rows = fallback;
+      }
+    }
 
     const items = rows.map((r) => {
       const amount_client_raw = (r.amount ?? 0) * markupMultiplier;
