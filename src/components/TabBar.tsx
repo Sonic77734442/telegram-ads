@@ -14,7 +14,7 @@ export default function TabBar({
   if (!adId) return null;
 
   const linkStyle =
-    "text-[14px] px-3 py-[6px] rounded-full transition";
+    "text-[14px] font-semibold px-3 py-[6px] rounded-full transition";
   const activeStyle = "bg-[#139af5] text-white";
 
   return (
