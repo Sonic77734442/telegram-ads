@@ -1,17 +1,9 @@
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useContext, useRef } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 import { AdIdContext } from "./AdPageLayout";
-import {
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import uPlot from "uplot";
+import "uplot/dist/uPlot.min.css";
 
 type Range = "days" | "5min";
 
@@ -313,42 +305,7 @@ const multiplier =
           periodLabel={periodLabel()}
         />
         <ChartContainer>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={statsData as any[]}>
-              <CartesianGrid stroke="#e5e7eb" />
-              <XAxis
-                dataKey={statsRange === "days" ? "date" : "ts"}
-                tickFormatter={(v: string) =>
-                  statsRange === "days"
-                    ? v.slice(5, 10)
-                    : new Date(v).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                }
-              />
-              <YAxis />
-              <Tooltip
-                formatter={(v: number, name: string) => [v.toLocaleString(), name]}
-                labelFormatter={(v) =>
-                  statsRange === "days" ? v : new Date(v).toLocaleString()
-                }
-              />
-              <Legend />
-              <Line type="monotone" dataKey="views" stroke="#007bff" name="Views" dot={false} />
-              <Line
-                type="monotone"
-                dataKey="video_opens"
-                stroke="#34d399"
-                name="Opened video"
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="clicks"
-                stroke="#10b981"
-                name="Clicks"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <UPlotChart range={statsRange} data={statsData} />
         </ChartContainer>
         <UnderChartBar
           leftBadges={["Views", "Opened video", "Clicks"]}
@@ -449,6 +406,98 @@ const multiplier =
       </div>
     </div>
   );
+}
+
+function UPlotChart({
+  range,
+  data,
+}: {
+  range: Range;
+  data: (StatPointDay | StatPoint5m)[];
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const plotRef = useRef<uPlot | null>(null);
+
+  const chartData = useMemo(() => {
+    const x: number[] = [];
+    const views: number[] = [];
+    const opens: number[] = [];
+    const clicks: number[] = [];
+
+    for (const point of data) {
+      const key =
+        range === "days"
+          ? (point as StatPointDay).date
+          : (point as StatPoint5m).ts;
+      const ts = Date.parse(range === "days" ? `${key}T00:00:00Z` : key);
+      if (Number.isNaN(ts)) continue;
+      x.push(ts);
+      views.push(Number(point.views ?? 0));
+      opens.push(Number(point.video_opens ?? 0));
+      clicks.push(Number(point.clicks ?? 0));
+    }
+
+    return [x, views, opens, clicks] as uPlot.AlignedData;
+  }, [data, range]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const render = () => {
+      if (!containerRef.current) return;
+      const width = containerRef.current.clientWidth || 600;
+      const height = containerRef.current.clientHeight || 300;
+
+      const opts: uPlot.Options = {
+        width,
+        height,
+        scales: { x: { time: true } },
+        axes: [
+          {
+            grid: { show: true, stroke: "#e5e7eb", width: 1 },
+            stroke: "#9ca3af",
+            values: (_, vals) =>
+              vals.map((v) =>
+                range === "days"
+                  ? new Date(v).toISOString().slice(5, 10)
+                  : new Date(v).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+              ),
+          },
+          {
+            grid: { show: true, stroke: "#e5e7eb", width: 1 },
+            stroke: "#9ca3af",
+          },
+        ],
+        series: [
+          {},
+          { label: "Views", stroke: "#007bff", width: 2 },
+          { label: "Opened video", stroke: "#34d399", width: 2 },
+          { label: "Clicks", stroke: "#10b981", width: 2 },
+        ],
+      };
+
+      plotRef.current?.destroy();
+      plotRef.current = new uPlot(opts, chartData, containerRef.current);
+    };
+
+    render();
+
+    const ro = new ResizeObserver(() => {
+      render();
+    });
+    ro.observe(containerRef.current);
+
+    return () => {
+      ro.disconnect();
+      plotRef.current?.destroy();
+      plotRef.current = null;
+    };
+  }, [chartData, range]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
 }
 
 /* ========= small UI helpers ========= */
