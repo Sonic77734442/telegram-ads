@@ -150,6 +150,7 @@ export default function SearchAdForm() {
       start_date: startDate || null,
       end_date: endDate || null,
       target: targetQueries.join(", "),
+      type: "search",
       updated_at: new Date().toISOString(),
       client_id: clientId,
       agency_id,

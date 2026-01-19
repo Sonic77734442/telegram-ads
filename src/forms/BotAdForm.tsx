@@ -88,6 +88,7 @@ const agency_id = userData?.agency_id || null;
 		created_at: new Date().toISOString(),
 		client_id: clientId,
 		agency_id, // ✅ вот это — ключевой момент!
+		type: "bot",
 	  },
 	]);
     if (error) alert("Ошибка при создании рекламы: " + error.message);

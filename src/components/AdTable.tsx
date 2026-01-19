@@ -204,38 +204,34 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     defaultVisible: true,
     widthClass: "w-[140px]",
     format: (v, row) => {
-      const botTargets = row.target_bots;
-      const botList =
-        Array.isArray(botTargets)
-          ? botTargets
-          : typeof botTargets === "string"
-          ? botTargets
-              .split(",")
-              .map((p) => p.trim())
-              .filter(Boolean)
-          : [];
-
-      if (botList.length > 0) {
-        return `${botList.length} bots`;
-      }
-
-      if (!v) return "—";
-      const raw = String(v);
-      const parts = raw
-        .split("|")
-        .map((p) => p.trim())
-        .filter(Boolean);
-
-      const targetLines = parts.length
-        ? parts
-        : raw
-            .split(",")
+      const parseTargets = (value: unknown) => {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+          return value.map(String).map((p) => p.trim()).filter(Boolean);
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          if (trimmed.startsWith("[")) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) {
+                return parsed.map(String).map((p) => p.trim()).filter(Boolean);
+              }
+            } catch {}
+          }
+          return trimmed
+            .split(/[|,\n]/)
             .map((p) => p.trim())
             .filter(Boolean);
+        }
+        return [];
+      };
 
-      if ((targetLines.length || 0) > 0) {
-        return `${targetLines.length} queries`;
-      }
+      const botList = parseTargets(row.target_bots);
+      if (botList.length > 0) return `${botList.length} bots`;
+
+      const targetList = parseTargets(v);
+      if (targetList.length > 0) return `${targetList.length} queries`;
 
       return "—";
     },
@@ -647,12 +643,15 @@ export default function AdTable() {
                               <div className="flex h-[18px] w-[18px] items-center justify-center rounded bg-gray-100 flex-shrink-0">
                                 <img
                                   src={
-                                    (ad.type || "").toLowerCase() === "bot" ||
-                                    (ad.type || "").toLowerCase() === "bots"
-                                      ? BOT_ICON
-                                      : (ad.type || "").toLowerCase() === "search"
-                                      ? SEARCH_ICON
-                                      : PERSONS_ICON
+                                    (() => {
+                                      const type = (ad.type || "").toLowerCase();
+                                      const hasTarget =
+                                        typeof ad.target === "string" && ad.target.trim().length > 0;
+
+                                      if (type === "bot" || type === "bots") return BOT_ICON;
+                                      if (type === "search" || hasTarget) return SEARCH_ICON;
+                                      return PERSONS_ICON;
+                                    })()
                                   }
                                   className="h-[18px] w-[18px]"
                                   alt=""
