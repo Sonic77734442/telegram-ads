@@ -227,11 +227,17 @@ const TABLE_COLUMNS: ColumnConfig[] = [
       };
 
       const targetList = parseTargets(v);
-      if ((row.type || "").toLowerCase() === "bot" || (row.type || "").toLowerCase() === "bots") {
+      const targetText = typeof v === "string" ? v.toLowerCase() : "";
+      const hasHandles = /t\.me\/|@/.test(targetText);
+      const type = (row.type || "").toLowerCase();
+
+      if (type === "bot" || type === "bots" || hasHandles) {
         return targetList.length > 0 ? `${targetList.length} bots` : "—";
       }
 
-      if (targetList.length > 0) return `${targetList.length} queries`;
+      if (type === "search" || (targetList.length > 0 && !hasHandles)) {
+        return `${targetList.length} queries`;
+      }
 
       return "—";
     },
@@ -644,11 +650,13 @@ export default function AdTable() {
                                   src={
                                     (() => {
                                       const type = (ad.type || "").toLowerCase();
-                                      const hasTarget =
-                                        typeof ad.target === "string" && ad.target.trim().length > 0;
+                                      const targetText =
+                                        typeof ad.target === "string" ? ad.target.toLowerCase() : "";
+                                      const hasHandles = /t\.me\/|@/.test(targetText);
+                                      const hasTarget = targetText.trim().length > 0;
 
-                                      if (type === "bot" || type === "bots") return BOT_ICON;
-                                      if (type === "search" || hasTarget) return SEARCH_ICON;
+                                      if (type === "bot" || type === "bots" || hasHandles) return BOT_ICON;
+                                      if (type === "search" || (hasTarget && !hasHandles)) return SEARCH_ICON;
                                       return PERSONS_ICON;
                                     })()
                                   }
