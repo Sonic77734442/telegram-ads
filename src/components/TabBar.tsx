@@ -14,8 +14,8 @@ export default function TabBar({
   if (!adId) return null;
 
   const linkStyle =
-    "text-sm px-3 py-[6px] rounded-full hover:bg-blue-100 transition";
-  const activeStyle = "bg-blue-500 text-white";
+    "text-[14px] px-3 py-[6px] rounded-full transition";
+  const activeStyle = "bg-[#139af5] text-white";
 
   return (
     <div className="flex items-center justify-between border-b pb-2 px-2">
@@ -26,7 +26,7 @@ export default function TabBar({
             navigate(`/create?id=${adId}`);
             onTabChange("edit");
           }}
-          className={`${linkStyle} ${activeTab === "edit" ? activeStyle : "text-blue-700"}`}
+          className={`${linkStyle} ${activeTab === "edit" ? activeStyle : "text-[#139af5]"}`}
         >
           Info
         </button>
@@ -35,7 +35,7 @@ export default function TabBar({
           to={`/ad/${adId}/stats`}
           onClick={() => onTabChange("stats")}
           className={({ isActive }) =>
-            `${linkStyle} ${isActive ? activeStyle : "text-blue-700"}`
+            `${linkStyle} ${isActive ? activeStyle : "text-[#139af5]"}`
           }
         >
           Statistics

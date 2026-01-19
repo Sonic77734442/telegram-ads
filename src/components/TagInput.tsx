@@ -33,7 +33,7 @@ export default function TagInput({ value, onChange, placeholder }: Props) {
       {value.map((tag) => (
         <span
           key={tag}
-          className="bg-blue-600 text-white text-[11px] px-2 py-[3px] rounded-[3px] cursor-pointer"
+          className="bg-[#139af5] text-white text-[11px] px-2 py-[3px] rounded-[3px] cursor-pointer"
           onClick={() => removeTag(tag)}
         >
           {tag} ✕

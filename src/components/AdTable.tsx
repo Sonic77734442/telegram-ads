@@ -17,6 +17,7 @@ type AdRow = {
   title: string | null;
   status: string | null;
   target?: string | null;
+  target_bots?: string[] | string | null;
   created_at: string;
 
   // метрики
@@ -202,20 +203,41 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     defaultVisible: true,
     widthClass: "w-[140px]",
-    format: (v) => {
+    format: (v, row) => {
+      const botTargets = row.target_bots;
+      const botList =
+        Array.isArray(botTargets)
+          ? botTargets
+          : typeof botTargets === "string"
+          ? botTargets
+              .split(",")
+              .map((p) => p.trim())
+              .filter(Boolean)
+          : [];
+
+      if (botList.length > 0) {
+        return `${botList.length} bots`;
+      }
+
       if (!v) return "—";
-      const parts = String(v)
+      const raw = String(v);
+      const parts = raw
         .split("|")
         .map((p) => p.trim())
         .filter(Boolean);
 
-      return (
-        <div className="flex flex-col text-[11px] text-gray-700">
-          {parts.map((p, i) => (
-            <span key={i}>{p}</span>
-          ))}
-        </div>
-      );
+      const targetLines = parts.length
+        ? parts
+        : raw
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean);
+
+      if ((targetLines.length || 0) > 0) {
+        return `${targetLines.length} queries`;
+      }
+
+      return "—";
     },
   },
   {
@@ -434,6 +456,7 @@ export default function AdTable() {
 
         url: c.url,
         type: c.type,
+        target_bots: c.target_bots,
       }));
 
       setAds(rows);
