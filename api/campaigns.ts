@@ -79,6 +79,24 @@ export default async function handler(req: any, res: any) {
 
     const rows = (data || []) as any[];
 
+    const sumStatsViews = async (adId: string, month?: string | null) => {
+      const { data: statsRows, error: statsError } = await supabase
+        .from("ad_stats")
+        .select("views, timestamp")
+        .eq("ad_id", adId);
+
+      if (statsError || !statsRows) {
+        if (statsError) console.error("ad_stats sum error:", statsError);
+        return 0;
+      }
+
+      return statsRows.reduce((sum: number, r: any) => {
+        const ts = String(r.timestamp ?? "");
+        if (month && !ts.startsWith(`${month}-`)) return sum;
+        return sum + Number(r.views ?? 0);
+      }, 0);
+    };
+
     const items: any[] = [];
     let totalViews = 0;
     let totalClicks = 0;
@@ -132,6 +150,20 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
+      if (spendNetRaw === 0 && views === 0) {
+        const statsViewsTotal = await sumStatsViews(row.id, null);
+        if (statsViewsTotal > 0) {
+          spendNetRaw = (statsViewsTotal * cpmNet) / 1000;
+        }
+      }
+
+      // Re-apply client markup after fallback adjustments.
+      if (!(isClientMode && row.spend_client !== undefined && row.spend_client !== null)) {
+        spendClientRaw = isClientMode
+          ? spendNetRaw * markupMultiplier
+          : spendNetRaw;
+      }
+
       // If view provides spend_client, respect it for clients (lifetime case).
       if (isClientMode && row.spend_client !== undefined && row.spend_client !== null) {
         spendClientRaw = Number(row.spend_client);
@@ -167,6 +199,12 @@ export default async function handler(req: any, res: any) {
           );
           spendNetRaw = amountNetRaw;
           spendClientRaw = isClientMode ? amountClientRaw : amountNetRaw;
+        } else if (Array.isArray(rows) && rows.length === 0) {
+          const statsViewsMonth = await sumStatsViews(row.id, ym);
+          if (statsViewsMonth > 0) {
+            spendNetRaw = (statsViewsMonth * cpmNet) / 1000;
+            spendClientRaw = isClientMode ? spendNetRaw * markupMultiplier : spendNetRaw;
+          }
         }
       }
 
