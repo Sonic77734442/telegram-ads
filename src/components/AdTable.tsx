@@ -645,7 +645,7 @@ export default function AdTable() {
                             className={`p-0 align-middle w-[200px] h-[38px] ${col.widthClass || ""}`}
                           >
                             <div className="flex items-center gap-[6px] w-[200px] h-[38px]">
-                              <div className="flex h-[18px] w-[18px] items-center justify-center rounded bg-gray-100 flex-shrink-0">
+                              <div className="flex h-[18px] w-[18px] items-center justify-center rounded flex-shrink-0">
                                 <img
                                   src={
                                     (() => {
