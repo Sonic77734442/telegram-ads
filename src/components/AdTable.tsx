@@ -645,7 +645,7 @@ export default function AdTable() {
                             key={col.id as string}
                             className={`p-0 align-middle w-[200px] h-[38px] ${col.widthClass || ""}`}
                           >
-                            <div className="flex items-center gap-[6px] w-[200px] h-[38px]">
+                            <div className="flex items-center gap-[6px] w-[200px] h-[38px] pl-[15px]">
                               <div className="flex h-[18px] w-[18px] items-center justify-center rounded flex-shrink-0">
                                 <img
                                   src={
