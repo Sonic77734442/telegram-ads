@@ -595,7 +595,7 @@ export default function AdTable() {
                               <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
                                 <polygon points="3.5,0 7,4 0,4" fill="currentColor" />
                               </svg>
-                              <span className="h-[1px]" />
+                              <span className="h-[0.5px]" />
                               <svg width="7" height="4" viewBox="0 0 7 4" aria-hidden="true">
                                 <polygon points="0,0 7,0 3.5,4" fill="currentColor" />
                               </svg>
