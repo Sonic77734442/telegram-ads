@@ -77,28 +77,31 @@ export default async function handler(req: any, res: any) {
       amount: number;
     }[];
 
-    // Fallback for search/bot campaigns without reports: estimate from daily stats * CPM.
+    // Fallback for search/bot campaigns without reports: try ad_stats amount by day.
     if (rows.length === 0) {
-      const { data: statsData, error: statsError } = await supabase.rpc(
-        "get_daily_ad_stats",
-        { input_ad_id: ad_id }
-      );
+      const { data: statsRows, error: statsError } = await supabase
+        .from("ad_stats")
+        .select("timestamp, views, amount")
+        .eq("ad_id", ad_id);
 
-      if (!statsError && Array.isArray(statsData)) {
-        const cpmNet = Number(campaignRow?.cpm ?? 0);
-        const fallback = statsData
-          .filter((r: any) => String(r.date || "").startsWith(`${ym}-`))
-          .map((r: any) => {
-            const views = Number(r.views ?? 0);
-            const amount = (views / 1000) * cpmNet;
-            return {
-              day: r.date,
-              views,
-              amount,
-            };
-          });
-
-        rows = fallback;
+      if (!statsError && Array.isArray(statsRows) && statsRows.length > 0) {
+        const byDay = new Map<string, { views: number; amount: number }>();
+        for (const r of statsRows) {
+          const ts = String(r.timestamp ?? "");
+          if (!ts.startsWith(`${ym}-`)) continue;
+          const day = ts.slice(0, 10);
+          const views = Number(r.views ?? 0);
+          const amount = Number(r.amount ?? 0);
+          const current = byDay.get(day) || { views: 0, amount: 0 };
+          current.views += views;
+          current.amount += amount;
+          byDay.set(day, current);
+        }
+        rows = Array.from(byDay.entries()).map(([day, v]) => ({
+          day,
+          views: v.views,
+          amount: v.amount,
+        }));
       }
     }
 

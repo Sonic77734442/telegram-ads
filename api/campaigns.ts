@@ -79,22 +79,27 @@ export default async function handler(req: any, res: any) {
 
     const rows = (data || []) as any[];
 
-    const sumStatsViews = async (adId: string, month?: string | null) => {
+    const sumStatsAmount = async (adId: string, month?: string | null) => {
       const { data: statsRows, error: statsError } = await supabase
         .from("ad_stats")
-        .select("views, timestamp")
+        .select("views, amount, timestamp")
         .eq("ad_id", adId);
 
       if (statsError || !statsRows) {
         if (statsError) console.error("ad_stats sum error:", statsError);
-        return 0;
+        return { views: 0, amount: 0 };
       }
 
-      return statsRows.reduce((sum: number, r: any) => {
-        const ts = String(r.timestamp ?? "");
-        if (month && !ts.startsWith(`${month}-`)) return sum;
-        return sum + Number(r.views ?? 0);
-      }, 0);
+      return statsRows.reduce(
+        (sum: { views: number; amount: number }, r: any) => {
+          const ts = String(r.timestamp ?? "");
+          if (month && !ts.startsWith(`${month}-`)) return sum;
+          sum.views += Number(r.views ?? 0);
+          sum.amount += Number(r.amount ?? 0);
+          return sum;
+        },
+        { views: 0, amount: 0 }
+      );
     };
 
     const items: any[] = [];
@@ -151,9 +156,11 @@ export default async function handler(req: any, res: any) {
           : 0;
 
       if (spendNetRaw === 0 && views === 0) {
-        const statsViewsTotal = await sumStatsViews(row.id, null);
-        if (statsViewsTotal > 0) {
-          spendNetRaw = (statsViewsTotal * cpmNet) / 1000;
+        const statsTotals = await sumStatsAmount(row.id, null);
+        if (statsTotals.amount > 0) {
+          spendNetRaw = statsTotals.amount;
+        } else if (statsTotals.views > 0) {
+          spendNetRaw = (statsTotals.views * cpmNet) / 1000;
         }
       }
 
@@ -200,9 +207,12 @@ export default async function handler(req: any, res: any) {
           spendNetRaw = amountNetRaw;
           spendClientRaw = isClientMode ? amountClientRaw : amountNetRaw;
         } else if (Array.isArray(rows) && rows.length === 0) {
-          const statsViewsMonth = await sumStatsViews(row.id, ym);
-          if (statsViewsMonth > 0) {
-            spendNetRaw = (statsViewsMonth * cpmNet) / 1000;
+          const statsTotals = await sumStatsAmount(row.id, ym);
+          if (statsTotals.amount > 0) {
+            spendNetRaw = statsTotals.amount;
+            spendClientRaw = isClientMode ? spendNetRaw * markupMultiplier : spendNetRaw;
+          } else if (statsTotals.views > 0) {
+            spendNetRaw = (statsTotals.views * cpmNet) / 1000;
             spendClientRaw = isClientMode ? spendNetRaw * markupMultiplier : spendNetRaw;
           }
         }
