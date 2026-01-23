@@ -249,7 +249,10 @@ const multiplier =
     return base.toFixed(2);
   })();
   
-    const displayCpm = (() => {
+  const displayCpm = (() => {
+    if (reportsTotal.views > 0 && reportsTotal.amount > 0) {
+      return ((reportsTotal.amount * 1000) / reportsTotal.views).toFixed(2);
+    }
     const base = Number(ad?.cpm ?? 0);
     if (!base) return "0.00";
     return (base * multiplier).toFixed(2);

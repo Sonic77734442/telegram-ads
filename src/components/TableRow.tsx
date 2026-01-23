@@ -18,10 +18,8 @@ const TableRow = ({ ad }: { ad: Ad }) => {
     window.location.reload(); // можно заменить на обновление через стейт
   };
   
-  const role = import.meta.env.VITE_ROLE;
-
-const displayCPM = role === "client" ? (ad.cpm * 1.2).toFixed(2) : ad.cpm.toFixed(2);
-const displayBudget = role === "client" ? (ad.budget * 1.2).toFixed(2) : ad.budget.toFixed(2);
+  const displayCPM = Number(ad.cpm || 0).toFixed(2);
+  const displayBudget = Number(ad.budget || 0).toFixed(2);
 
   return (
     <tr className="border-b hover:bg-gray-50 text-sm">

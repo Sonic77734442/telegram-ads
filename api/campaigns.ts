@@ -111,7 +111,7 @@ export default async function handler(req: any, res: any) {
     const isClientMode = resolvedMode === "client";
 
     for (const row of rows) {
-      const views = Number(row.views ?? 0);
+      let views = Number(row.views ?? 0);
       const clicks = Number(row.clicks ?? row.actions ?? 0);
 
       // поддержка вьюхи с полями *_net / *_client и наследие
@@ -119,7 +119,7 @@ export default async function handler(req: any, res: any) {
         row.cpm_client !== undefined && row.cpm_client !== null
           ? Number(row.cpm_client)
           : null;
-      const cpmNet =
+      let cpmNet =
         row.cpm_net !== undefined && row.cpm_net !== null
           ? Number(row.cpm_net)
           : Number(row.cpm ?? 0);
@@ -155,20 +155,17 @@ export default async function handler(req: any, res: any) {
           ? (views * cpmNet) / 1000
           : 0;
 
-      if (spendNetRaw === 0 && views === 0) {
+      // If we have manual stats (ad_stats), prefer them for lifetime CPM/spend.
+      if (!ym) {
         const statsTotals = await sumStatsAmount(row.id, null);
+        if (statsTotals.views > 0) {
+          views = statsTotals.views;
+        }
         if (statsTotals.amount > 0) {
           spendNetRaw = statsTotals.amount;
-        } else if (statsTotals.views > 0) {
+        } else if (spendNetRaw === 0 && statsTotals.views > 0) {
           spendNetRaw = (statsTotals.views * cpmNet) / 1000;
         }
-      }
-
-      // Re-apply client markup after fallback adjustments.
-      if (!(isClientMode && row.spend_client !== undefined && row.spend_client !== null)) {
-        spendClientRaw = isClientMode
-          ? spendNetRaw * markupMultiplier
-          : spendNetRaw;
       }
 
       // If view provides spend_client, respect it for clients (lifetime case).
@@ -204,6 +201,13 @@ export default async function handler(req: any, res: any) {
               ),
             0
           );
+          const viewsForMonth = rows.reduce(
+            (sum: number, r: any) => sum + Number(r.views ?? 0),
+            0
+          );
+          if (viewsForMonth > 0) {
+            views = viewsForMonth;
+          }
           spendNetRaw = amountNetRaw;
           spendClientRaw = isClientMode ? amountClientRaw : amountNetRaw;
         } else if (Array.isArray(rows) && rows.length === 0) {
@@ -215,11 +219,21 @@ export default async function handler(req: any, res: any) {
             spendNetRaw = (statsTotals.views * cpmNet) / 1000;
             spendClientRaw = isClientMode ? spendNetRaw * markupMultiplier : spendNetRaw;
           }
+          if (statsTotals.views > 0) {
+            views = statsTotals.views;
+          }
         }
       }
 
+      // Recompute CPM when we have real spend/views (dynamic CPM).
+      if (views > 0 && spendNetRaw > 0) {
+        cpmNet = Number(((spendNetRaw * 1000) / views).toFixed(4));
+      }
+
       const cpmClient =
-        cpmClientRaw !== null
+        views > 0 && spendClientRaw > 0
+          ? Number(((spendClientRaw * 1000) / views).toFixed(4))
+          : cpmClientRaw !== null
           ? cpmClientRaw
           : isClientMode
           ? Number((cpmNet * markupMultiplier).toFixed(4))

@@ -30,6 +30,7 @@ export default function AdminDashboard() {
   const [statDate, setStatDate] = useState<string>("");
   const [statViews, setStatViews] = useState<string>("");
   const [statClicks, setStatClicks] = useState<string>("");
+  const [statCpm, setStatCpm] = useState<string>("");
 
   // === Глобальный бюджет ===
   useEffect(() => {
@@ -140,13 +141,15 @@ export default function AdminDashboard() {
 
   // === Добавление дневной статистики ===
   const handleAddDailyStat = async () => {
-    if (!statAdId || !statDate || !statViews) {
-      alert("Выбери кампанию, дату и укажи просмотры");
+    if (!statAdId || !statDate || !statViews || !statCpm) {
+      alert("Выбери кампанию, дату и укажи просмотры и CPM");
       return;
     }
 
     const viewsNum = Number(statViews) || 0;
     const clicksNum = Number(statClicks) || 0;
+    const cpmNum = Number(statCpm) || 0;
+    const amountNum = (viewsNum * cpmNum) / 1000;
 
     try {
       // 1. Вставляем строку в ad_stats
@@ -156,6 +159,7 @@ export default function AdminDashboard() {
           timestamp: new Date(statDate + "T00:00:00").toISOString(),
           views: viewsNum,
           clicks: clicksNum,
+          amount: amountNum,
         },
       ]);
 
@@ -205,6 +209,7 @@ export default function AdminDashboard() {
       // 4. Сброс формы + обновление списка
       setStatViews("");
       setStatClicks("");
+      setStatCpm("");
       // дату можно не сбрасывать, удобно вводить подряд
       fetchAds();
     } catch (e: any) {
@@ -509,6 +514,15 @@ export default function AdminDashboard() {
             placeholder="Clicks"
             value={statClicks}
             onChange={(e) => setStatClicks(e.target.value)}
+          />
+
+          <input
+            type="number"
+            step="0.01"
+            className="border rounded px-2 py-1 w-28"
+            placeholder="CPM"
+            value={statCpm}
+            onChange={(e) => setStatCpm(e.target.value)}
           />
 
           <button
