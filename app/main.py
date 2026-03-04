@@ -2830,11 +2830,22 @@ def _meta_fetch_account_billing(account_external_id: str) -> Dict[str, object]:
         raise HTTPException(status_code=502, detail=f"Meta account billing error: {resp.text}")
 
     data = resp.json()
-    spend = float(data.get("amount_spent") or 0)
+    currency = data.get("currency") or "USD"
+
+    def _meta_money_from_minor(value: object) -> float:
+        try:
+            raw = float(value or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        zero_decimal = {"JPY", "KRW", "VND", "CLP", "PYG", "UGX", "XAF", "XOF", "XPF"}
+        divisor = 1 if currency in zero_decimal else 100
+        return raw / divisor
+
+    spend = _meta_money_from_minor(data.get("amount_spent"))
     spend_cap_raw = data.get("spend_cap")
     spend_cap = None
     try:
-        spend_cap_value = float(spend_cap_raw) if spend_cap_raw not in (None, "") else None
+        spend_cap_value = _meta_money_from_minor(spend_cap_raw) if spend_cap_raw not in (None, "") else None
         if spend_cap_value and spend_cap_value > 0:
             spend_cap = spend_cap_value
     except (TypeError, ValueError):
@@ -2842,7 +2853,7 @@ def _meta_fetch_account_billing(account_external_id: str) -> Dict[str, object]:
 
     payload = {
         "provider": "meta",
-        "currency": data.get("currency") or "USD",
+        "currency": currency,
         "spend": spend,
         "limit": spend_cap,
         "balance": max(spend_cap - spend, 0.0) if spend_cap is not None else None,
