@@ -158,7 +158,7 @@ function renderClientSummary(userId, email, requests, topups, accounts, profile)
   if (!clientSummary) return
   const pendingCount = Array.isArray(requests) ? requests.length : 0
   const completedTotal = Array.isArray(topups)
-    ? topups.reduce((sum, row) => sum + Number(row.amount_net || 0), 0)
+    ? topups.reduce((sum, row) => sum + Number(row.amount_net != null ? row.amount_net : row.amount_input || 0), 0)
     : 0
   const accountsCount = Array.isArray(accounts) ? accounts.length : 0
   const company = profile?.company || '—'
@@ -245,10 +245,25 @@ function renderClientTopups(rows) {
     .join('')
 }
 
+function formatLiveBillingCell(liveBilling, fallbackCurrency) {
+  if (!liveBilling) return '—'
+  if (liveBilling.error) return '<span class="muted small">Ошибка API</span>'
+  const currency = liveBilling.currency || fallbackCurrency || ''
+  const balance = liveBilling.balance
+  const spend = liveBilling.spend
+  const limit = liveBilling.limit
+  if (balance == null && spend == null && limit == null) return '<span class="muted small">Нет данных</span>'
+  const lines = []
+  lines.push(balance == null ? '—' : `${formatMoney(balance)} ${currency}`)
+  if (spend != null) lines.push(`<div class="muted small">Потрачено: ${formatMoney(spend)} ${currency}</div>`)
+  if (limit != null) lines.push(`<div class="muted small">Лимит: ${formatMoney(limit)} ${currency}</div>`)
+  return lines.join('')
+}
+
 function renderClientAccounts(rows) {
   if (!clientAccounts) return
   if (!rows || rows.length === 0) {
-    clientAccounts.innerHTML = `<tr><td colspan="5" class="muted">Нет аккаунтов.</td></tr>`
+    clientAccounts.innerHTML = `<tr><td colspan="6" class="muted">Нет аккаунтов.</td></tr>`
     return
   }
   clientAccounts.innerHTML = rows
@@ -260,6 +275,7 @@ function renderClientAccounts(rows) {
           <td>${row.account_code || '—'}</td>
           <td>${row.currency || '—'}</td>
           <td>${row.budget_total != null ? `${formatMoney(row.budget_total)} ${row.currency || ''}` : '—'}</td>
+          <td>${formatLiveBillingCell(row.live_billing, row.currency)}</td>
         </tr>
       `
     )
@@ -393,4 +409,3 @@ function formatDate(value) {
 }
 
 fetchClients()
-

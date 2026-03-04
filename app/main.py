@@ -36,6 +36,8 @@ _R2_CLIENT = None
 _BCC_RATES_CACHE = {"ts": 0.0, "data": None}
 _BCC_RATES_TTL_SEC = 900
 _BCC_TOKEN_CACHE = {"token": None, "expires_at": 0.0}
+_LIVE_BILLING_CACHE: Dict[str, Dict[str, object]] = {}
+_LIVE_BILLING_TTL_SEC = 300
 
 
 def _default_fee_config() -> Dict[str, Optional[float]]:
@@ -2791,6 +2793,65 @@ def _meta_fetch_daily(account_external_id: str, date_from: str, date_to: str) ->
     return data.get("data", [])
 
 
+def _live_billing_cache_get(key: str) -> Optional[Dict[str, object]]:
+    item = _LIVE_BILLING_CACHE.get(key)
+    if not item:
+        return None
+    if time.time() - float(item.get("ts") or 0) > _LIVE_BILLING_TTL_SEC:
+        _LIVE_BILLING_CACHE.pop(key, None)
+        return None
+    data = item.get("data")
+    return dict(data) if isinstance(data, dict) else None
+
+
+def _live_billing_cache_set(key: str, data: Dict[str, object]) -> Dict[str, object]:
+    payload = dict(data)
+    _LIVE_BILLING_CACHE[key] = {"ts": time.time(), "data": payload}
+    return dict(payload)
+
+
+def _meta_fetch_account_billing(account_external_id: str) -> Dict[str, object]:
+    cache_key = f"meta:{account_external_id}"
+    cached = _live_billing_cache_get(cache_key)
+    if cached:
+        return cached
+
+    token = os.getenv("META_ACCESS_TOKEN")
+    if not token:
+        raise HTTPException(status_code=500, detail="META_ACCESS_TOKEN is not set")
+
+    url = f"https://graph.facebook.com/v20.0/act_{account_external_id}"
+    params = {
+        "access_token": token,
+        "fields": "account_id,amount_spent,spend_cap,currency",
+    }
+    resp = httpx.get(url, params=params, timeout=20)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Meta account billing error: {resp.text}")
+
+    data = resp.json()
+    spend = float(data.get("amount_spent") or 0)
+    spend_cap_raw = data.get("spend_cap")
+    spend_cap = None
+    try:
+        spend_cap_value = float(spend_cap_raw) if spend_cap_raw not in (None, "") else None
+        if spend_cap_value and spend_cap_value > 0:
+            spend_cap = spend_cap_value
+    except (TypeError, ValueError):
+        spend_cap = None
+
+    payload = {
+        "provider": "meta",
+        "currency": data.get("currency") or "USD",
+        "spend": spend,
+        "limit": spend_cap,
+        "balance": max(spend_cap - spend, 0.0) if spend_cap is not None else None,
+        "source": "meta_api",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+    }
+    return _live_billing_cache_set(cache_key, payload)
+
+
 def _google_ads_client() -> GoogleAdsClient:
     developer_token = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")
     client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
@@ -2852,6 +2913,95 @@ def _google_fetch_insights(customer_id: str, date_from: str, date_to: str) -> Tu
             }
         )
     return campaigns, currency
+
+
+def _google_normalize_customer_id(customer_id: str) -> str:
+    return "".join(ch for ch in str(customer_id or "") if ch.isdigit())
+
+
+def _google_fetch_account_billing(customer_id: str) -> Dict[str, object]:
+    normalized_customer_id = _google_normalize_customer_id(customer_id)
+    cache_key = f"google:{normalized_customer_id}"
+    cached = _live_billing_cache_get(cache_key)
+    if cached:
+        return cached
+
+    client = _google_ads_client()
+    ga_service = client.get_service("GoogleAdsService")
+
+    currency = "USD"
+    currency_query = "SELECT customer.currency_code FROM customer LIMIT 1"
+    for row in ga_service.search(customer_id=normalized_customer_id, query=currency_query):
+        currency = row.customer.currency_code or currency
+        break
+
+    query = """
+        SELECT
+          account_budget.id,
+          account_budget.approved_spending_limit_micros,
+          account_budget.adjusted_spending_limit_micros,
+          account_budget.amount_served_micros
+        FROM account_budget
+        ORDER BY account_budget.id DESC
+        LIMIT 1
+    """
+    rows = list(ga_service.search(customer_id=normalized_customer_id, query=query))
+    if not rows:
+        payload = {
+            "provider": "google",
+            "currency": currency,
+            "spend": None,
+            "limit": None,
+            "balance": None,
+            "source": "google_ads_api",
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }
+        return _live_billing_cache_set(cache_key, payload)
+
+    budget = rows[0].account_budget
+    spend = float(budget.amount_served_micros or 0) / 1_000_000
+    adjusted_limit = float(budget.adjusted_spending_limit_micros or 0) / 1_000_000
+    approved_limit = float(budget.approved_spending_limit_micros or 0) / 1_000_000
+    limit = adjusted_limit or approved_limit or None
+
+    payload = {
+        "provider": "google",
+        "currency": currency,
+        "spend": spend,
+        "limit": limit,
+        "balance": max(limit - spend, 0.0) if limit is not None else None,
+        "source": "google_ads_api",
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+    }
+    return _live_billing_cache_set(cache_key, payload)
+
+
+def _attach_live_billing(account: Dict[str, object]) -> Dict[str, object]:
+    payload = dict(account)
+    platform = str(payload.get("platform") or "").lower().strip()
+    external_id = payload.get("external_id") or payload.get("account_code")
+    payload["live_billing"] = None
+    if not external_id or platform not in {"meta", "google"}:
+        return payload
+
+    try:
+        if platform == "meta":
+            payload["live_billing"] = _meta_fetch_account_billing(str(external_id))
+        elif platform == "google":
+            payload["live_billing"] = _google_fetch_account_billing(str(external_id))
+    except Exception as exc:
+        logging.exception("Failed to fetch live billing for %s account %s", platform, external_id)
+        payload["live_billing"] = {
+            "provider": platform,
+            "error": str(exc),
+            "source": f"{platform}_api",
+            "updated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    return payload
+
+
+def _attach_live_billing_many(rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    return [_attach_live_billing(row) for row in rows]
 
 
 def _google_fetch_audience_age_gender(customer_id: str, date_from: str, date_to: str) -> Tuple[List[Dict[str, object]], Optional[str]]:
@@ -5077,7 +5227,7 @@ def admin_list_accounts(admin_user=Depends(get_admin_user)):
             ORDER BY a.created_at DESC
             """
         ).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_live_billing_many([dict(row) for row in rows])
 
 
 @app.post("/admin/accounts")
@@ -5187,7 +5337,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
             SELECT u.id, u.email,
               COALESCE(SUM(CASE WHEN t.seen_by_admin=0 THEN 1 ELSE 0 END), 0) as unread_topups,
               COALESCE(SUM(CASE WHEN t.status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
-              COALESCE(SUM(CASE WHEN t.status='completed' THEN t.amount_net ELSE 0 END), 0) as completed_total,
+              COALESCE(SUM(CASE WHEN t.status='completed' THEN COALESCE(t.amount_net, t.amount_input) ELSE 0 END), 0) as completed_total,
               COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
               MAX(t.created_at) as last_activity
             FROM users u
@@ -5350,7 +5500,7 @@ def admin_client_accounts(user_id: int, admin_user=Depends(get_admin_user)):
             """,
             (user_id,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_live_billing_many([dict(row) for row in rows])
 
 
 @app.get("/admin/clients/{user_id}/profile")
@@ -5821,7 +5971,7 @@ def list_accounts(current_user=Depends(get_current_user)):
         params: List[object] = [current_user["id"]]
         query += " ORDER BY created_at DESC"
         rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_live_billing_many([dict(row) for row in rows])
 
 
 @app.post("/accounts")

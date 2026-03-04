@@ -36,6 +36,26 @@ function handleAuthFailure(res) {
   return false
 }
 
+function formatMoney(value) {
+  const num = Number(value || 0)
+  return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatLiveBillingCell(liveBilling, fallbackCurrency) {
+  if (!liveBilling) return '—'
+  if (liveBilling.error) return '<span class="muted small">Ошибка API</span>'
+  const currency = liveBilling.currency || fallbackCurrency || ''
+  const balance = liveBilling.balance
+  const spend = liveBilling.spend
+  const limit = liveBilling.limit
+  if (balance == null && spend == null && limit == null) return '<span class="muted small">Нет данных</span>'
+  const lines = []
+  lines.push(balance == null ? '—' : `${formatMoney(balance)} ${currency}`)
+  if (spend != null) lines.push(`<div class="muted small">Потрачено: ${formatMoney(spend)} ${currency}</div>`)
+  if (limit != null) lines.push(`<div class="muted small">Лимит: ${formatMoney(limit)} ${currency}</div>`)
+  return lines.join('')
+}
+
 async function fetchAccounts() {
   try {
     const res = await fetch(`${apiBase}/admin/accounts`, { headers: authHeadersSafe() })
@@ -60,6 +80,7 @@ function renderAccounts(rows) {
         <td>${row.name}</td>
         <td>${row.account_code || '—'}</td>
         <td>${row.external_id || '—'}</td>
+        <td>${formatLiveBillingCell(row.live_billing, row.currency)}</td>
         <td style="text-align:right;">
           <button class="btn ghost small" data-edit="1"
             data-id="${row.id}"

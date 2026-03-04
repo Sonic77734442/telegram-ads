@@ -341,13 +341,15 @@ function renderOpenAccounts() {
       row.budget == null
         ? '—'
         : `${Number(row.budget).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.currency || 'USD'}`
-    const accountLabel = row.account_ref ? `${row.account_id}<div class="muted small">ID: ${row.account_ref}</div>` : row.account_id
+    const liveBillingLabel = formatLiveBillingCell(row.live_billing, row.currency)
     tr.innerHTML = `
       <td>${platformLabel(row.platform)}</td>
-      <td>${accountLabel}</td>
+      <td>${row.account_id}</td>
+      <td>${row.account_ref || '—'}</td>
       <td>${row.company}</td>
       <td>${row.email}</td>
       <td>${budgetLabel}</td>
+      <td>${liveBillingLabel}</td>
       <td><span class="status ${statusClass(row.status)}">${row.status}</span></td>
       <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end;">
         ${
@@ -384,6 +386,21 @@ function renderOpenAccounts() {
   }
 }
 
+function formatLiveBillingCell(liveBilling, fallbackCurrency) {
+  if (!liveBilling) return '—'
+  if (liveBilling.error) return '<span class="muted small">Ошибка API</span>'
+  const currency = liveBilling.currency || fallbackCurrency || ''
+  const balance = liveBilling.balance
+  const spend = liveBilling.spend
+  const limit = liveBilling.limit
+  if (balance == null && spend == null && limit == null) return '<span class="muted small">Нет данных</span>'
+  const lines = []
+  lines.push(balance == null ? '—' : `${formatMoneyAmount(balance)} ${currency}`)
+  if (spend != null) lines.push(`<div class="muted small">Потрачено: ${formatMoneyAmount(spend)} ${currency}</div>`)
+  if (limit != null) lines.push(`<div class="muted small">Лимит: ${formatMoneyAmount(limit)} ${currency}</div>`)
+  return lines.join('')
+}
+
 function normalizeAccountStatus(status) {
   if (!status) return 'На модерации'
   if (status === 'pending') return 'На модерации'
@@ -416,6 +433,7 @@ function syncOpenAccounts() {
       account_id: acc.name || acc.external_id || `Аккаунт #${acc.id}`,
       account_ref: acc.external_id || acc.account_code || acc.id,
       account_db_id: acc.id,
+      live_billing: acc.live_billing || null,
       company: '',
       email: '—',
       budget: acc.budget_total ?? null,
