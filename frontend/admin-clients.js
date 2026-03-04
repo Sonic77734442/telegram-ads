@@ -155,25 +155,8 @@ async function fetchClientFees(userId) {
 }
 
 function getTopupAccountAmount(row) {
-  const amountInput = Number(row?.amount_input || 0)
-  const amountNetRaw = row?.amount_net
-  const amountNet = amountNetRaw != null ? Number(amountNetRaw) : null
-  const fxRate = row?.fx_rate != null ? Number(row.fx_rate) : null
-  const accountCurrency = String(row?.account_currency || row?.currency || 'USD').toUpperCase()
-  const inputCurrency = String(row?.currency || '').toUpperCase()
-
-  if (accountCurrency === inputCurrency) {
-    return amountNet != null ? amountNet : amountInput
-  }
-
-  if (fxRate && fxRate > 0) {
-    const calculated = amountInput / fxRate
-    if (amountNet == null) return calculated
-    if (amountNet > amountInput * 0.95) return calculated
-    return amountNet
-  }
-
-  return amountNet
+  if (row?.amount_account != null) return Number(row.amount_account)
+  return row?.amount_net != null ? Number(row.amount_net) : Number(row?.amount_input || 0)
 }
 
 function renderClientSummary(userId, email, requests, topups, accounts, profile) {

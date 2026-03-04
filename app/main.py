@@ -3015,6 +3015,49 @@ def _attach_live_billing_many(rows: List[Dict[str, object]]) -> List[Dict[str, o
     return [_attach_live_billing(row) for row in rows]
 
 
+def _resolve_topup_account_amount(row: Dict[str, object]) -> Optional[float]:
+    amount_input = row.get("amount_input")
+    amount_net = row.get("amount_net")
+    fx_rate = row.get("fx_rate")
+    input_currency = str(row.get("currency") or "").upper()
+    account_currency = str(row.get("account_currency") or row.get("currency") or "").upper()
+
+    try:
+        amount_input_value = float(amount_input) if amount_input is not None else None
+    except (TypeError, ValueError):
+        amount_input_value = None
+    try:
+        amount_net_value = float(amount_net) if amount_net is not None else None
+    except (TypeError, ValueError):
+        amount_net_value = None
+    try:
+        fx_rate_value = float(fx_rate) if fx_rate is not None else None
+    except (TypeError, ValueError):
+        fx_rate_value = None
+
+    if account_currency and input_currency and account_currency == input_currency:
+        return amount_net_value if amount_net_value is not None else amount_input_value
+
+    if fx_rate_value and fx_rate_value > 0 and amount_input_value is not None:
+        calculated = amount_input_value / fx_rate_value
+        if amount_net_value is None:
+            return calculated
+        if amount_net_value > amount_input_value * 0.95:
+            return calculated
+        return amount_net_value
+
+    return amount_net_value if amount_net_value is not None else amount_input_value
+
+
+def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    prepared = []
+    for row in rows:
+      payload = dict(row)
+      payload["amount_account"] = _resolve_topup_account_amount(payload)
+      prepared.append(payload)
+    return prepared
+
+
 def _google_fetch_audience_age_gender(customer_id: str, date_from: str, date_to: str) -> Tuple[List[Dict[str, object]], Optional[str]]:
     client = _google_ads_client()
     ga_service = client.get_service("GoogleAdsService")
@@ -5335,7 +5378,7 @@ def admin_list_topups(admin_user=Depends(get_admin_user)):
             ORDER BY t.created_at DESC
             """
         ).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_topup_account_amount([dict(row) for row in rows])
 
 
 @app.get("/admin/clients")
@@ -5476,7 +5519,7 @@ def admin_client_requests(user_id: int, admin_user=Depends(get_admin_user)):
             """,
             (user_id,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_topup_account_amount([dict(row) for row in rows])
 
 
 @app.get("/admin/clients/{user_id}/topups")
@@ -5494,7 +5537,7 @@ def admin_client_topups(user_id: int, admin_user=Depends(get_admin_user)):
             """,
             (user_id,),
         ).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_topup_account_amount([dict(row) for row in rows])
 
 
 @app.get("/admin/clients/{user_id}/accounts")
@@ -6030,7 +6073,7 @@ def list_topups(account_id: Optional[int] = None, status: Optional[str] = None, 
         params.append(current_user["id"])
         query += " ORDER BY t.created_at DESC"
         rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+        return _attach_topup_account_amount([dict(row) for row in rows])
 
 
 class TopupCreatePayload(BaseModel):
@@ -6086,7 +6129,10 @@ def create_topup(payload: TopupCreatePayload, current_user=Depends(get_current_u
                     f"Максимальная сумма пополнения при текущей комиссии: {max_input:.2f} {currency}."
                 ),
             )
-        amount_net = amount_input
+        if fx_rate and fx_rate > 0 and str(acc["currency"] or currency).upper() != str(currency).upper():
+            amount_net = amount_input / fx_rate
+        else:
+            amount_net = amount_input
         cur = conn.execute(
             """
             INSERT INTO topups (account_id, user_id, amount_input, fee_percent, vat_percent, amount_net, currency, fx_rate, status, seen_by_admin)
