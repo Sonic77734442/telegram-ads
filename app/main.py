@@ -266,6 +266,33 @@ def _convert_amount_to_usd(amount: object, currency: object, rates_data: Optiona
     return None
 
 
+def _convert_amount_to_kzt(amount: object, currency: object, rates_data: Optional[Dict[str, object]] = None) -> Optional[float]:
+    try:
+        value = float(amount) if amount is not None else None
+    except (TypeError, ValueError):
+        return None
+    if value is None:
+        return None
+
+    code = str(currency or "KZT").upper()
+    if code == "KZT":
+        return value
+
+    if code == "USD":
+        usd_rate = _get_marked_bcc_sell_rate("USD", rates_data)
+        if not usd_rate or usd_rate <= 0:
+            return None
+        return value * usd_rate
+
+    if code == "EUR":
+        eur_rate = _get_marked_bcc_sell_rate("EUR", rates_data)
+        if not eur_rate or eur_rate <= 0:
+            return None
+        return value * eur_rate
+
+    return None
+
+
 def _r2_upload_fileobj(key: str, fileobj, content_type: str = "application/pdf") -> str:
     client = _r2_client()
     bucket_name = _r2_bucket()
@@ -3110,6 +3137,7 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
         payload["amount_account"] = _resolve_topup_account_amount(payload)
         account_currency = payload.get("account_currency") or payload.get("currency") or "USD"
         payload["amount_account_usd"] = _convert_amount_to_usd(payload.get("amount_account"), account_currency, rates_data)
+        payload["amount_account_kzt"] = _convert_amount_to_kzt(payload.get("amount_account"), account_currency, rates_data)
         prepared.append(payload)
     return prepared
 
@@ -5480,21 +5508,21 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
             """
         ).fetchall()
         prepared_topups = _attach_topup_account_amount([dict(row) for row in topup_rows])
-        totals_usd: Dict[int, float] = {}
+        totals_kzt: Dict[int, float] = {}
         for row in prepared_topups:
             try:
                 user_id = int(row.get("user_id"))
             except (TypeError, ValueError):
                 continue
             try:
-                amount_usd = float(row.get("amount_account_usd") or 0.0)
+                amount_kzt = float(row.get("amount_account_kzt") or 0.0)
             except (TypeError, ValueError):
-                amount_usd = 0.0
-            totals_usd[user_id] = totals_usd.get(user_id, 0.0) + amount_usd
+                amount_kzt = 0.0
+            totals_kzt[user_id] = totals_kzt.get(user_id, 0.0) + amount_kzt
         for row in clients:
-            total_usd = totals_usd.get(int(row["id"]), 0.0)
-            row["completed_total_usd"] = total_usd
-            row["completed_total"] = total_usd
+            total_kzt = totals_kzt.get(int(row["id"]), 0.0)
+            row["completed_total_kzt"] = total_kzt
+            row["completed_total"] = total_kzt
         return clients
 
 
