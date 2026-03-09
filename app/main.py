@@ -1741,6 +1741,57 @@ def _format_date_ru(dt: datetime) -> str:
     )
 
 
+def _repair_mojibake_text(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    text = value
+    if not text:
+        return text
+    # Typical case: UTF-8 text was decoded as cp1251 and later saved as unicode.
+    try:
+        repaired = text.encode("cp1251").decode("utf-8")
+        if repaired and repaired != text:
+            return repaired
+    except Exception:
+        pass
+    return text
+
+
+_CYR_TO_LAT_MAP = str.maketrans(
+    {
+        "А": "A",
+        "В": "B",
+        "С": "C",
+        "Е": "E",
+        "Н": "H",
+        "К": "K",
+        "М": "M",
+        "О": "O",
+        "Р": "P",
+        "Т": "T",
+        "Х": "X",
+        "У": "Y",
+        "а": "A",
+        "в": "B",
+        "с": "C",
+        "е": "E",
+        "н": "H",
+        "к": "K",
+        "м": "M",
+        "о": "O",
+        "р": "P",
+        "т": "T",
+        "х": "X",
+        "у": "Y",
+    }
+)
+
+
+def _normalize_ascii_code(value: object) -> str:
+    text = str(_repair_mojibake_text(value) or "").strip().translate(_CYR_TO_LAT_MAP).upper()
+    return "".join(ch for ch in text if ("A" <= ch <= "Z") or ch.isdigit())
+
+
 def _get_company_profile(conn) -> Dict[str, object]:
     row = conn.execute("SELECT * FROM company_profile WHERE id=1").fetchone()
     base = {
@@ -1759,6 +1810,16 @@ def _get_company_profile(conn) -> Dict[str, object]:
         for key in base:
             if row[key] is not None:
                 base[key] = row[key]
+    base["name"] = _repair_mojibake_text(base.get("name"))
+    base["bank"] = _repair_mojibake_text(base.get("bank"))
+    base["legal_address"] = _repair_mojibake_text(base.get("legal_address"))
+    base["factual_address"] = _repair_mojibake_text(base.get("factual_address"))
+    iban_normalized = _normalize_ascii_code(base.get("iban"))
+    bic_normalized = _normalize_ascii_code(base.get("bic"))
+    if iban_normalized:
+        base["iban"] = iban_normalized
+    if bic_normalized:
+        base["bic"] = bic_normalized
     return base
 
 
