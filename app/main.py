@@ -5652,7 +5652,7 @@ def admin_client_topups(user_id: int, admin_user=Depends(get_admin_user)):
             """
             SELECT t.*, a.name as account_name, a.platform as account_platform, a.currency as account_currency
             FROM topups t
-            JOIN ad_accounts a ON a.id = t.account_id
+            LEFT JOIN ad_accounts a ON a.id = t.account_id
             WHERE t.user_id=? AND t.status='completed'
             ORDER BY t.created_at DESC
             """,
