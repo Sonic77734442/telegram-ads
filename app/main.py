@@ -3068,6 +3068,12 @@ def _google_normalize_customer_id(customer_id: str) -> str:
     return "".join(ch for ch in str(customer_id or "") if ch.isdigit())
 
 
+def _tiktok_normalize_advertiser_id(advertiser_id: object) -> str:
+    raw = str(advertiser_id or "").strip()
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    return digits or raw
+
+
 def _google_fetch_account_billing(customer_id: str) -> Dict[str, object]:
     normalized_customer_id = _google_normalize_customer_id(customer_id)
     cache_key = f"google:{normalized_customer_id}"
@@ -4305,7 +4311,13 @@ def tiktok_insights(
     for acc in accounts:
         advertiser_id = acc.get("external_id") or acc.get("account_code") or os.getenv("TIKTOK_ADVERTISER_ID")
         if not advertiser_id:
+            if account_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Для аккаунта TikTok id={acc.get('id')} не указан advertiser id (external_id/account_code).",
+                )
             continue
+        advertiser_id = _tiktok_normalize_advertiser_id(advertiser_id)
         campaign_rows = _tiktok_fetch_report(
             str(advertiser_id),
             date_from,

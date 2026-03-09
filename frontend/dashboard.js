@@ -75,6 +75,12 @@ function initMetaDates() {
   }
 }
 
+function accountOptionLabel(acc) {
+  const name = acc.name || `ID ${acc.id}`
+  const ext = acc.external_id || acc.account_code || ''
+  return ext ? `${name} · ${ext}` : `${name} · id:${acc.id}`
+}
+
 async function loadMetaAccounts() {
   if (!metaAccount) return
   try {
@@ -88,20 +94,20 @@ async function loadMetaAccounts() {
     const meta = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'meta')
     metaAccount.innerHTML =
       '<option value="">Все</option>' +
-      meta.map((acc) => `<option value="${acc.id}">${acc.name || acc.external_id || acc.id}</option>`).join('')
+      meta.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
     metaAccount.value = ''
     if (googleAccount) {
       const google = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'google')
       googleAccount.innerHTML =
         '<option value="">Все</option>' +
-        google.map((acc) => `<option value="${acc.id}">${acc.name || acc.external_id || acc.id}</option>`).join('')
+        google.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
       googleAccount.value = ''
     }
     if (tiktokAccount) {
       const tiktok = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'tiktok')
       tiktokAccount.innerHTML =
         '<option value="">Все</option>' +
-        tiktok.map((acc) => `<option value="${acc.id}">${acc.name || acc.external_id || acc.id}</option>`).join('')
+        tiktok.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
       tiktokAccount.value = ''
     }
   } catch (e) {
@@ -342,7 +348,16 @@ async function loadTiktokInsights() {
       window.location.href = '/login'
       return
     }
-    if (!res.ok) throw new Error('Failed to load tiktok insights')
+    if (!res.ok) {
+      let detail = ''
+      try {
+        const data = await res.json()
+        detail = data?.detail || ''
+      } catch (e) {
+        detail = ''
+      }
+      throw new Error(detail || 'Failed to load tiktok insights')
+    }
     const data = await res.json()
     renderTiktokCards(data.summary || {})
     renderTiktokTable(data.campaigns || [], tiktokCampaigns, 7)
@@ -350,7 +365,8 @@ async function loadTiktokInsights() {
     renderTiktokTable(data.ads || [], tiktokAds, 9)
     if (tiktokStatus) tiktokStatus.textContent = 'Данные обновлены.'
   } catch (e) {
-    if (tiktokStatus) tiktokStatus.textContent = 'Ошибка загрузки TikTok Ads.'
+    const message = e?.message || ''
+    if (tiktokStatus) tiktokStatus.textContent = message ? `Ошибка загрузки TikTok Ads: ${message}` : 'Ошибка загрузки TikTok Ads.'
     renderTiktokCards({ spend: 0, ctr: 0, cpc: 0, cpm: 0, impressions: 0, clicks: 0, currency: 'USD' })
     renderTiktokTable([], tiktokCampaigns, 7)
     renderTiktokTable([], tiktokAdgroups, 8)
@@ -866,4 +882,3 @@ function formatMoney(value) {
 function formatPct(value) {
   return `${(value * 100).toFixed(2)}%`
 }
-
