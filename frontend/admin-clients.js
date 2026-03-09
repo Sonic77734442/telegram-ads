@@ -231,6 +231,7 @@ function renderClientRequests(rows) {
           <td style="text-align:right;">
             <button class="btn ghost small" data-action="save" data-topup="${row.id}">Сохранить</button>
             <button class="btn primary small" data-action="complete" data-topup="${row.id}">Подтвердить</button>
+            <button class="btn ghost small" data-action="reject" data-topup="${row.id}">Отклонить</button>
           </td>
         </tr>
       `
@@ -369,6 +370,15 @@ if (clientRequests) {
         })
         if (handleAuthFailure(res)) return
         if (!res.ok) throw new Error('complete failed')
+      } else if (action === 'reject') {
+        const ok = window.confirm('Отклонить заявку на пополнение? Средства в холде будут возвращены в кошелек клиента.')
+        if (!ok) return
+        const res = await fetch(`${apiBase}/admin/topups/${topupId}/status?status=failed`, {
+          method: 'POST',
+          headers: authHeadersSafe(),
+        })
+        if (handleAuthFailure(res)) return
+        if (!res.ok) throw new Error('reject failed')
       }
       const userId = clientSummary?.dataset.userId
       const email = clientTitle?.textContent || ''
