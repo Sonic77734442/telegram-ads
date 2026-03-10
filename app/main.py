@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime
+﻿from datetime import date, datetime, timedelta
 from io import BytesIO
 from typing import Dict, List, Literal, Optional, Tuple
 from enum import Enum
@@ -3185,25 +3185,47 @@ def _tiktok_fetch_account_billing(advertiser_id: str, force_refresh: bool = Fals
         }
         return _live_billing_cache_set(cache_key, payload)
 
-    now = datetime.utcnow()
-    date_from = now.replace(day=1).strftime("%Y-%m-%d")
-    date_to = now.strftime("%Y-%m-%d")
+    end_date = datetime.utcnow().date()
+    start_date_raw = str(os.getenv("TIKTOK_SPEND_START_DATE") or "2020-01-01").strip()
+    try:
+        start_date = datetime.strptime(start_date_raw, "%Y-%m-%d").date()
+    except Exception:
+        start_date = date(2020, 1, 1)
+    if start_date > end_date:
+        start_date = end_date
 
     spend = None
     spend_error = None
     try:
         spend_rows = _tiktok_fetch_report(
             normalized_advertiser_id,
-            date_from,
-            date_to,
+            start_date.strftime("%Y-%m-%d"),
+            end_date.strftime("%Y-%m-%d"),
             "AUCTION_CAMPAIGN",
             ["campaign_id"],
             ["spend"],
         )
         spend = sum(float(row.get("spend") or 0) for row in spend_rows)
-    except Exception as exc:
-        spend_error = str(exc)
-        spend = None
+    except Exception:
+        try:
+            total_spend = 0.0
+            cursor = start_date
+            while cursor <= end_date:
+                chunk_end = min(cursor + timedelta(days=89), end_date)
+                chunk_rows = _tiktok_fetch_report(
+                    normalized_advertiser_id,
+                    cursor.strftime("%Y-%m-%d"),
+                    chunk_end.strftime("%Y-%m-%d"),
+                    "AUCTION_CAMPAIGN",
+                    ["campaign_id"],
+                    ["spend"],
+                )
+                total_spend += sum(float(row.get("spend") or 0) for row in chunk_rows)
+                cursor = chunk_end + timedelta(days=1)
+            spend = total_spend
+        except Exception as exc:
+            spend_error = str(exc)
+            spend = None
 
     currency = "USD"
     limit = None
