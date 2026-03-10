@@ -2993,8 +2993,8 @@ def _meta_fetch_account_billing(account_external_id: str, force_refresh: bool = 
         "provider": "meta",
         "currency": currency,
         "spend": spend,
-        "limit": None,
-        "balance": None,
+        "limit": spend_cap,
+        "balance": (spend_cap - spend) if (spend_cap is not None) else None,
         "source": "meta_api",
         "updated_at": datetime.utcnow().isoformat() + "Z",
     }
