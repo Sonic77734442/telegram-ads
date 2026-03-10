@@ -400,12 +400,7 @@ function renderOpenAccounts() {
     const canTopup = hasAccount && row.can_topup !== false
     const card = document.createElement('article')
     card.className = 'account-status-card'
-    const effectiveBudget = 0
-    const budgetUsd = 0
-    const budgetLabel =
-      effectiveBudget == null || budgetUsd == null
-        ? '—'
-        : `${formatMoneyAmount(budgetUsd)} USD`
+    const budgetLabel = '—'
     const liveBillingLabel = formatLiveBillingCell(row.live_billing, row.currency)
     const platformLogo = platformLogoHtml(row.platform)
     card.innerHTML = `
