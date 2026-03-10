@@ -3284,10 +3284,6 @@ def _attach_live_billing(account: Dict[str, object]) -> Dict[str, object]:
     payload = dict(account)
     platform = str(payload.get("platform") or "").lower().strip()
     external_id = payload.get("external_id") or payload.get("account_code") or payload.get("name")
-    if platform == "tiktok" and not external_id:
-        env_advertiser_id = str(os.getenv("TIKTOK_ADVERTISER_ID") or "").strip()
-        if env_advertiser_id:
-            external_id = env_advertiser_id.split(",")[0].strip()
     payload["live_billing"] = None
     if not external_id or platform not in {"meta", "google", "tiktok"}:
         return payload
