@@ -64,11 +64,14 @@ function renderClients(rows) {
       const completedTotal = Number(row.completed_total_kzt ?? row.completed_total ?? 0)
       return `
         <tr>
-          <td>${row.email || '—'}</td>
-          <td>${pending ? `<span class="dot">${pending}</span>` : '—'}</td>
-          <td>${completedTotal ? `${formatMoney(completedTotal)} KZT` : '—'}</td>
+          <td>${row.email || '?'}</td>
+          <td>${pending ? `<span class="dot">${pending}</span>` : '?'}</td>
+          <td>${completedTotal ? `${formatMoney(completedTotal)} KZT` : '?'}</td>
           <td style="text-align:right;">
-            <button class="btn ghost small" data-client="${row.id}" data-email="${row.email}" data-completed-kzt="${completedTotal}">Открыть</button>
+            <div class="inline-actions">
+              <button class="btn primary small" data-impersonate="${row.id}" data-email="${row.email}">????? ??? ??????</button>
+              <button class="btn ghost small" data-client="${row.id}" data-email="${row.email}" data-completed-kzt="${completedTotal}">???????</button>
+            </div>
           </td>
         </tr>
       `
@@ -76,8 +79,35 @@ function renderClients(rows) {
     .join('')
 }
 
+async function impersonateClient(userId, email) {
+  try {
+    const res = await fetch(`${apiBase}/admin/users/${userId}/impersonate`, {
+      method: 'POST',
+      headers: authHeadersSafe(),
+    })
+    if (handleAuthFailure(res)) return
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.detail || 'impersonation failed')
+    const params = new URLSearchParams({
+      impersonate_token: data.token,
+      impersonate_email: data.email || email || '',
+      impersonate_user_id: String(data.id || userId),
+      impersonation_return: '/admin/clients',
+      tab: 'accesses',
+    })
+    window.open(`/settings?${params.toString()}`, '_blank', 'noopener')
+  } catch (e) {
+    if (clientsStatus) clientsStatus.textContent = '?? ??????? ????? ? ??????? ???????.'
+  }
+}
+
 if (clientsBody) {
   clientsBody.addEventListener('click', async (event) => {
+    const impersonateBtn = event.target.closest('button[data-impersonate]')
+    if (impersonateBtn) {
+      await impersonateClient(impersonateBtn.dataset.impersonate, impersonateBtn.dataset.email)
+      return
+    }
     const btn = event.target.closest('button[data-client]')
     if (!btn) return
     const userId = btn.dataset.client
