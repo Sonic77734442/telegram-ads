@@ -5744,65 +5744,91 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
     if not get_conn:
         return []
     with get_conn() as conn:
+        clients: List[Dict[str, object]] = []
         try:
-            rows = conn.execute(
-                """
-                SELECT u.id, u.email,
-                  COALESCE(SUM(CASE WHEN t.seen_by_admin=0 THEN 1 ELSE 0 END), 0) as unread_topups,
-                  COALESCE(SUM(CASE WHEN t.status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
-                  COALESCE(SUM(CASE WHEN t.status='completed' THEN COALESCE(t.amount_net, t.amount_input) ELSE 0 END), 0) as completed_total,
-                  COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
-                  MAX(t.created_at) as last_activity
-                FROM users u
-                LEFT JOIN topups t ON t.user_id = u.id
-                GROUP BY u.id, u.email
-                HAVING COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) > 0
-                   OR COALESCE(u.is_client, 0) = 1
-                ORDER BY unread_topups DESC, u.email ASC
-                """
-            ).fetchall()
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT u.id, u.email,
+                      COALESCE(SUM(CASE WHEN t.seen_by_admin=0 THEN 1 ELSE 0 END), 0) as unread_topups,
+                      COALESCE(SUM(CASE WHEN t.status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
+                      COALESCE(SUM(CASE WHEN t.status='completed' THEN COALESCE(t.amount_net, t.amount_input) ELSE 0 END), 0) as completed_total,
+                      COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
+                      MAX(t.created_at) as last_activity
+                    FROM users u
+                    LEFT JOIN topups t ON t.user_id = u.id
+                    GROUP BY u.id, u.email
+                    HAVING COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) > 0
+                       OR COALESCE(u.is_client, 0) = 1
+                    ORDER BY unread_topups DESC, u.email ASC
+                    """
+                ).fetchall()
+            except Exception:
+                rows = conn.execute(
+                    """
+                    SELECT u.id, u.email,
+                      0 as unread_topups,
+                      COALESCE(SUM(CASE WHEN t.status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
+                      COALESCE(SUM(CASE WHEN t.status='completed' THEN COALESCE(t.amount_net, t.amount_input) ELSE 0 END), 0) as completed_total,
+                      COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
+                      MAX(t.created_at) as last_activity
+                    FROM users u
+                    LEFT JOIN topups t ON t.user_id = u.id
+                    GROUP BY u.id, u.email
+                    HAVING COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) > 0
+                       OR COALESCE(u.is_client, 0) = 1
+                    ORDER BY u.email ASC
+                    """
+                ).fetchall()
+            clients = [dict(row) for row in rows]
+            try:
+                topup_rows = conn.execute(
+                    """
+                    SELECT t.user_id, t.amount_input, t.amount_net, t.fx_rate, t.currency, a.currency as account_currency
+                    FROM topups t
+                    LEFT JOIN ad_accounts a ON a.id = t.account_id
+                    WHERE t.status='completed'
+                    """
+                ).fetchall()
+                prepared_topups = _attach_topup_account_amount([dict(row) for row in topup_rows])
+                totals_kzt: Dict[int, float] = {}
+                for row in prepared_topups:
+                    try:
+                        user_id = int(row.get("user_id"))
+                    except (TypeError, ValueError):
+                        continue
+                    try:
+                        amount_kzt = float(row.get("amount_account_kzt") or 0.0)
+                    except (TypeError, ValueError):
+                        amount_kzt = 0.0
+                    totals_kzt[user_id] = totals_kzt.get(user_id, 0.0) + amount_kzt
+                for row in clients:
+                    total_kzt = totals_kzt.get(int(row["id"]), 0.0)
+                    row["completed_total_kzt"] = total_kzt
+                    row["completed_total"] = total_kzt
+            except Exception:
+                for row in clients:
+                    row["completed_total_kzt"] = float(row.get("completed_total") or 0.0)
         except Exception:
-            rows = conn.execute(
+            fallback_rows = conn.execute(
                 """
-                SELECT u.id, u.email,
-                  0 as unread_topups,
+                SELECT u.id, u.email, 0 as unread_topups,
                   COALESCE(SUM(CASE WHEN t.status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
-                  COALESCE(SUM(CASE WHEN t.status='completed' THEN COALESCE(t.amount_net, t.amount_input) ELSE 0 END), 0) as completed_total,
                   COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
                   MAX(t.created_at) as last_activity
                 FROM users u
                 LEFT JOIN topups t ON t.user_id = u.id
                 GROUP BY u.id, u.email
                 HAVING COALESCE(SUM(CASE WHEN t.status='completed' THEN 1 ELSE 0 END), 0) > 0
-                   OR COALESCE(u.is_client, 0) = 1
                 ORDER BY u.email ASC
                 """
             ).fetchall()
-        clients = [dict(row) for row in rows]
-        topup_rows = conn.execute(
-            """
-            SELECT t.user_id, t.amount_input, t.amount_net, t.fx_rate, t.currency, a.currency as account_currency
-            FROM topups t
-            LEFT JOIN ad_accounts a ON a.id = t.account_id
-            WHERE t.status='completed'
-            """
-        ).fetchall()
-        prepared_topups = _attach_topup_account_amount([dict(row) for row in topup_rows])
-        totals_kzt: Dict[int, float] = {}
-        for row in prepared_topups:
-            try:
-                user_id = int(row.get("user_id"))
-            except (TypeError, ValueError):
-                continue
-            try:
-                amount_kzt = float(row.get("amount_account_kzt") or 0.0)
-            except (TypeError, ValueError):
-                amount_kzt = 0.0
-            totals_kzt[user_id] = totals_kzt.get(user_id, 0.0) + amount_kzt
-        for row in clients:
-            total_kzt = totals_kzt.get(int(row["id"]), 0.0)
-            row["completed_total_kzt"] = total_kzt
-            row["completed_total"] = total_kzt
+            clients = []
+            for row in fallback_rows:
+                payload = dict(row)
+                payload["completed_total"] = 0.0
+                payload["completed_total_kzt"] = 0.0
+                clients.append(payload)
         return clients
 
 
