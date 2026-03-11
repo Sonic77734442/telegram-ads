@@ -1,88 +1,10 @@
-﻿const AUTH_KEYS = ['auth_token', 'auth_email', 'auth_user_id']
-
-function getScopedStorage(scope) {
-  return scope === 'session' ? window.sessionStorage : window.localStorage
-}
-
-function getAuthValue(key) {
-  return window.sessionStorage.getItem(key) || window.localStorage.getItem(key) || ''
-}
-
-function setAuthState(values, scope = 'local') {
-  const storage = getScopedStorage(scope)
-  AUTH_KEYS.forEach((key) => {
-    const value = values?.[key]
-    if (value == null || value === '') storage.removeItem(key)
-    else storage.setItem(key, String(value))
-  })
-}
-
-function clearAuthState(scope = 'all') {
-  const targets = scope === 'all' ? [window.sessionStorage, window.localStorage] : [getScopedStorage(scope)]
-  targets.forEach((storage) => {
-    AUTH_KEYS.forEach((key) => storage.removeItem(key))
-  })
-}
-
-function isImpersonating() {
-  return window.sessionStorage.getItem('impersonation_active') === '1'
-}
-
-function getImpersonationReturnUrl() {
-  return window.sessionStorage.getItem('impersonation_return') || '/admin/clients'
-}
-
-function clearImpersonationState() {
-  clearAuthState('session')
-  window.sessionStorage.removeItem('impersonation_active')
-  window.sessionStorage.removeItem('impersonation_return')
-  window.sessionStorage.removeItem('impersonation_label')
-}
-
-function logoutCurrentSession() {
-  if (isImpersonating()) {
-    const returnUrl = getImpersonationReturnUrl()
-    clearImpersonationState()
-    window.location.href = returnUrl
-    return
-  }
-  clearAuthState('all')
-  window.location.href = '/login'
-}
-
-function consumeImpersonationFromUrl() {
-  const params = new URLSearchParams(window.location.search)
-  const token = params.get('impersonate_token')
-  if (!token) return
-  setAuthState(
-    {
-      auth_token: token,
-      auth_email: params.get('impersonate_email') || '',
-      auth_user_id: params.get('impersonate_user_id') || '',
-    },
-    'session'
-  )
-  window.sessionStorage.setItem('impersonation_active', '1')
-  window.sessionStorage.setItem('impersonation_return', params.get('impersonation_return') || '/admin/clients')
-  window.sessionStorage.setItem('impersonation_label', params.get('impersonate_email') || '')
-  params.delete('impersonate_token')
-  params.delete('impersonate_email')
-  params.delete('impersonate_user_id')
-  params.delete('impersonation_return')
-  const query = params.toString()
-  const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`
-  window.history.replaceState({}, '', nextUrl)
-}
-
-consumeImpersonationFromUrl()
-
-function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
+﻿function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
   const root = document.getElementById('header-root')
   if (!root) return
   document.body.classList.add('with-sidebar')
   void buttons
-  const email = getAuthValue('auth_email') || ''
-  const isAdmin = !isImpersonating() && (email === 'romant997@gmail.com' || email === 'kolyadov.denis@gmail.com')
+  const email = localStorage.getItem('auth_email') || ''
+  const isAdmin = email === 'romant997@gmail.com' || email === 'kolyadov.denis@gmail.com'
   const navItems = isAdmin
     ? [
         { label: 'Админ · Заявки', href: '/admin/requests' },
@@ -108,7 +30,7 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
       return `<a class="nav-link ${active}" href="${item.href}">${item.label}</a>`
     })
     .join('')
-  const hasAuth = Boolean(getAuthToken?.())
+  const hasAuth = Boolean(getAuthToken?.() || localStorage.getItem('auth_token'))
   const authHtml = hasAuth
     ? '<button class="nav-link nav-exit nav-logout" type="button">Выход</button>'
     : '<a class="nav-link" href="/login">Вход</a>'
@@ -131,7 +53,6 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
         <div class="nav-drawer-footer">${authHtml}</div>
       </div>
     </div>
-    ${isImpersonating() ? `<div class="impersonation-banner"><span>?? ????? ??? ??????: ${window.sessionStorage.getItem('impersonation_label') || email || ''}</span><button class="btn ghost small" id="impersonation-exit" type="button">????????? ? ???????</button></div>` : ''}
     <div class="topbar">
       <div class="topbar-right">
         ${isAdmin ? '' : '<div id="header-balance" class="balance-pill">Баланс: —</div>'}
@@ -183,7 +104,10 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
   const logoutButtons = Array.from(document.querySelectorAll('.nav-logout'))
   logoutButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
-      logoutCurrentSession()
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_email')
+      localStorage.removeItem('auth_user_id')
+      window.location.href = '/login'
     })
   })
   const navToggle = document.getElementById('nav-toggle')
@@ -224,17 +148,13 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
       window.location.href = '/funds#topup'
     })
   }
-  const impersonationExit = document.getElementById('impersonation-exit')
-  if (impersonationExit) {
-    impersonationExit.addEventListener('click', () => {
-      logoutCurrentSession()
-    })
-  }
-
   const profileLogout = document.getElementById('profile-logout')
   if (profileLogout) {
     profileLogout.addEventListener('click', () => {
-      logoutCurrentSession()
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_email')
+      localStorage.removeItem('auth_user_id')
+      window.location.href = '/login'
     })
   }
   const helpBtn = document.getElementById('help-btn')
@@ -273,7 +193,7 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
 }
 
 function enforceAuth() {
-  const token = getAuthToken()
+  const token = localStorage.getItem('auth_token')
   if (token) return
   const current = location.pathname.split('/').pop()
   if (current === 'login' || current === 'register') return
@@ -281,7 +201,7 @@ function enforceAuth() {
 }
 
 function getAuthToken() {
-  return getAuthValue('auth_token')
+  return localStorage.getItem('auth_token')
 }
 
 function authHeaders() {
@@ -420,8 +340,8 @@ async function loadHeaderProfile() {
       avatarEl.textContent = letter || '?'
     }
   } catch (e) {
-    if (emailEl) emailEl.textContent = getAuthValue('auth_email') || ''
-    if (menuEmail) menuEmail.textContent = getAuthValue('auth_email') || ''
+    if (emailEl) emailEl.textContent = localStorage.getItem('auth_email') || ''
+    if (menuEmail) menuEmail.textContent = localStorage.getItem('auth_email') || ''
   }
 }
 
@@ -471,8 +391,8 @@ function formatDate(value) {
 }
 
 function enforceAdminRoutes() {
-  const email = getAuthValue('auth_email') || ''
-  const isAdmin = !isImpersonating() && (email === 'romant997@gmail.com' || email === 'kolyadov.denis@gmail.com')
+  const email = localStorage.getItem('auth_email') || ''
+  const isAdmin = email === 'romant997@gmail.com' || email === 'kolyadov.denis@gmail.com'
   const path = location.pathname
   const blocked = ['/admin/accounts', '/admin/topups']
   if (!blocked.includes(path)) return

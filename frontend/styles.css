@@ -213,22 +213,6 @@ body {
   pointer-events: none;
 }
 
-.impersonation-banner {
-  position: relative;
-  z-index: 3002;
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: 12px;
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--text);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .topbar {
   display: grid;
   gap: 10px;
@@ -2327,17 +2311,6 @@ h1 {
 .login-secondary {
   margin-top: 10px;
 }
-
-.auth-switch {
-  display: flex;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.auth-switch .tab-button {
-  flex: 1 1 0;
-}
-
 
 @keyframes fade-up {
   from {

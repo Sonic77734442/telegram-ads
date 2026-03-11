@@ -1,16 +1,14 @@
-const apiBase = window.API_BASE || 'https://envidicy-dash-client.onrender.com'
+﻿const apiBase = window.API_BASE || 'https://envidicy-dash-client.onrender.com'
 
 renderHeader({
-  eyebrow: 'Envidicy ? Profile',
-  title: '?????????',
-  subtitle: '?????????? ???????, ????????????? ? ???????????.',
+  eyebrow: 'Envidicy · Profile',
+  title: 'Настройки',
+  subtitle: 'Управляйте данными, безопасностью и документами.',
   buttons: [],
 })
 
 const tabs = document.querySelectorAll('.tab-button')
 const panels = document.querySelectorAll('.tab-panel')
-const accessesTabButton = document.getElementById('accesses-tab-button')
-const accessesPanel = document.querySelector('[data-tab-panel="accesses"]')
 
 const profile = {
   name: document.getElementById('profile-name'),
@@ -40,139 +38,25 @@ const docs = {
   empty: document.getElementById('docs-empty'),
 }
 
-const accesses = {
-  email: document.getElementById('access-email'),
-  add: document.getElementById('access-add'),
-  status: document.getElementById('access-status'),
-  body: document.getElementById('accesses-body'),
-}
-
 const feesBody = document.getElementById('fees-body')
-let canManageAccesses = false
-const requestedTab = new URLSearchParams(window.location.search).get('tab') || 'profile'
 
 function authHeaders() {
-  const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
+  const token = localStorage.getItem('auth_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function activateTab(name) {
   tabs.forEach((btn) => {
-    if (btn.hidden) return
     btn.classList.toggle('active', btn.dataset.tab === name)
   })
   panels.forEach((panel) => {
-    if (panel.hidden) return
     panel.classList.toggle('active', panel.dataset.tabPanel === name)
   })
 }
 
 tabs.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    if (!btn.hidden) activateTab(btn.dataset.tab)
-  })
+  btn.addEventListener('click', () => activateTab(btn.dataset.tab))
 })
-
-function applyAccessVisibility(enabled) {
-  canManageAccesses = Boolean(enabled)
-  if (accessesTabButton) accessesTabButton.hidden = !canManageAccesses
-  if (accessesPanel) accessesPanel.hidden = !canManageAccesses
-  if (!canManageAccesses && accessesTabButton?.classList.contains('active')) {
-    activateTab('profile')
-  }
-}
-
-function renderAccesses(rows) {
-  if (!accesses.body) return
-  if (!rows || !rows.length) {
-    accesses.body.innerHTML = '<tr><td colspan="4" class="muted">???????? ???? ???.</td></tr>'
-    return
-  }
-  accesses.body.innerHTML = rows.map((row) => {
-    const isOwner = (row.role || 'member') === 'owner'
-    const roleLabel = isOwner ? '????????' : '??????????????'
-    const statusLabel = row.status === 'active' ? '???????' : row.status || '?'
-    const actionHtml = isOwner
-      ? '<span class="muted small">???????? ??????????</span>'
-      : `<button class="btn ghost small" type="button" data-access-delete="${row.id}">???????</button>`
-    return `
-      <tr>
-        <td>${row.email || '?'}</td>
-        <td>${roleLabel}</td>
-        <td>${statusLabel}</td>
-        <td style="text-align:right;">${actionHtml}</td>
-      </tr>
-    `
-  }).join('')
-}
-
-async function loadAccesses() {
-  if (!canManageAccesses) return
-  try {
-    const res = await fetch(`${apiBase}/profile/accesses`, { headers: authHeaders() })
-    if (res.status === 401) {
-      window.location.href = '/login'
-      return
-    }
-    if (res.status === 403) {
-      applyAccessVisibility(false)
-      return
-    }
-    if (!res.ok) throw new Error('accesses failed')
-    const data = await res.json()
-    renderAccesses(data.items || [])
-  } catch (e) {
-    if (accesses.status) accesses.status.textContent = '?? ??????? ????????? ???????.'
-  }
-}
-
-async function addAccess() {
-  const email = accesses.email?.value?.trim().toLowerCase()
-  if (!email) {
-    if (accesses.status) accesses.status.textContent = '??????? email.'
-    return
-  }
-  if (accesses.status) accesses.status.textContent = '????????? ??????...'
-  try {
-    const res = await fetch(`${apiBase}/profile/accesses`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ email }),
-    })
-    if (res.status === 401) {
-      window.location.href = '/login'
-      return
-    }
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data?.detail || 'create access failed')
-    if (accesses.email) accesses.email.value = ''
-    if (accesses.status) accesses.status.textContent = '?????? ????????. ???????????? ????? ?????? ?????? ?? ???????? ?????.'
-    await loadAccesses()
-  } catch (e) {
-    if (accesses.status) accesses.status.textContent = '?? ??????? ???????? ??????.'
-  }
-}
-
-async function deleteAccess(accessId) {
-  if (!accessId) return
-  if (!confirm('??????? ???? ?????????????? ???????')) return
-  if (accesses.status) accesses.status.textContent = '??????? ??????...'
-  try {
-    const res = await fetch(`${apiBase}/profile/accesses/${accessId}`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    })
-    if (res.status === 401) {
-      window.location.href = '/login'
-      return
-    }
-    if (!res.ok) throw new Error('delete access failed')
-    if (accesses.status) accesses.status.textContent = '?????? ??????.'
-    await loadAccesses()
-  } catch (e) {
-    if (accesses.status) accesses.status.textContent = '?? ??????? ??????? ??????.'
-  }
-}
 
 async function loadProfile() {
   try {
@@ -189,8 +73,6 @@ async function loadProfile() {
     if (profile.language) profile.language.value = data.language || 'ru'
     if (profile.whatsapp) profile.whatsapp.value = data.whatsapp_phone || ''
     if (profile.telegram) profile.telegram.value = data.telegram_handle || ''
-    applyAccessVisibility(Boolean(data.can_manage_accesses))
-    if (Boolean(data.can_manage_accesses) && requestedTab === 'accesses') activateTab('accesses')
     if (profile.avatarPreview) {
       if (data.avatar_url) {
         profile.avatarPreview.innerHTML = `<img src="${apiBase}${data.avatar_url}" alt="avatar" />`
@@ -199,19 +81,18 @@ async function loadProfile() {
         profile.avatarPreview.textContent = letter || '?'
       }
     }
-    if (canManageAccesses) await loadAccesses()
   } catch (e) {
-    if (profile.status) profile.status.textContent = '?? ??????? ????????? ???????.'
+    if (profile.status) profile.status.textContent = 'Не удалось загрузить профиль.'
   }
 }
 
 async function uploadAvatar() {
   const file = profile.avatarFile?.files?.[0]
   if (!file) {
-    if (profile.avatarStatus) profile.avatarStatus.textContent = '???????? ????.'
+    if (profile.avatarStatus) profile.avatarStatus.textContent = 'Выберите файл.'
     return
   }
-  if (profile.avatarStatus) profile.avatarStatus.textContent = '?????????...'
+  if (profile.avatarStatus) profile.avatarStatus.textContent = 'Загружаем...'
   const form = new FormData()
   form.append('file', file)
   try {
@@ -229,14 +110,14 @@ async function uploadAvatar() {
     if (profile.avatarPreview && data.avatar_url) {
       profile.avatarPreview.innerHTML = `<img src="${apiBase}${data.avatar_url}" alt="avatar" />`
     }
-    if (profile.avatarStatus) profile.avatarStatus.textContent = '???? ?????????.'
+    if (profile.avatarStatus) profile.avatarStatus.textContent = 'Фото обновлено.'
   } catch (e) {
-    if (profile.avatarStatus) profile.avatarStatus.textContent = '?? ??????? ????????? ????.'
+    if (profile.avatarStatus) profile.avatarStatus.textContent = 'Не удалось загрузить фото.'
   }
 }
 
 async function saveProfile() {
-  if (profile.status) profile.status.textContent = '?????????...'
+  if (profile.status) profile.status.textContent = 'Сохраняем...'
   const payload = {
     name: profile.name?.value?.trim() || null,
     company: profile.company?.value?.trim() || null,
@@ -255,9 +136,9 @@ async function saveProfile() {
       return
     }
     if (!res.ok) throw new Error('save failed')
-    if (profile.status) profile.status.textContent = '??????? ????????.'
+    if (profile.status) profile.status.textContent = 'Профиль обновлен.'
   } catch (e) {
-    if (profile.status) profile.status.textContent = '?? ??????? ????????? ?????????.'
+    if (profile.status) profile.status.textContent = 'Не удалось сохранить изменения.'
   }
 }
 
@@ -266,14 +147,14 @@ async function changePassword() {
   const next = password.next?.value?.trim()
   const confirm = password.confirm?.value?.trim()
   if (!current || !next) {
-    if (password.status) password.status.textContent = '????????? ??????? ? ????? ??????.'
+    if (password.status) password.status.textContent = 'Заполните текущий и новый пароль.'
     return
   }
   if (next !== confirm) {
-    if (password.status) password.status.textContent = '?????? ?? ?????????.'
+    if (password.status) password.status.textContent = 'Пароли не совпадают.'
     return
   }
-  if (password.status) password.status.textContent = '????????? ??????...'
+  if (password.status) password.status.textContent = 'Обновляем пароль...'
   try {
     const res = await fetch(`${apiBase}/auth/change-password`, {
       method: 'POST',
@@ -287,12 +168,12 @@ async function changePassword() {
     if (!res.ok) throw new Error('change failed')
     const data = await res.json()
     if (data?.token) localStorage.setItem('auth_token', data.token)
-    if (password.status) password.status.textContent = '?????? ????????.'
+    if (password.status) password.status.textContent = 'Пароль обновлен.'
     if (password.current) password.current.value = ''
     if (password.next) password.next.value = ''
     if (password.confirm) password.confirm.value = ''
   } catch (e) {
-    if (password.status) password.status.textContent = '?? ??????? ???????? ??????.'
+    if (password.status) password.status.textContent = 'Не удалось обновить пароль.'
   }
 }
 
@@ -309,7 +190,7 @@ async function renderFees() {
     const rows = [
       { key: 'meta', platform: 'Meta', note: 'Facebook / Instagram' },
       { key: 'google', platform: 'Google Ads', note: 'Search / Display / YouTube' },
-      { key: 'yandex', platform: '?????? ??????', note: '?????/???' },
+      { key: 'yandex', platform: 'Яндекс Директ', note: 'Поиск/РСЯ' },
       { key: 'tiktok', platform: 'TikTok Ads', note: 'Video' },
       { key: 'telegram', platform: 'Telegram Ads', note: 'Channels / Bots' },
       { key: 'monochrome', platform: 'Monochrome', note: 'Programmatic' },
@@ -317,7 +198,7 @@ async function renderFees() {
     feesBody.innerHTML = rows
       .map((r) => {
         const val = data?.[r.key]
-        const label = val == null || val === '' ? '?' : `${Number(val).toFixed(2)}%`
+        const label = val == null || val === '' ? '—' : `${Number(val).toFixed(2)}%`
         return `
     <tr>
       <td>${r.platform}</td>
@@ -328,7 +209,7 @@ async function renderFees() {
       })
       .join('')
   } catch (e) {
-    feesBody.innerHTML = `<tr><td colspan="3" class="muted">?? ??????? ????????? ????????.</td></tr>`
+    feesBody.innerHTML = `<tr><td colspan="3" class="muted">Не удалось загрузить комиссии.</td></tr>`
   }
 }
 
@@ -348,15 +229,15 @@ async function loadDocuments() {
       return
     }
     if (docs.empty) docs.empty.hidden = true
-    const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
+    const token = localStorage.getItem('auth_token')
     docs.body.innerHTML = data
       .map(
         (row) => `
       <tr>
         <td>${row.title}</td>
-        <td>${row.created_at?.split(' ')[0] || '?'}</td>
+        <td>${row.created_at?.split(' ')[0] || '—'}</td>
         <td style="text-align:right;">
-          <a class="btn ghost small" href="${apiBase}/documents/${row.id}${token ? `?token=${encodeURIComponent(token)}` : ''}" target="_blank" rel="noopener">???????</a>
+          <a class="btn ghost small" href="${apiBase}/documents/${row.id}${token ? `?token=${encodeURIComponent(token)}` : ''}" target="_blank" rel="noopener">Скачать</a>
         </td>
       </tr>
     `
@@ -365,28 +246,21 @@ async function loadDocuments() {
   } catch (e) {
     if (docs.empty) {
       docs.empty.hidden = false
-      docs.empty.textContent = '?? ??????? ????????? ?????????.'
+      docs.empty.textContent = 'Не удалось загрузить документы.'
     }
   }
 }
 
 function init() {
-  applyAccessVisibility(false)
-  activateTab(requestedTab)
+  activateTab('profile')
   renderFees()
   loadProfile()
   loadDocuments()
   if (profile.save) profile.save.addEventListener('click', saveProfile)
   if (profile.avatarUpload) profile.avatarUpload.addEventListener('click', uploadAvatar)
   if (password.save) password.save.addEventListener('click', changePassword)
-  if (accesses.add) accesses.add.addEventListener('click', addAccess)
-  if (accesses.body) {
-    accesses.body.addEventListener('click', (event) => {
-      const btn = event.target.closest('[data-access-delete]')
-      if (!btn) return
-      deleteAccess(btn.dataset.accessDelete)
-    })
-  }
 }
 
 init()
+
+

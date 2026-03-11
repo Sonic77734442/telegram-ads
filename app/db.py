@@ -130,27 +130,6 @@ def apply_schema():
             conn.execute("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS fee_config TEXT")
             conn.execute("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS notifications_seen_at TIMESTAMPTZ")
             conn.execute("ALTER TABLE topups ADD COLUMN IF NOT EXISTS hold_applied INTEGER DEFAULT 0")
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS user_accesses (
-              id BIGSERIAL PRIMARY KEY,
-              user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              email TEXT NOT NULL UNIQUE,
-              password_hash TEXT,
-              salt TEXT,
-              role TEXT NOT NULL DEFAULT 'member',
-              status TEXT NOT NULL DEFAULT 'active',
-              created_at TIMESTAMPTZ DEFAULT NOW()
-            )
-            """)
-            conn.execute("ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS access_id BIGINT REFERENCES user_accesses(id) ON DELETE CASCADE")
-            conn.execute("""
-            INSERT INTO user_accesses (user_id, email, password_hash, salt, role, status)
-            SELECT u.id, u.email, u.password_hash, u.salt, 'owner', 'active'
-            FROM users u
-            WHERE u.email IS NOT NULL
-              AND NOT EXISTS (SELECT 1 FROM user_accesses ua WHERE ua.email = u.email)
-            ON CONFLICT (email) DO NOTHING
-            """)
             conn.commit()
         return
     schema_path = os.path.join(os.path.dirname(__file__), "..", "db", "schema.sql")
@@ -165,24 +144,7 @@ def apply_schema():
             CREATE TABLE IF NOT EXISTS user_tokens (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-              access_id INTEGER REFERENCES user_accesses(id) ON DELETE CASCADE,
               token TEXT NOT NULL UNIQUE,
-              created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            """,
-        )
-        _ensure_table(
-            conn,
-            "user_accesses",
-            """
-            CREATE TABLE IF NOT EXISTS user_accesses (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-              email TEXT NOT NULL UNIQUE,
-              password_hash TEXT,
-              salt TEXT,
-              role TEXT NOT NULL DEFAULT 'member',
-              status TEXT NOT NULL DEFAULT 'active',
               created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
             """,
@@ -407,15 +369,6 @@ def apply_schema():
         _ensure_column(conn, "topups", "user_id", "INTEGER")
         _ensure_column(conn, "topups", "seen_by_admin", "INTEGER")
         _ensure_column(conn, "topups", "hold_applied", "INTEGER")
-        _ensure_column(conn, "user_tokens", "access_id", "INTEGER")
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO user_accesses (user_id, email, password_hash, salt, role, status)
-            SELECT id, email, password_hash, salt, 'owner', 'active'
-            FROM users
-            WHERE email IS NOT NULL
-            """
-        )
         conn.commit()
 
 

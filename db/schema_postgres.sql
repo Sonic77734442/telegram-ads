@@ -204,21 +204,9 @@ CREATE TABLE IF NOT EXISTS company_profile (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS user_accesses (
-  id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT,
-  salt TEXT,
-  role TEXT NOT NULL DEFAULT 'member',
-  status TEXT NOT NULL DEFAULT 'active',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS user_tokens (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-  access_id BIGINT REFERENCES user_accesses(id) ON DELETE CASCADE,
   token TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

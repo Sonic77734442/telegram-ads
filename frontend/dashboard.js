@@ -54,7 +54,7 @@ const audienceDeviceBody = document.getElementById('audience-device-body')
 const audienceStatus = document.getElementById('audience-status')
 
 function authHeaders() {
-  const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
+  const token = localStorage.getItem('auth_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
