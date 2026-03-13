@@ -1526,7 +1526,7 @@ h1 {
 
 .account-status-title-row {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
@@ -1593,6 +1593,7 @@ h1 {
   flex: 0 0 auto;
   min-width: 108px;
   text-align: center;
+  margin-left: 10px;
 }
 
 .account-status-sub {
