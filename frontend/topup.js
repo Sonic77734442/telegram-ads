@@ -409,7 +409,6 @@ function renderOpenAccounts() {
             <span class="platform-logo platform-${row.platform}" title="${platformLabel(row.platform)}">${platformLogo}</span>
             <div class="account-status-name-wrap">
               <div class="account-status-name">${row.account_id}</div>
-              <div class="account-status-id">ID: ${row.account_ref || '—'}</div>
             </div>
           </div>
           <span class="status ${statusClass(row.status)}">${row.status}</span>
@@ -420,6 +419,10 @@ function renderOpenAccounts() {
         </div>
       </div>
       <div class="account-status-metrics">
+        <div class="account-metric">
+          <div class="account-metric-label">ID аккаунта</div>
+          <div class="account-metric-value account-metric-value-id">${row.account_ref || '—'}</div>
+        </div>
         <div class="account-metric">
           <div class="account-metric-label">Потрачено</div>
           <div class="account-metric-value">${liveBillingLabel}</div>

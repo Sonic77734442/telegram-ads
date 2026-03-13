@@ -1591,9 +1591,11 @@ h1 {
 
 .account-status-title-row .status {
   flex: 0 0 auto;
-  min-width: 108px;
+  min-width: 88px;
   text-align: center;
-  margin-left: 10px;
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
 }
 
 .account-status-sub {
@@ -1626,6 +1628,11 @@ h1 {
 .account-metric-value {
   font-size: 13px;
   font-weight: 600;
+}
+
+.account-metric-value-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
 }
 
 .account-status-actions {
