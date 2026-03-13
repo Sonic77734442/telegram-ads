@@ -60,23 +60,52 @@ export default async function handler(req: any, res: any) {
       markupMultiplier = 1 + clientMarkup / 100;
     }
 
-    let query = supabase.from("v_adcampaigns_client_compat").select("*");
-
-    if (resolvedMode === "client") {
-      query = query.eq("client_id", clientId);
-    } else if (resolvedMode === "agency") {
-      if (!agencyId) {
-        return res.status(403).json({ error: "Agency is not linked to this account" });
+    const applyScope = (query: any) => {
+      if (resolvedMode === "client") {
+        return query.eq("client_id", clientId);
       }
-      query = query.eq("agency_id", agencyId);
-    } else if (resolvedMode === "admin") {
-      if (queryClientId) query = query.eq("client_id", queryClientId);
-      if (queryAgencyId) query = query.eq("agency_id", queryAgencyId);
+      if (resolvedMode === "agency") {
+        if (!agencyId) {
+          return null;
+        }
+        return query.eq("agency_id", agencyId);
+      }
+      if (resolvedMode === "admin") {
+        let scoped = query;
+        if (queryClientId) scoped = scoped.eq("client_id", queryClientId);
+        if (queryAgencyId) scoped = scoped.eq("agency_id", queryAgencyId);
+        return scoped;
+      }
+      return query;
+    };
+
+    let query = applyScope(supabase.from("v_adcampaigns_client_compat").select("*"));
+    if (!query && resolvedMode === "agency") {
+      return res.status(403).json({ error: "Agency is not linked to this account" });
     }
 
-    const { data, error } = await query.order("created_at", {
+    let { data, error } = await query.order("created_at", {
       ascending: false,
     });
+
+    if (error) {
+      const errorText = String((error as any)?.message || "").toLowerCase();
+      const canFallbackToBaseTable =
+        errorText.includes("v_adcampaigns_client_compat") ||
+        errorText.includes("relation") ||
+        errorText.includes("does not exist");
+
+      if (canFallbackToBaseTable) {
+        console.warn("Fallback to ad_campaigns due to view error:", error);
+        const fallbackQuery = applyScope(supabase.from("ad_campaigns").select("*"));
+        if (!fallbackQuery && resolvedMode === "agency") {
+          return res.status(403).json({ error: "Agency is not linked to this account" });
+        }
+        const fallbackResult = await fallbackQuery.order("created_at", { ascending: false });
+        data = fallbackResult.data;
+        error = fallbackResult.error as any;
+      }
+    }
 
     if (error) {
       console.error("Error loading campaigns:", error);
