@@ -102,16 +102,15 @@ if (clientModal) {
 async function openClientModal(userId, email, completedTotalKzt = null) {
   if (!clientModal || !clientTitle) return
   clientTitle.textContent = email || 'Клиент'
-  const [requests, topups, walletOps, accounts, profile, fees, invoiceSummary] = await Promise.all([
+  const [requests, topups, walletOps, accounts, profile, fees] = await Promise.all([
     fetchClientRequests(userId),
     fetchClientTopups(userId),
     fetchClientWalletTransactions(userId),
     fetchClientAccounts(userId),
     fetchClientProfile(userId),
     fetchClientFees(userId),
-    fetchClientInvoiceSummary(userId),
   ])
-  renderClientSummary(userId, email, requests, topups, accounts, profile, completedTotalKzt, invoiceSummary)
+  renderClientSummary(userId, email, requests, topups, accounts, profile, completedTotalKzt)
   renderClientRequests(requests)
   renderClientTopups(topups)
   renderClientWalletOps(walletOps)
@@ -166,40 +165,21 @@ async function fetchClientFees(userId) {
   return res.json()
 }
 
-async function fetchClientInvoiceSummary(userId) {
-  const res = await fetch(`${apiBase}/admin/clients/${userId}/invoice-summary`, { headers: authHeadersSafe() })
-  if (handleAuthFailure(res)) return null
-  if (!res.ok) return null
-  return res.json()
-}
-
 function getTopupAccountAmount(row) {
   if (row?.amount_account != null) return Number(row.amount_account)
   return row?.amount_net != null ? Number(row.amount_net) : Number(row?.amount_input || 0)
 }
 
-function getTopupAccountAmountKzt(row) {
-  if (row?.amount_account_kzt != null) return Number(row.amount_account_kzt)
-  const accountCurrency = String(row?.account_currency || row?.currency || 'USD').toUpperCase()
-  const amount = getTopupAccountAmount(row)
-  if (!Number.isFinite(amount)) return 0
-  if (accountCurrency === 'KZT') return amount
-  if (accountCurrency === 'USD' && Number(row?.fx_rate || 0) > 0) return amount * Number(row.fx_rate)
-  return 0
-}
-
-function renderClientSummary(userId, email, requests, topups, accounts, profile, completedTotalKzt = null, invoiceSummary = null) {
+function renderClientSummary(userId, email, requests, topups, accounts, profile, completedTotalKzt = null) {
   if (!clientSummary) return
   const pendingCount = Array.isArray(requests) ? requests.length : 0
   const calculatedTotal = Array.isArray(topups)
     ? topups.reduce((sum, row) => {
-        const value = getTopupAccountAmountKzt(row)
-        return sum + Number(value || 0)
+        const value = Number(row?.amount_input || 0)
+        return sum + (Number.isFinite(value) ? value : 0)
       }, 0)
     : 0
-  const fallbackTotal = Number.isFinite(Number(completedTotalKzt)) ? Number(completedTotalKzt) : calculatedTotal
-  const invoicesTotal = Number(invoiceSummary?.invoice_total_kzt)
-  const completedTotal = Number.isFinite(invoicesTotal) ? invoicesTotal : fallbackTotal
+  const completedTotal = Number.isFinite(Number(completedTotalKzt)) ? Number(completedTotalKzt) : calculatedTotal
   const accountsCount = Array.isArray(accounts) ? accounts.length : 0
   const company = profile?.company || '—'
   clientSummary.innerHTML = `
@@ -216,7 +196,7 @@ function renderClientSummary(userId, email, requests, topups, accounts, profile,
     <div class="stat">
       <p class="muted">Пополнено</p>
       <h3>${completedTotal ? `${formatMoney(completedTotal)} KZT` : '—'}</h3>
-      <p class="muted small">По загруженным счетам (ready), в KZT</p>
+      <p class="muted small">По подтверждённым пополнениям, в KZT</p>
     </div>
     <div class="stat">
       <p class="muted">Аккаунты</p>
