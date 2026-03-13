@@ -680,7 +680,17 @@ function renderAudienceDonut(target, legendTarget, rows) {
   rows.forEach((row) => {
     const key = String(row.segment || '').trim() || 'Unknown'
     const impressions = Number(row.impressions || 0)
-    grouped.set(key, (grouped.get(key) || 0) + (Number.isFinite(impressions) ? impressions : 0))
+    const clicks = Number(row.clicks || 0)
+    const spend = Number(row.spend || 0)
+    const weight =
+      Number.isFinite(impressions) && impressions > 0
+        ? impressions
+        : Number.isFinite(clicks) && clicks > 0
+          ? clicks
+          : Number.isFinite(spend) && spend > 0
+            ? spend
+            : 0
+    grouped.set(key, (grouped.get(key) || 0) + weight)
   })
   const items = Array.from(grouped.entries())
     .map(([label, value]) => ({ label, value }))
