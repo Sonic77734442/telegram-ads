@@ -281,24 +281,6 @@ function getCompletedTopupBudgetByAccountId(accountId) {
   return Number.isFinite(total) ? total : null
 }
 
-function formatDateTime(value) {
-  if (!value) return '—'
-  const dt = new Date(value)
-  if (Number.isNaN(dt.getTime())) return String(value)
-  return dt.toLocaleString('ru-RU', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function getAccountDisplayNameById(accountId) {
-  const acc = getAccountById(accountId)
-  return acc?.name || acc?.external_id || `#${accountId}`
-}
-
 function getAccountRate(account) {
   const rates = bccRatesCache.data?.rates
   if (!rates) return null
@@ -488,6 +470,10 @@ function renderOpenAccounts() {
         <div class="account-metric">
           <div class="account-metric-label">Пополнено (факт)</div>
           <div class="account-metric-value">${formatTopupFactCell(row)}</div>
+        </div>
+        <div class="account-metric">
+          <div class="account-metric-label">Баланс (факт)</div>
+          <div class="account-metric-value">${formatAccountBalanceFactCell(row)}</div>
         </div>
         <div class="account-metric">
           <div class="account-metric-label">Потрачено</div>
@@ -810,6 +796,17 @@ function formatTopupFactCell(row) {
   return `${formatMoneyAmount(total)} ${row.currency || ''}`
 }
 
+function formatAccountBalanceFactCell(row) {
+  if (!row?.account_db_id) return '<span class="muted small">—</span>'
+  const totalTopup = getCompletedTopupBudgetByAccountId(row.account_db_id)
+  if (totalTopup == null) return '<span class="muted small">Нет пополнений</span>'
+  const spent = extractLiveSpend(row.live_billing)
+  if (spent == null) return '<span class="muted small">Нет данных по расходу</span>'
+  const balance = Number(totalTopup) - Number(spent)
+  const cls = balance < 0 ? 'style="color:#f87171"' : ''
+  return `<span ${cls}>${formatMoneyAmount(balance)} ${row.currency || ''}</span>`
+}
+
 function normalizeAccountStatus(status) {
   if (!status) return 'На модерации'
   if (status === 'pending') return 'На модерации'
@@ -873,7 +870,6 @@ function syncOpenAccounts() {
 
   state.openAccounts = [...accountRows, ...requestRows]
   renderOpenAccounts()
-  renderTopupTransactions()
 }
 
 function openCreateModal(platformKey) {
@@ -1454,38 +1450,6 @@ async function loadTopupWalletBalance() {
     updateTopupHeader()
     updateFee()
   }
-}
-
-function renderTopupTransactions() {
-  const body = document.getElementById('account-topup-transactions')
-  if (!body) return
-  const rows = Array.isArray(state.topups) ? [...state.topups] : []
-  rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-  const visible = rows.slice(0, 20)
-  if (!visible.length) {
-    body.innerHTML = '<tr><td colspan="6">Нет транзакций пополнений</td></tr>'
-    return
-  }
-  body.innerHTML = visible
-    .map((row) => {
-      const accountName = getAccountDisplayNameById(row.account_id)
-      const platform = platformLabel(row.account_platform || row.platform || '')
-      const status = normalizeRequestStatus(row.status)
-      const inputAmount = Number(row.amount_input || 0)
-      const accountAmount = Number(getTopupAccountAmount(row) || 0)
-      const currency = String(row.account_currency || row.currency || '').toUpperCase() || 'USD'
-      return `
-      <tr>
-        <td>${formatDateTime(row.created_at)}</td>
-        <td>${accountName}</td>
-        <td>${platform}</td>
-        <td>${formatMoneyAmount(inputAmount)} KZT</td>
-        <td>${formatMoneyAmount(accountAmount)} ${currency}</td>
-        <td>${status}</td>
-      </tr>
-    `
-    })
-    .join('')
 }
 
 function normalizeRequestStatus(status) {
