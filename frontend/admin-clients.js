@@ -170,6 +170,14 @@ function getTopupAccountAmount(row) {
   return row?.amount_net != null ? Number(row.amount_net) : Number(row?.amount_input || 0)
 }
 
+function getTopupAccountDisplayCurrency(row) {
+  const inputCurrency = String(row?.currency || 'KZT').toUpperCase()
+  const accountCurrency = String(row?.account_currency || inputCurrency || 'USD').toUpperCase()
+  const fx = Number(row?.fx_rate || 0)
+  if (inputCurrency !== accountCurrency && !(Number.isFinite(fx) && fx > 0)) return inputCurrency
+  return accountCurrency
+}
+
 function renderClientSummary(userId, email, requests, topups, walletOps, accounts, profile, completedTotalKzt = null) {
   if (!clientSummary) return
   const pendingCount = Array.isArray(requests) ? requests.length : 0
@@ -219,7 +227,7 @@ function renderClientRequests(rows) {
   }
   clientRequests.innerHTML = rows
     .map((row) => {
-      const accountCurrency = row.amount_account_currency || row.account_currency || row.currency || 'KZT'
+      const accountCurrency = getTopupAccountDisplayCurrency(row)
       const amountNet = row.amount_net != null ? Number(row.amount_net) : ''
       const fxRate = row.fx_rate != null ? Number(row.fx_rate) : ''
       return `
@@ -254,7 +262,7 @@ function renderClientTopups(rows) {
   }
   clientTopups.innerHTML = rows
     .map((row) => {
-      const accountCurrency = row.amount_account_currency || row.account_currency || row.currency || 'KZT'
+      const accountCurrency = getTopupAccountDisplayCurrency(row)
       const accountAmount = getTopupAccountAmount(row)
       return `
         <tr>
