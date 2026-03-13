@@ -177,10 +177,29 @@ def _fetch_bcc_rates() -> Dict[str, object]:
         raise HTTPException(status_code=502, detail="Failed to fetch BCC rates from API")
 
     payload = resp.json()
-    rates_list = payload.get("Rates") if isinstance(payload, dict) else None
-    if rates_list is None and isinstance(payload, list):
-        rates_list = payload
+
+    def _extract_rates_list(raw: object) -> Optional[List[Dict[str, object]]]:
+        if isinstance(raw, list):
+            return [item for item in raw if isinstance(item, dict)]
+        if not isinstance(raw, dict):
+            return None
+        candidates = [
+            raw.get("Rates"),
+            raw.get("rates"),
+            (raw.get("data") or {}).get("Rates") if isinstance(raw.get("data"), dict) else None,
+            (raw.get("data") or {}).get("rates") if isinstance(raw.get("data"), dict) else None,
+            (raw.get("result") or {}).get("Rates") if isinstance(raw.get("result"), dict) else None,
+            (raw.get("result") or {}).get("rates") if isinstance(raw.get("result"), dict) else None,
+        ]
+        for candidate in candidates:
+            if isinstance(candidate, list):
+                return [item for item in candidate if isinstance(item, dict)]
+        return None
+
+    rates_list = _extract_rates_list(payload)
     if not isinstance(rates_list, list):
+        if isinstance(payload, dict):
+            logging.error("Unexpected BCC payload keys: %s", list(payload.keys()))
         raise HTTPException(status_code=502, detail="Unexpected BCC rates payload")
 
     rates: Dict[str, Optional[Dict[str, float]]] = {"USD": None, "EUR": None}
@@ -188,18 +207,22 @@ def _fetch_bcc_rates() -> Dict[str, object]:
     for item in rates_list:
         if not isinstance(item, dict):
             continue
-        code = str(item.get("currency") or "").upper()
+        code = str(item.get("currency") or item.get("currencyCode") or item.get("code") or "").upper()
         if code not in rates:
             continue
         purchase = item.get("purchase")
+        if purchase is None:
+            purchase = item.get("buy")
         sell = item.get("sell")
+        if sell is None:
+            sell = item.get("sale")
         try:
             buy_value = float(purchase) if purchase is not None else None
             sell_value = float(sell) if sell is not None else None
         except (TypeError, ValueError):
             continue
         rates[code] = {"sell": sell_value, "buy": buy_value}
-        dt = item.get("dateTime")
+        dt = item.get("dateTime") or item.get("datetime") or item.get("date")
         if isinstance(dt, str) and dt:
             if updated_at is None or dt > updated_at:
                 updated_at = dt
