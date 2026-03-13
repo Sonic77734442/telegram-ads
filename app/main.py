@@ -3438,6 +3438,8 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
         amount_account_value = _num(payload.get("amount_account"), 0.0) or 0.0
         fx_rate_value = _num(payload.get("fx_rate"), None)
         fee_percent_value = _num(payload.get("fee_percent"), 0.0) or 0.0
+        amount_account_kzt_value = _num(payload.get("amount_account_kzt"), 0.0) or 0.0
+        input_currency = str(payload.get("currency") or "KZT").upper()
 
         our_rate = None
         fx_profit_kzt = 0.0
@@ -3451,8 +3453,18 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
             if fx_profit_kzt < 0:
                 fx_profit_kzt = 0.0
 
-        fee_amount_kzt = amount_input_value * (fee_percent_value / 100.0) if amount_input_value > 0 and fee_percent_value > 0 else 0.0
+        fee_base_kzt = amount_input_value
+        if amount_account_value > 0:
+            if fx_rate_value and fx_rate_value > 0:
+                fee_base_kzt = amount_account_value * fx_rate_value
+            elif input_currency == "KZT":
+                fee_base_kzt = amount_account_value
+            elif amount_account_kzt_value > 0:
+                fee_base_kzt = amount_account_kzt_value
+
+        fee_amount_kzt = fee_base_kzt * (fee_percent_value / 100.0) if fee_base_kzt > 0 and fee_percent_value > 0 else 0.0
         payload["our_rate"] = our_rate
+        payload["fee_base_kzt"] = round(fee_base_kzt, 2)
         payload["fx_profit_kzt"] = round(fx_profit_kzt, 2)
         payload["fee_amount_kzt"] = round(fee_amount_kzt, 2)
         payload["profit_total_kzt"] = round(fx_profit_kzt + fee_amount_kzt, 2)
