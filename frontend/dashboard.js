@@ -766,15 +766,12 @@ async function loadAudience(group) {
   )
 
   tasks.push(
-    group === 'age_gender'
-      ? Promise.resolve({ platform: 'Google', data: { accounts: [] } })
-      : fetch(
-          `${apiBase}/google/audience?${params.toString()}&group=${group}${googleAccount?.value ? `&account_id=${googleAccount.value}` : ''}`,
-          { headers: authHeaders() }
-        )
-          .then((res) => (res.ok ? res.json() : Promise.reject(new Error('google failed'))))
-          .then((data) => ({ platform: 'Google', data }))
-          .catch(() => ({ platform: 'Google', data: { accounts: [] } }))
+    fetch(`${apiBase}/google/audience?${params.toString()}&group=${group}${googleAccount?.value ? `&account_id=${googleAccount.value}` : ''}`, {
+      headers: authHeaders(),
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('google failed'))))
+      .then((data) => ({ platform: 'Google', data }))
+      .catch(() => ({ platform: 'Google', data: { accounts: [] } }))
   )
 
   const results = await Promise.all(tasks)
