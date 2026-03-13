@@ -5796,7 +5796,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                       u.email,
                       COALESCE(ts.unread_topups, 0) as unread_topups,
                       COALESCE(ts.pending_requests, 0) as pending_requests,
-                      COALESCE(ws.completed_total, 0) as completed_total,
+                      COALESCE(ts.completed_total_kzt, 0) as completed_total,
                       COALESCE(ts.completed_count, 0) as completed_count,
                       COALESCE(ts.last_topup_at, ws.last_funding_at) as last_activity
                     FROM users u
@@ -5806,6 +5806,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                         COALESCE(SUM(CASE WHEN seen_by_admin=0 THEN 1 ELSE 0 END), 0) as unread_topups,
                         COALESCE(SUM(CASE WHEN status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
                         COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
+                        COALESCE(SUM(CASE WHEN status='completed' THEN COALESCE(amount_input, 0) ELSE 0 END), 0) as completed_total_kzt,
                         MAX(created_at) as last_topup_at
                       FROM topups
                       GROUP BY user_id
@@ -5830,7 +5831,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                       u.email,
                       0 as unread_topups,
                       COALESCE(ts.pending_requests, 0) as pending_requests,
-                      COALESCE(ws.completed_total, 0) as completed_total,
+                      COALESCE(ts.completed_total_kzt, 0) as completed_total,
                       COALESCE(ts.completed_count, 0) as completed_count,
                       COALESCE(ts.last_topup_at, ws.last_funding_at) as last_activity
                     FROM users u
@@ -5839,6 +5840,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                         user_id,
                         COALESCE(SUM(CASE WHEN status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
                         COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
+                        COALESCE(SUM(CASE WHEN status='completed' THEN COALESCE(amount_input, 0) ELSE 0 END), 0) as completed_total_kzt,
                         MAX(created_at) as last_topup_at
                       FROM topups
                       GROUP BY user_id

@@ -181,17 +181,16 @@ function getTopupAccountDisplayCurrency(row) {
 function renderClientSummary(userId, email, requests, topups, walletOps, accounts, profile, completedTotalKzt = null) {
   if (!clientSummary) return
   const pendingCount = Array.isArray(requests) ? requests.length : 0
-  const walletFundedTotal = Array.isArray(walletOps)
-    ? walletOps.reduce((sum, row) => {
-        if (String(row?.type || '') !== 'adjustment') return sum
-        const value = Number(row?.amount || 0)
+  const topupCompletedTotal = Array.isArray(topups)
+    ? topups.reduce((sum, row) => {
+        const value = Number(row?.amount_input || 0)
         if (!Number.isFinite(value) || value <= 0) return sum
         return sum + value
       }, 0)
     : 0
-  const completedTotal = Number.isFinite(walletFundedTotal) && walletFundedTotal > 0
-    ? walletFundedTotal
-    : (Number.isFinite(Number(completedTotalKzt)) ? Number(completedTotalKzt) : 0)
+  const completedTotal = Number.isFinite(Number(completedTotalKzt)) && Number(completedTotalKzt) > 0
+    ? Number(completedTotalKzt)
+    : topupCompletedTotal
   const accountsCount = Array.isArray(accounts) ? accounts.length : 0
   const company = profile?.company || '—'
   clientSummary.innerHTML = `
@@ -208,7 +207,7 @@ function renderClientSummary(userId, email, requests, topups, walletOps, account
     <div class="stat">
       <p class="muted">Пополнено</p>
       <h3>${completedTotal ? `${formatMoney(completedTotal)} KZT` : '—'}</h3>
-      <p class="muted small">По фактическим зачислениям в кошелек, в KZT</p>
+      <p class="muted small">По подтверждённым пополнениям (completed), в KZT</p>
     </div>
     <div class="stat">
       <p class="muted">Аккаунты</p>
