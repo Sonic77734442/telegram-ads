@@ -1,4 +1,7 @@
-﻿function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
+﻿const TOPUP_MARKUP = 10
+const SIDEBAR_RATES_PLACEHOLDER = 'Курс недоступен'
+
+function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
   const root = document.getElementById('header-root')
   if (!root) return
   document.body.classList.add('with-sidebar')
@@ -41,6 +44,11 @@
         <span>Envidicy</span>
       </div>
       <div class="nav">${navHtml}</div>
+      <div id="sidebar-rates-panel" class="sidebar-rates-panel">
+        <div class="sidebar-rates-title">Курс пополнения</div>
+        <div class="sidebar-rate-row">USD: ${SIDEBAR_RATES_PLACEHOLDER}</div>
+        <div class="sidebar-rate-row">EUR: ${SIDEBAR_RATES_PLACEHOLDER}</div>
+      </div>
       <div class="nav-footer">${authHtml}</div>
     </nav>
     <div class="nav-drawer" id="nav-drawer">
@@ -50,6 +58,11 @@
           <button class="btn ghost small" id="nav-close" type="button">Закрыть</button>
         </div>
         <div class="nav-drawer-links">${navHtml}</div>
+        <div id="drawer-rates-panel" class="sidebar-rates-panel">
+          <div class="sidebar-rates-title">Курс пополнения</div>
+          <div class="sidebar-rate-row">USD: ${SIDEBAR_RATES_PLACEHOLDER}</div>
+          <div class="sidebar-rate-row">EUR: ${SIDEBAR_RATES_PLACEHOLDER}</div>
+        </div>
         <div class="nav-drawer-footer">${authHtml}</div>
       </div>
     </div>
@@ -179,6 +192,7 @@
   bindDropdown('bell-btn', 'bell-menu')
   bindDropdown('profile-btn', 'profile-menu')
   loadWalletBalance()
+  loadSidebarRates()
   loadHeaderProfile()
   loadNotifications(isAdmin)
   if (!isAdmin) {
@@ -218,7 +232,6 @@ function loadWalletBalance() {
     return
   }
   const apiBase = window.API_BASE || 'https://envidicy-dash-client.onrender.com'
-  const markup = 10
   Promise.all([
     fetch(`${apiBase}/wallet`, { headers: authHeaders() }).then((res) => (res.ok ? res.json() : null)),
     fetch(`${apiBase}/rates/bcc`).then((res) => (res.ok ? res.json() : null)).catch(() => null),
@@ -232,8 +245,8 @@ function loadWalletBalance() {
       })
       const usdSell = Number(ratesData?.rates?.USD?.sell)
       const eurSell = Number(ratesData?.rates?.EUR?.sell)
-      const usdRate = Number.isFinite(usdSell) ? usdSell + markup : null
-      const eurRate = Number.isFinite(eurSell) ? eurSell + markup : null
+      const usdRate = Number.isFinite(usdSell) ? usdSell + TOPUP_MARKUP : null
+      const eurRate = Number.isFinite(eurSell) ? eurSell + TOPUP_MARKUP : null
       const usdText =
         usdRate && usdRate > 0
           ? (balanceKzt / usdRate).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -251,6 +264,45 @@ function loadWalletBalance() {
     .catch(() => {
       el.textContent = 'Баланс: —'
     })
+}
+
+function loadSidebarRates() {
+  const desktopPanel = document.getElementById('sidebar-rates-panel')
+  const mobilePanel = document.getElementById('drawer-rates-panel')
+  if (!desktopPanel && !mobilePanel) return
+  const apiBase = window.API_BASE || 'https://envidicy-dash-client.onrender.com'
+  fetch(`${apiBase}/rates/bcc`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      const usdSell = Number(data?.rates?.USD?.sell)
+      const eurSell = Number(data?.rates?.EUR?.sell)
+      const usdRate = Number.isFinite(usdSell) ? usdSell + TOPUP_MARKUP : null
+      const eurRate = Number.isFinite(eurSell) ? eurSell + TOPUP_MARKUP : null
+      applyRatesPanel(desktopPanel, usdRate, eurRate)
+      applyRatesPanel(mobilePanel, usdRate, eurRate)
+    })
+    .catch(() => {
+      applyRatesPanel(desktopPanel, null, null)
+      applyRatesPanel(mobilePanel, null, null)
+    })
+}
+
+function applyRatesPanel(panel, usdRate, eurRate) {
+  if (!panel) return
+  panel.innerHTML = `
+    <div class="sidebar-rates-title">Курс пополнения</div>
+    <div class="sidebar-rate-row">USD: ${formatTopupRate(usdRate, '$')}</div>
+    <div class="sidebar-rate-row">EUR: ${formatTopupRate(eurRate, '€')}</div>
+  `
+}
+
+function formatTopupRate(rate, symbol) {
+  if (!Number.isFinite(rate) || rate <= 0) return SIDEBAR_RATES_PLACEHOLDER
+  const value = Number(rate).toLocaleString('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `1${symbol} = ${value} ₸`
 }
 
 function bindDropdown(triggerId, menuId) {
