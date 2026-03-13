@@ -3420,6 +3420,40 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
         account_currency = payload.get("account_currency") or payload.get("currency") or "USD"
         payload["amount_account_usd"] = _convert_amount_to_usd(payload.get("amount_account"), account_currency, rates_data)
         payload["amount_account_kzt"] = _convert_amount_to_kzt(payload.get("amount_account"), account_currency, rates_data)
+        try:
+            amount_input_value = float(payload.get("amount_input") or 0)
+        except (TypeError, ValueError):
+            amount_input_value = 0.0
+        try:
+            amount_account_value = float(payload.get("amount_account") or 0)
+        except (TypeError, ValueError):
+            amount_account_value = 0.0
+        try:
+            fx_rate_value = float(payload.get("fx_rate")) if payload.get("fx_rate") is not None else None
+        except (TypeError, ValueError):
+            fx_rate_value = None
+        try:
+            fee_percent_value = float(payload.get("fee_percent") or 0)
+        except (TypeError, ValueError):
+            fee_percent_value = 0.0
+
+        our_rate = None
+        fx_profit_kzt = 0.0
+        if fx_rate_value and fx_rate_value > 0 and amount_account_value > 0 and amount_input_value > 0:
+            if fx_rate_value > 10:
+                our_rate = fx_rate_value - 10.0
+                fx_profit_kzt = amount_input_value - (amount_account_value * our_rate)
+            else:
+                our_rate = fx_rate_value
+                fx_profit_kzt = 0.0
+            if fx_profit_kzt < 0:
+                fx_profit_kzt = 0.0
+
+        fee_amount_kzt = amount_input_value * (fee_percent_value / 100.0) if amount_input_value > 0 and fee_percent_value > 0 else 0.0
+        payload["our_rate"] = our_rate
+        payload["fx_profit_kzt"] = round(fx_profit_kzt, 2)
+        payload["fee_amount_kzt"] = round(fee_amount_kzt, 2)
+        payload["profit_total_kzt"] = round(fx_profit_kzt + fee_amount_kzt, 2)
         prepared.append(payload)
     return prepared
 

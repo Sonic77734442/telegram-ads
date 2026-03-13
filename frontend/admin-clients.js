@@ -191,6 +191,12 @@ function renderClientSummary(userId, email, requests, topups, walletOps, account
   const completedTotal = Number.isFinite(Number(completedTotalKzt)) && Number(completedTotalKzt) > 0
     ? Number(completedTotalKzt)
     : topupCompletedTotal
+  const profitTotal = Array.isArray(topups)
+    ? topups.reduce((sum, row) => {
+        const value = Number(row?.profit_total_kzt || 0)
+        return sum + (Number.isFinite(value) ? value : 0)
+      }, 0)
+    : 0
   const accountsCount = Array.isArray(accounts) ? accounts.length : 0
   const company = profile?.company || '—'
   clientSummary.innerHTML = `
@@ -213,6 +219,11 @@ function renderClientSummary(userId, email, requests, topups, walletOps, account
       <p class="muted">Аккаунты</p>
       <h3>${accountsCount}</h3>
       <p class="muted small">Доступные кабинеты</p>
+    </div>
+    <div class="stat">
+      <p class="muted">Заработок</p>
+      <h3>${profitTotal ? `${formatMoney(profitTotal)} KZT` : '—'}</h3>
+      <p class="muted small">Курс + комиссия</p>
     </div>
   `
   clientSummary.dataset.userId = String(userId)
@@ -256,13 +267,17 @@ function renderClientRequests(rows) {
 function renderClientTopups(rows) {
   if (!clientTopups) return
   if (!rows || rows.length === 0) {
-    clientTopups.innerHTML = `<tr><td colspan="7" class="muted">Нет подтверждённых пополнений.</td></tr>`
+    clientTopups.innerHTML = `<tr><td colspan="11" class="muted">Нет подтверждённых пополнений.</td></tr>`
     return
   }
   clientTopups.innerHTML = rows
     .map((row) => {
       const accountCurrency = getTopupAccountDisplayCurrency(row)
       const accountAmount = getTopupAccountAmount(row)
+      const ourRate = row.our_rate != null ? formatMoney(Number(row.our_rate || 0)) : '—'
+      const fxProfit = formatMoney(Number(row.fx_profit_kzt || 0))
+      const feeAmount = formatMoney(Number(row.fee_amount_kzt || 0))
+      const totalProfit = formatMoney(Number(row.profit_total_kzt || 0))
       return `
         <tr>
           <td>${formatDate(row.created_at)}</td>
@@ -270,7 +285,11 @@ function renderClientTopups(rows) {
           <td>${row.account_name || '—'}</td>
           <td>${formatMoney(row.amount_input)} ${row.currency || ''}</td>
           <td>${row.fx_rate ?? '—'}</td>
+          <td>${ourRate}</td>
           <td>${accountAmount == null ? '—' : `${formatMoney(accountAmount)} ${accountCurrency}`}</td>
+          <td>${fxProfit} KZT</td>
+          <td>${feeAmount} KZT</td>
+          <td>${totalProfit} KZT</td>
           <td>${row.status || '—'}</td>
         </tr>
       `
