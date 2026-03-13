@@ -6584,20 +6584,24 @@ def create_account(
 def list_topups(account_id: Optional[int] = None, status: Optional[str] = None, current_user=Depends(get_current_user)):
     if not get_conn:
         return []
-    with get_conn() as conn:
-        query = "SELECT t.*, a.name as account_name, a.platform as account_platform, a.currency as account_currency FROM topups t JOIN ad_accounts a ON a.id=t.account_id WHERE 1=1"
-        params: List[object] = []
-        if account_id:
-            query += " AND t.account_id=?"
-            params.append(account_id)
-        if status:
-            query += " AND t.status=?"
-            params.append(status)
-        query += " AND t.user_id=?"
-        params.append(current_user["id"])
-        query += " ORDER BY t.created_at DESC"
-        rows = conn.execute(query, params).fetchall()
-        return _attach_topup_account_amount([dict(row) for row in rows])
+    try:
+        with get_conn() as conn:
+            query = "SELECT t.*, a.name as account_name, a.platform as account_platform, a.currency as account_currency FROM topups t JOIN ad_accounts a ON a.id=t.account_id WHERE 1=1"
+            params: List[object] = []
+            if account_id:
+                query += " AND t.account_id=?"
+                params.append(account_id)
+            if status:
+                query += " AND t.status=?"
+                params.append(status)
+            query += " AND t.user_id=?"
+            params.append(current_user["id"])
+            query += " ORDER BY t.created_at DESC"
+            rows = conn.execute(query, params).fetchall()
+            return _attach_topup_account_amount([dict(row) for row in rows])
+    except Exception as exc:
+        logging.exception("Failed to list topups for user_id=%s: %s", current_user.get("id"), exc)
+        return []
 
 
 class TopupCreatePayload(BaseModel):
