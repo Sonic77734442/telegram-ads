@@ -8,27 +8,33 @@ export default async function handler(req: any, res: any) {
         ? Math.round((value + Number.EPSILON) * 100) / 100
         : 0;
 
+    const {
+      mode: queryMode,
+      client_id: queryClientId,
+      agency_id: queryAgencyId,
+      ym: queryYm,
+    } = (req as any).query || {};
+    const requestedMode: "client" | "agency" | "admin" =
+      queryMode === "agency" || queryMode === "admin" ? queryMode : "client";
+
     const session = readSessionFromRequest(req);
-    if (!session) {
+    const allowClientQueryFallback = !session && requestedMode === "client" && Boolean(queryClientId);
+    if (!session && !allowClientQueryFallback) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
     const supabase = getSupabaseAdmin();
 
-    const role: "client" | "agency" | "admin" =
-      session.role === "agency" || session.role === "admin" ? session.role : "client";
+    const role: "client" | "agency" | "admin" = session
+      ? session.role === "agency" || session.role === "admin"
+        ? session.role
+        : "client"
+      : "client";
 
-    const clientId = session.user_id;
-    const agencyId = session.agency_id || null;
+    const clientId = session ? session.user_id : String(queryClientId);
+    const agencyId = session ? session.agency_id || null : null;
 
     let resolvedMode: "client" | "agency" | "admin" = role;
-
-    // Only admins can optionally filter; others are locked to their own scope.
-    const {
-      client_id: queryClientId,
-      agency_id: queryAgencyId,
-      ym: queryYm,
-    } = (req as any).query || {};
 
     // Month filter (YYYY-MM). If not provided or set to "all", use lifetime (no override).
     const ym =
