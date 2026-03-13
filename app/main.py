@@ -4750,6 +4750,9 @@ def google_audience(
 def insights_overview(
     date_from: str,
     date_to: str,
+    meta_account_id: Optional[int] = None,
+    google_account_id: Optional[int] = None,
+    tiktok_account_id: Optional[int] = None,
     current_user=Depends(get_current_user),
 ):
     if not get_conn:
@@ -4773,22 +4776,23 @@ def insights_overview(
         target[date_val]["impressions"] += _to_float(row.get("impressions"))
         target[date_val]["clicks"] += _to_float(row.get("clicks"))
 
+    def _fetch_accounts(conn, platform: str, account_id: Optional[int]) -> List[Dict[str, object]]:
+        if account_id:
+            row = conn.execute(
+                "SELECT * FROM ad_accounts WHERE id=? AND user_id=? AND platform=?",
+                (account_id, current_user["id"], platform),
+            ).fetchone()
+            return [dict(row)] if row else []
+        rows = conn.execute(
+            "SELECT * FROM ad_accounts WHERE user_id=? AND platform=?",
+            (current_user["id"], platform),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
     with get_conn() as conn:
-        meta_rows = conn.execute(
-            "SELECT * FROM ad_accounts WHERE user_id=? AND platform='meta'",
-            (current_user["id"],),
-        ).fetchall()
-        google_rows = conn.execute(
-            "SELECT * FROM ad_accounts WHERE user_id=? AND platform='google'",
-            (current_user["id"],),
-        ).fetchall()
-        tiktok_rows = conn.execute(
-            "SELECT * FROM ad_accounts WHERE user_id=? AND platform='tiktok'",
-            (current_user["id"],),
-        ).fetchall()
-        meta_accounts = [dict(r) for r in meta_rows]
-        google_accounts = [dict(r) for r in google_rows]
-        tiktok_accounts = [dict(r) for r in tiktok_rows]
+        meta_accounts = _fetch_accounts(conn, "meta", meta_account_id)
+        google_accounts = _fetch_accounts(conn, "google", google_account_id)
+        tiktok_accounts = _fetch_accounts(conn, "tiktok", tiktok_account_id)
 
     totals = {"meta": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},
               "google": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},

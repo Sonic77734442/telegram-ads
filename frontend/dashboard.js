@@ -49,9 +49,6 @@ const donutEl = document.getElementById('spend-donut')
 const legendEl = document.getElementById('spend-legend')
 const lineEl = document.getElementById('line-chart')
 
-const audienceAgeLoad = document.getElementById('audience-age-load')
-const audienceGeoLoad = document.getElementById('audience-geo-load')
-const audienceDeviceLoad = document.getElementById('audience-device-load')
 const audienceAgePlatform = document.getElementById('audience-age-platform')
 const audienceGeoPlatform = document.getElementById('audience-geo-platform')
 const audienceDevicePlatform = document.getElementById('audience-device-platform')
@@ -647,6 +644,9 @@ async function loadOverview() {
   const params = new URLSearchParams()
   params.set('date_from', metaDateFrom.value)
   params.set('date_to', metaDateTo.value)
+  if (metaAccount && metaAccount.value) params.set('meta_account_id', metaAccount.value)
+  if (googleAccount && googleAccount.value) params.set('google_account_id', googleAccount.value)
+  if (tiktokAccount && tiktokAccount.value) params.set('tiktok_account_id', tiktokAccount.value)
   try {
     const res = await fetch(`${apiBase}/insights/overview?${params.toString()}`, { headers: authHeaders() })
     if (res.status === 401) {
@@ -961,29 +961,20 @@ async function refreshAudienceGroup(group, donutEl, legendEl, platformSelect) {
   }
 }
 
+async function refreshVisualizationBundle() {
+  await Promise.all([
+    loadOverview(),
+    refreshAudienceGroup('age_gender', audienceAgeDonut, audienceAgeLegend, audienceAgePlatform),
+    refreshAudienceGroup('geo', audienceGeoDonut, audienceGeoLegend, audienceGeoPlatform),
+    refreshAudienceGroup('device', audienceDeviceDonut, audienceDeviceLegend, audienceDevicePlatform),
+  ])
+}
+
 if (metaLoad) metaLoad.addEventListener('click', () => withGlobalLoading('Загружаем данные...', loadMetaInsights))
 if (googleLoad) googleLoad.addEventListener('click', () => withGlobalLoading('Загружаем данные...', loadGoogleInsights))
 if (tiktokLoad) tiktokLoad.addEventListener('click', () => withGlobalLoading('Загружаем данные...', loadTiktokInsights))
-if (reportLoad) reportLoad.addEventListener('click', () => withGlobalLoading('Загружаем отчет...', loadOverview))
+if (reportLoad) reportLoad.addEventListener('click', () => withGlobalLoading('Загружаем визуализацию...', refreshVisualizationBundle))
 if (reportExport) reportExport.addEventListener('click', () => window.print())
-if (audienceAgeLoad)
-  audienceAgeLoad.addEventListener('click', () =>
-    withGlobalLoading('Загружаем данные...', async () =>
-      refreshAudienceGroup('age_gender', audienceAgeDonut, audienceAgeLegend, audienceAgePlatform)
-    )
-  )
-if (audienceGeoLoad)
-  audienceGeoLoad.addEventListener('click', () =>
-    withGlobalLoading('Загружаем данные...', async () =>
-      refreshAudienceGroup('geo', audienceGeoDonut, audienceGeoLegend, audienceGeoPlatform)
-    )
-  )
-if (audienceDeviceLoad)
-  audienceDeviceLoad.addEventListener('click', () =>
-    withGlobalLoading('Загружаем данные...', async () =>
-      refreshAudienceGroup('device', audienceDeviceDonut, audienceDeviceLegend, audienceDevicePlatform)
-    )
-  )
 if (audienceAgePlatform) {
   audienceAgePlatform.addEventListener('change', () =>
     withGlobalLoading('Обновляем срез...', async () =>
