@@ -274,9 +274,18 @@ export default async function handler(req: any, res: any) {
           ? Number((cpmNet * markupMultiplier).toFixed(4))
           : cpmNet;
 
-      const budgetClient = budgetClientRaw !== null ? budgetClientRaw : budgetNet;
+      const budgetClient =
+        budgetClientRaw !== null
+          ? budgetClientRaw
+          : isClientMode
+          ? Number((budgetNet * markupMultiplier).toFixed(2))
+          : budgetNet;
       const dailyBudgetClient =
-        dailyBudgetClientRaw !== null ? dailyBudgetClientRaw : dailyBudgetNet;
+        dailyBudgetClientRaw !== null
+          ? dailyBudgetClientRaw
+          : isClientMode
+          ? Number((dailyBudgetNet * markupMultiplier).toFixed(2))
+          : dailyBudgetNet;
 
       const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
 
