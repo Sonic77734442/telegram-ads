@@ -271,11 +271,11 @@ function getTopupAccountAmount(row) {
   return Number(row?.amount_input || 0)
 }
 
-function getCompletedTopupBudgetByAccountId(accountId) {
+function getTopupFactByAccountId(accountId) {
   const id = String(accountId || '')
   if (!id) return null
   const rows = Array.isArray(state.topups) ? state.topups : []
-  const matched = rows.filter((row) => String(row.account_id) === id && String(row.status || '').toLowerCase() === 'completed')
+  const matched = rows.filter((row) => String(row.account_id) === id)
   if (!matched.length) return null
   const total = matched.reduce((sum, row) => sum + Number(getTopupAccountAmount(row) || 0), 0)
   return Number.isFinite(total) ? total : null
@@ -470,10 +470,6 @@ function renderOpenAccounts() {
         <div class="account-metric">
           <div class="account-metric-label">Пополнено (факт)</div>
           <div class="account-metric-value">${formatTopupFactCell(row)}</div>
-        </div>
-        <div class="account-metric">
-          <div class="account-metric-label">Баланс (факт)</div>
-          <div class="account-metric-value">${formatAccountBalanceFactCell(row)}</div>
         </div>
         <div class="account-metric">
           <div class="account-metric-label">Потрачено</div>
@@ -791,20 +787,9 @@ function formatPeriodSpendCell(row) {
 
 function formatTopupFactCell(row) {
   if (!row?.account_db_id) return '<span class="muted small">—</span>'
-  const total = getCompletedTopupBudgetByAccountId(row.account_db_id)
+  const total = getTopupFactByAccountId(row.account_db_id)
   if (total == null) return '<span class="muted small">Нет пополнений</span>'
   return `${formatMoneyAmount(total)} ${row.currency || ''}`
-}
-
-function formatAccountBalanceFactCell(row) {
-  if (!row?.account_db_id) return '<span class="muted small">—</span>'
-  const totalTopup = getCompletedTopupBudgetByAccountId(row.account_db_id)
-  if (totalTopup == null) return '<span class="muted small">Нет пополнений</span>'
-  const spent = extractLiveSpend(row.live_billing)
-  if (spent == null) return '<span class="muted small">Нет данных по расходу</span>'
-  const balance = Number(totalTopup) - Number(spent)
-  const cls = balance < 0 ? 'style="color:#f87171"' : ''
-  return `<span ${cls}>${formatMoneyAmount(balance)} ${row.currency || ''}</span>`
 }
 
 function normalizeAccountStatus(status) {
