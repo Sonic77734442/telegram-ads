@@ -48,6 +48,9 @@ const ringGrid = document.getElementById('kpi-rings')
 const donutEl = document.getElementById('spend-donut')
 const legendEl = document.getElementById('spend-legend')
 const lineEl = document.getElementById('line-chart')
+const vizMetaAccount = document.getElementById('viz-meta-account')
+const vizGoogleAccount = document.getElementById('viz-google-account')
+const vizTiktokAccount = document.getElementById('viz-tiktok-account')
 
 const audienceAgePlatform = document.getElementById('audience-age-platform')
 const audienceGeoPlatform = document.getElementById('audience-geo-platform')
@@ -88,6 +91,22 @@ function accountOptionLabel(acc) {
   return ext ? `${name} · ${ext}` : `${name} · id:${acc.id}`
 }
 
+function renderAccountSelectOptions(selectEl, accounts, allLabel) {
+  if (!selectEl) return
+  selectEl.innerHTML =
+    `<option value="">${allLabel}</option>` +
+    accounts.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
+  selectEl.value = ''
+}
+
+function selectedVisualizationAccounts() {
+  return {
+    meta: (vizMetaAccount && vizMetaAccount.value) || (metaAccount && metaAccount.value) || '',
+    google: (vizGoogleAccount && vizGoogleAccount.value) || (googleAccount && googleAccount.value) || '',
+    tiktok: (vizTiktokAccount && vizTiktokAccount.value) || (tiktokAccount && tiktokAccount.value) || '',
+  }
+}
+
 async function loadMetaAccounts() {
   if (!metaAccount) return
   try {
@@ -99,23 +118,17 @@ async function loadMetaAccounts() {
     if (!res.ok) throw new Error('Failed to load accounts')
     const data = await res.json()
     const meta = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'meta')
-    metaAccount.innerHTML =
-      '<option value="">Все</option>' +
-      meta.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
-    metaAccount.value = ''
+    renderAccountSelectOptions(metaAccount, meta, 'Все')
+    renderAccountSelectOptions(vizMetaAccount, meta, 'Meta: все аккаунты')
     if (googleAccount) {
       const google = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'google')
-      googleAccount.innerHTML =
-        '<option value="">Все</option>' +
-        google.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
-      googleAccount.value = ''
+      renderAccountSelectOptions(googleAccount, google, 'Все')
+      renderAccountSelectOptions(vizGoogleAccount, google, 'Google: все аккаунты')
     }
     if (tiktokAccount) {
       const tiktok = data.filter((acc) => String(acc.platform || '').toLowerCase().trim() === 'tiktok')
-      tiktokAccount.innerHTML =
-        '<option value="">Все</option>' +
-        tiktok.map((acc) => `<option value="${acc.id}">${accountOptionLabel(acc)}</option>`).join('')
-      tiktokAccount.value = ''
+      renderAccountSelectOptions(tiktokAccount, tiktok, 'Все')
+      renderAccountSelectOptions(vizTiktokAccount, tiktok, 'TikTok: все аккаунты')
     }
     applyDashboardDeepLink()
   } catch (e) {
@@ -130,6 +143,9 @@ function applyDashboardDeepLink() {
   if (deepLinkPlatform === 'meta' && metaAccount) {
     if (metaAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
       metaAccount.value = deepLinkAccountId
+      if (vizMetaAccount && vizMetaAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
+        vizMetaAccount.value = deepLinkAccountId
+      }
     }
     void withGlobalLoading('Загружаем данные...', loadMetaInsights)
     return
@@ -137,6 +153,9 @@ function applyDashboardDeepLink() {
   if (deepLinkPlatform === 'google' && googleAccount) {
     if (googleAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
       googleAccount.value = deepLinkAccountId
+      if (vizGoogleAccount && vizGoogleAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
+        vizGoogleAccount.value = deepLinkAccountId
+      }
     }
     void withGlobalLoading('Загружаем данные...', loadGoogleInsights)
     return
@@ -144,6 +163,9 @@ function applyDashboardDeepLink() {
   if (deepLinkPlatform === 'tiktok' && tiktokAccount) {
     if (tiktokAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
       tiktokAccount.value = deepLinkAccountId
+      if (vizTiktokAccount && vizTiktokAccount.querySelector(`option[value="${deepLinkAccountId}"]`)) {
+        vizTiktokAccount.value = deepLinkAccountId
+      }
     }
     void withGlobalLoading('Загружаем данные...', loadTiktokInsights)
   }
@@ -644,9 +666,10 @@ async function loadOverview() {
   const params = new URLSearchParams()
   params.set('date_from', metaDateFrom.value)
   params.set('date_to', metaDateTo.value)
-  if (metaAccount && metaAccount.value) params.set('meta_account_id', metaAccount.value)
-  if (googleAccount && googleAccount.value) params.set('google_account_id', googleAccount.value)
-  if (tiktokAccount && tiktokAccount.value) params.set('tiktok_account_id', tiktokAccount.value)
+  const selected = selectedVisualizationAccounts()
+  if (selected.meta) params.set('meta_account_id', selected.meta)
+  if (selected.google) params.set('google_account_id', selected.google)
+  if (selected.tiktok) params.set('tiktok_account_id', selected.tiktok)
   try {
     const res = await fetch(`${apiBase}/insights/overview?${params.toString()}`, { headers: authHeaders() })
     if (res.status === 401) {
@@ -764,10 +787,11 @@ async function loadAudience(group) {
   const params = new URLSearchParams()
   params.set('date_from', metaDateFrom.value)
   params.set('date_to', metaDateTo.value)
+  const selected = selectedVisualizationAccounts()
 
   const tasks = []
   tasks.push(
-    fetch(`${apiBase}/meta/audience?${params.toString()}&group=${group}${metaAccount?.value ? `&account_id=${metaAccount.value}` : ''}`, {
+    fetch(`${apiBase}/meta/audience?${params.toString()}&group=${group}${selected.meta ? `&account_id=${selected.meta}` : ''}`, {
       headers: authHeaders(),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('meta failed'))))
@@ -776,7 +800,7 @@ async function loadAudience(group) {
   )
 
   tasks.push(
-    fetch(`${apiBase}/google/audience?${params.toString()}&group=${group}${googleAccount?.value ? `&account_id=${googleAccount.value}` : ''}`, {
+    fetch(`${apiBase}/google/audience?${params.toString()}&group=${group}${selected.google ? `&account_id=${selected.google}` : ''}`, {
       headers: authHeaders(),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('google failed'))))
