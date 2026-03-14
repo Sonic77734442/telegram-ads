@@ -191,6 +191,7 @@ function applyAiAssistantDraft(draft, payload) {
     globalFactsUsed: Boolean(draft?.global_facts_used),
     globalFactsPeriod: draft?.global_facts_period || null,
     globalFactsTotals: draft?.global_facts_totals || {},
+    globalFactsDebug: draft?.global_facts_debug || {},
   }
 }
 
@@ -225,6 +226,8 @@ function renderAiAssistant() {
   const globalFactsUsed = Boolean(draft.globalFactsUsed)
   const globalFactsTotals =
     draft.globalFactsTotals && typeof draft.globalFactsTotals === 'object' ? draft.globalFactsTotals : {}
+  const globalFactsDebug =
+    draft.globalFactsDebug && typeof draft.globalFactsDebug === 'object' ? draft.globalFactsDebug : {}
   const factsRows = Object.entries(factsTotals)
     .map(([platform, row]) => {
       const spend = row && typeof row === 'object' ? Number(row.spend || 0) : 0
@@ -240,6 +243,19 @@ function renderAiAssistant() {
       const clicks = row && typeof row === 'object' ? Number(row.clicks || 0) : 0
       return `<tr><td>${platform}</td><td>${usd(spend, 2)}</td><td>${num(impressions)}</td><td>${num(clicks)}</td></tr>`
     })
+    .join('')
+  const globalDebugRows = Object.entries(globalFactsDebug)
+    .map(([platform, row]) => {
+      if (!row || typeof row !== 'object') return ''
+      const accountsTotal = Number(row.accounts_total || 0)
+      const usedIds = Number(row.used_ids || 0)
+      const missingId = Number(row.missing_id || 0)
+      const apiOk = Number(row.api_ok || 0)
+      const apiFailed = Number(row.api_failed || 0)
+      const lastError = row.last_error ? String(row.last_error) : '—'
+      return `<tr><td>${platform}</td><td>${accountsTotal}</td><td>${usedIds}</td><td>${missingId}</td><td>${apiOk}</td><td>${apiFailed}</td><td>${lastError}</td></tr>`
+    })
+    .filter(Boolean)
     .join('')
   box.classList.remove('muted')
   box.innerHTML = `
@@ -289,6 +305,26 @@ function renderAiAssistant() {
           </tr>
         </thead>
         <tbody>${globalFactsRows}</tbody>
+      </table>
+    </div>`
+        : ''
+    }
+    ${
+      globalDebugRows
+        ? `<div class="table-wrapper" style="margin-top:10px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Global debug</th>
+            <th>Accounts</th>
+            <th>Used IDs</th>
+            <th>Missing ID</th>
+            <th>API OK</th>
+            <th>API Failed</th>
+            <th>Last error</th>
+          </tr>
+        </thead>
+        <tbody>${globalDebugRows}</tbody>
       </table>
     </div>`
         : ''

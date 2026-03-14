@@ -541,6 +541,7 @@ class PlanAssistantResponse(BaseModel):
     global_facts_used: bool = False
     global_facts_period: Optional[str] = None
     global_facts_totals: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    global_facts_debug: Dict[str, object] = Field(default_factory=dict)
 
 
 rate_cards: Dict[PlatformKey, RateCard] = {
@@ -1533,6 +1534,12 @@ def _build_assistant_response(
             recommendations.append("Для новых/пустых аккаунтов использован обезличенный global pool по всем активным кабинетам.")
         recommendations.append("Через 7 дней загрузите фактические данные и пересчитайте план.")
 
+    global_debug = {}
+    if isinstance(global_overview_context, dict):
+        raw_debug = global_overview_context.get("debug")
+        if isinstance(raw_debug, dict):
+            global_debug = raw_debug
+
     return PlanAssistantResponse(
         source=source,
         assumption_profile=profile,
@@ -1547,6 +1554,7 @@ def _build_assistant_response(
         global_facts_used=global_facts_used,
         global_facts_period=global_facts_period,
         global_facts_totals=global_facts_totals,
+        global_facts_debug=global_debug,
     )
 
 
@@ -5263,14 +5271,26 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
         accounts = [dict(r) for r in rows]
 
     ids_by_platform: Dict[str, set] = {"meta": set(), "google": set(), "tiktok": set()}
+    debug: Dict[str, Dict[str, object]] = {
+        "meta": {"accounts_total": 0, "used_ids": 0, "missing_id": 0, "api_ok": 0, "api_failed": 0, "last_error": None},
+        "google": {"accounts_total": 0, "used_ids": 0, "missing_id": 0, "api_ok": 0, "api_failed": 0, "last_error": None},
+        "tiktok": {"accounts_total": 0, "used_ids": 0, "missing_id": 0, "api_ok": 0, "api_failed": 0, "last_error": None},
+    }
     for acc in accounts:
         status = str(acc.get("status") or "active").lower()
         if status in {"archived", "disabled", "deleted"}:
             continue
         platform = str(acc.get("platform") or "").lower()
+        if platform in debug:
+            debug[platform]["accounts_total"] = int(debug[platform]["accounts_total"]) + 1
         external_id = acc.get("external_id") or acc.get("account_code")
         if platform in ids_by_platform and external_id:
             ids_by_platform[platform].add(str(external_id))
+        elif platform in debug:
+            debug[platform]["missing_id"] = int(debug[platform]["missing_id"]) + 1
+
+    for platform in ("meta", "google", "tiktok"):
+        debug[platform]["used_ids"] = len(ids_by_platform[platform])
 
     totals = {
         "meta": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},
@@ -5286,7 +5306,11 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
             rows = _meta_fetch_daily(external_id, date_from, date_to)
             for row in rows:
                 _merge_daily(daily_meta, "date_start", row)
+            debug["meta"]["api_ok"] = int(debug["meta"]["api_ok"]) + 1
         except Exception:
+            debug["meta"]["api_failed"] = int(debug["meta"]["api_failed"]) + 1
+            if not debug["meta"]["last_error"]:
+                debug["meta"]["last_error"] = traceback.format_exc(limit=1).strip().splitlines()[-1]
             continue
 
     for external_id in sorted(ids_by_platform["google"]):
@@ -5294,7 +5318,11 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
             rows = _google_fetch_daily(external_id, date_from, date_to)
             for row in rows:
                 _merge_daily(daily_google, "date", row)
+            debug["google"]["api_ok"] = int(debug["google"]["api_ok"]) + 1
         except Exception:
+            debug["google"]["api_failed"] = int(debug["google"]["api_failed"]) + 1
+            if not debug["google"]["last_error"]:
+                debug["google"]["last_error"] = traceback.format_exc(limit=1).strip().splitlines()[-1]
             continue
 
     for advertiser_id in sorted(ids_by_platform["tiktok"]):
@@ -5302,7 +5330,11 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
             rows = _tiktok_fetch_daily(advertiser_id, date_from, date_to)
             for row in rows:
                 _merge_daily(daily_tiktok, "date", row)
+            debug["tiktok"]["api_ok"] = int(debug["tiktok"]["api_ok"]) + 1
         except Exception:
+            debug["tiktok"]["api_failed"] = int(debug["tiktok"]["api_failed"]) + 1
+            if not debug["tiktok"]["last_error"]:
+                debug["tiktok"]["last_error"] = traceback.format_exc(limit=1).strip().splitlines()[-1]
             continue
 
     def _finalize(daily_map: Dict[str, Dict[str, object]], platform: str) -> List[Dict[str, object]]:
@@ -5317,7 +5349,7 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
         "google": _finalize(daily_google, "google"),
         "tiktok": _finalize(daily_tiktok, "tiktok"),
     }
-    payload = {"totals": totals, "daily": daily, "date_from": date_from, "date_to": date_to}
+    payload = {"totals": totals, "daily": daily, "date_from": date_from, "date_to": date_to, "debug": debug}
     _ASSISTANT_GLOBAL_OVERVIEW_CACHE["key"] = cache_key
     _ASSISTANT_GLOBAL_OVERVIEW_CACHE["ts"] = now
     _ASSISTANT_GLOBAL_OVERVIEW_CACHE["data"] = payload
