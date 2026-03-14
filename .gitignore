@@ -1,4 +1,6 @@
 .env
+.dump
+*.dump
 .server.log
 local.db
 *.db
