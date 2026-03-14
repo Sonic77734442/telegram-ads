@@ -39,6 +39,8 @@ _BCC_TOKEN_CACHE = {"token": None, "expires_at": 0.0}
 _BCC_DEFAULT_MARKUP = float(os.getenv("BCC_DEFAULT_MARKUP", "10") or 10)
 _LIVE_BILLING_CACHE: Dict[str, Dict[str, object]] = {}
 _LIVE_BILLING_TTL_SEC = 300
+_ASSISTANT_GLOBAL_OVERVIEW_CACHE: Dict[str, object] = {"key": None, "ts": 0.0, "data": None}
+_ASSISTANT_GLOBAL_OVERVIEW_TTL_SEC = int(os.getenv("ASSISTANT_GLOBAL_CACHE_TTL_SEC", "3600") or 3600)
 
 
 def _default_fee_config() -> Dict[str, Optional[float]]:
@@ -536,6 +538,9 @@ class PlanAssistantResponse(BaseModel):
     facts_used: bool = False
     facts_period: Optional[str] = None
     facts_totals: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    global_facts_used: bool = False
+    global_facts_period: Optional[str] = None
+    global_facts_totals: Dict[str, Dict[str, float]] = Field(default_factory=dict)
 
 
 rate_cards: Dict[PlatformKey, RateCard] = {
@@ -1304,17 +1309,64 @@ def _normalize_split_map(split: Dict[str, float]) -> Dict[str, float]:
     return {k: round((v / total) * 100.0, 2) for k, v in cleaned.items()}
 
 
-def _max_split_delta(a: Dict[str, float], b: Dict[str, float]) -> float:
-    keys = set(a.keys()) | set(b.keys())
-    if not keys:
-        return 0.0
-    return max(abs(float(a.get(k, 0.0)) - float(b.get(k, 0.0))) for k in keys)
+def _extract_platform_facts(context: Optional[Dict[str, object]]) -> Tuple[Dict[str, Dict[str, float]], Optional[str], bool]:
+    facts_totals: Dict[str, Dict[str, float]] = {}
+    facts_period: Optional[str] = None
+    facts_used = False
+    if isinstance(context, dict):
+        totals_raw = context.get("totals")
+        if isinstance(totals_raw, dict):
+            for platform in ("meta", "google", "tiktok"):
+                row = totals_raw.get(platform) if isinstance(totals_raw, dict) else None
+                if isinstance(row, dict):
+                    facts_totals[platform] = {
+                        "spend": float(row.get("spend") or 0.0),
+                        "impressions": float(row.get("impressions") or 0.0),
+                        "clicks": float(row.get("clicks") or 0.0),
+                    }
+            facts_used = any((v.get("spend", 0.0) > 0 for v in facts_totals.values()))
+        date_from = context.get("date_from")
+        date_to = context.get("date_to")
+        if date_from and date_to:
+            facts_period = f"{date_from} — {date_to}"
+    return facts_totals, facts_period, facts_used
+
+
+def _blend_platform_scores(
+    client_facts: Dict[str, Dict[str, float]],
+    global_facts: Dict[str, Dict[str, float]],
+) -> Dict[str, float]:
+    client_clicks = sum(float(v.get("clicks") or 0.0) for v in client_facts.values())
+    global_clicks = sum(float(v.get("clicks") or 0.0) for v in global_facts.values())
+    if client_clicks <= 0 and global_clicks <= 0:
+        return {}
+    if client_clicks <= 0:
+        w_client = 0.0
+    else:
+        w_client = max(0.2, min(0.75, client_clicks / max(client_clicks + global_clicks, 1e-9)))
+    w_global = 1.0 - w_client
+
+    scores: Dict[str, float] = {}
+    for platform in ("meta", "google", "tiktok"):
+        c = client_facts.get(platform, {})
+        g = global_facts.get(platform, {})
+        c_spend = float(c.get("spend") or 0.0)
+        c_clicks = float(c.get("clicks") or 0.0)
+        g_spend = float(g.get("spend") or 0.0)
+        g_clicks = float(g.get("clicks") or 0.0)
+        c_score = (c_clicks / max(c_spend, 1e-9)) if (c_spend > 0 and c_clicks > 0) else 0.0
+        g_score = (g_clicks / max(g_spend, 1e-9)) if (g_spend > 0 and g_clicks > 0) else 0.0
+        score = (w_client * c_score) + (w_global * g_score)
+        if score > 0:
+            scores[platform] = score
+    return scores
 
 
 def _assistant_call_llm(
     req: PlanRequest,
     baseline: PlanResponse,
     overview_context: Optional[Dict[str, object]] = None,
+    global_overview_context: Optional[Dict[str, object]] = None,
 ) -> Optional[Dict[str, object]]:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -1340,6 +1392,7 @@ def _assistant_call_llm(
             ],
         },
         "connected_accounts_overview": overview_context or {},
+        "global_anonymized_overview": global_overview_context or {},
     }
     body = {
         "model": model,
@@ -1380,6 +1433,7 @@ def _build_assistant_response(
     req: PlanRequest,
     llm_data: Optional[Dict[str, object]] = None,
     overview_context: Optional[Dict[str, object]] = None,
+    global_overview_context: Optional[Dict[str, object]] = None,
 ) -> PlanAssistantResponse:
     fallback_profile = _assistant_choose_profile(req)
     fallback_funnel = _assistant_default_funnel(req)
@@ -1419,82 +1473,54 @@ def _build_assistant_response(
     req_for_preview.funnel_split = funnel
     preview = build_plan(req_for_preview)
     budget_split = {line.key: round(float(line.share) * 100.0, 2) for line in preview.lines}
-    baseline_for_compare = build_plan(req)
-    baseline_split = {line.key: round(float(line.share) * 100.0, 2) for line in baseline_for_compare.lines}
+    facts_totals, facts_period, facts_used = _extract_platform_facts(overview_context)
+    global_facts_totals, global_facts_period, global_facts_used = _extract_platform_facts(global_overview_context)
 
-    facts_totals: Dict[str, Dict[str, float]] = {}
-    facts_period: Optional[str] = None
-    facts_used = False
-    if isinstance(overview_context, dict):
-        totals_raw = overview_context.get("totals")
-        if isinstance(totals_raw, dict):
-            for platform in ("meta", "google", "tiktok"):
-                row = totals_raw.get(platform) if isinstance(totals_raw, dict) else None
-                if isinstance(row, dict):
-                    facts_totals[platform] = {
-                        "spend": float(row.get("spend") or 0.0),
-                        "impressions": float(row.get("impressions") or 0.0),
-                        "clicks": float(row.get("clicks") or 0.0),
-                    }
-            facts_used = any((v.get("spend", 0.0) > 0 for v in facts_totals.values()))
-        date_from = overview_context.get("date_from")
-        date_to = overview_context.get("date_to")
-        if date_from and date_to:
-            facts_period = f"{date_from} — {date_to}"
+    # Rebalance platform shares by blended efficiency score:
+    # client history + anonymized global history (all active accounts).
+    platform_scores = _blend_platform_scores(facts_totals, global_facts_totals)
+    score_sum = sum(platform_scores.values())
+    if score_sum > 0:
+        fact_platform_share = {k: v / score_sum for k, v in platform_scores.items()}
 
-    # If we have factual spend+clicks, rebalance platform shares by inverse CPC
-    # and blend with baseline shares to avoid aggressive swings.
-    if facts_used:
-        platform_rows: Dict[str, Dict[str, float]] = {}
-        for platform in ("meta", "google", "tiktok"):
-            row = facts_totals.get(platform) or {}
-            spend = float(row.get("spend") or 0.0)
-            clicks = float(row.get("clicks") or 0.0)
-            if spend > 0 and clicks > 0:
-                cpc = spend / clicks
-                platform_rows[platform] = {"cpc": cpc, "score": 1.0 / max(cpc, 1e-9)}
-        score_sum = sum(v["score"] for v in platform_rows.values())
-        if score_sum > 0:
-            fact_platform_share = {k: v["score"] / score_sum for k, v in platform_rows.items()}
+        line_platform = {}
+        for line in preview.lines:
+            key = str(line.key)
+            if key.startswith("meta"):
+                line_platform[key] = "meta"
+            elif key.startswith("google") or key.startswith("youtube"):
+                line_platform[key] = "google"
+            elif key.startswith("tiktok"):
+                line_platform[key] = "tiktok"
+            else:
+                line_platform[key] = "other"
 
-            line_platform = {}
-            for line in preview.lines:
-                key = str(line.key)
-                if key.startswith("meta"):
-                    line_platform[key] = "meta"
-                elif key.startswith("google") or key.startswith("youtube"):
-                    line_platform[key] = "google"
-                elif key.startswith("tiktok"):
-                    line_platform[key] = "tiktok"
-                else:
-                    line_platform[key] = "other"
+        base_line_share = {str(line.key): float(line.share) for line in preview.lines}
+        base_platform_total: Dict[str, float] = {}
+        for key, share in base_line_share.items():
+            plat = line_platform.get(key, "other")
+            base_platform_total[plat] = base_platform_total.get(plat, 0.0) + share
 
-            base_line_share = {str(line.key): float(line.share) for line in preview.lines}
-            base_platform_total: Dict[str, float] = {}
-            for key, share in base_line_share.items():
-                plat = line_platform.get(key, "other")
-                base_platform_total[plat] = base_platform_total.get(plat, 0.0) + share
+        adjusted_line_share: Dict[str, float] = {}
+        for key, base_share in base_line_share.items():
+            plat = line_platform.get(key, "other")
+            if plat not in fact_platform_share:
+                adjusted_line_share[key] = base_share
+                continue
+            within_platform = base_share / max(base_platform_total.get(plat, 1e-9), 1e-9)
+            fact_line_share = fact_platform_share[plat] * within_platform
+            adjusted_line_share[key] = 0.6 * base_share + 0.4 * fact_line_share
 
-            adjusted_line_share: Dict[str, float] = {}
-            for key, base_share in base_line_share.items():
-                plat = line_platform.get(key, "other")
-                if plat not in fact_platform_share:
-                    adjusted_line_share[key] = base_share
-                    continue
-                within_platform = base_share / max(base_platform_total.get(plat, 1e-9), 1e-9)
-                fact_line_share = fact_platform_share[plat] * within_platform
-                adjusted_line_share[key] = 0.65 * base_share + 0.35 * fact_line_share
-
-            norm = sum(adjusted_line_share.values())
-            if norm > 0:
-                budget_split = {
-                    key: round((val / norm) * 100.0, 2)
-                    for key, val in adjusted_line_share.items()
-                }
-                recommendations.insert(
-                    0,
-                    "Бюджетный сплит скорректирован по фактической эффективности платформ (по CPC/кликам).",
-                )
+        norm = sum(adjusted_line_share.values())
+        if norm > 0:
+            budget_split = {
+                key: round((val / norm) * 100.0, 2)
+                for key, val in adjusted_line_share.items()
+            }
+            recommendations.insert(
+                0,
+                "Бюджетный сплит скорректирован по blended-истории: клиент + обезличенный global pool.",
+            )
 
     if not recommendations:
         top = sorted(preview.lines, key=lambda x: x.share, reverse=True)[:3]
@@ -1503,33 +1529,9 @@ def _build_assistant_response(
             recommendations.append(f"Фокус по бюджету: {joined}.")
         if facts_used:
             recommendations.append("Рекомендации скорректированы с учетом фактических данных подключенных аккаунтов.")
+        if global_facts_used:
+            recommendations.append("Для новых/пустых аккаунтов использован обезличенный global pool по всем активным кабинетам.")
         recommendations.append("Через 7 дней загрузите фактические данные и пересчитайте план.")
-
-    # If AI split is too close to baseline, nudge it so user sees meaningful delta.
-    # This keeps UX explicit: AI draft should differ from plain "Рассчитать план".
-    delta = _max_split_delta(budget_split, baseline_split)
-    if delta < 2.0 and budget_split:
-        adjusted = dict(budget_split)
-        perf_keys = [k for k in adjusted.keys() if ("google_search" in k or k == "meta" or "tiktok" in k)]
-        awareness_keys = [
-            k
-            for k in adjusted.keys()
-            if ("display" in k or "youtube" in k or "telegram" in k or "yandex_display" in k)
-        ]
-        goal = str(req.goal or "").lower()
-        shift = 8.0 if goal in {"conversions", "sales", "leads"} else 5.0
-        if perf_keys and awareness_keys:
-            boost_each = shift / len(perf_keys)
-            cut_each = shift / len(awareness_keys)
-            for k in perf_keys:
-                adjusted[k] = max(0.0, adjusted[k] + boost_each)
-            for k in awareness_keys:
-                adjusted[k] = max(0.0, adjusted[k] - cut_each)
-            budget_split = _normalize_split_map(adjusted)
-            recommendations.insert(
-                0,
-                "AI-черновик применил дополнительный сдвиг сплита в performance-каналы, чтобы усилить отличие от базового расчета.",
-            )
 
     return PlanAssistantResponse(
         source=source,
@@ -1542,6 +1544,9 @@ def _build_assistant_response(
         facts_used=facts_used,
         facts_period=facts_period,
         facts_totals=facts_totals,
+        global_facts_used=global_facts_used,
+        global_facts_period=global_facts_period,
+        global_facts_totals=global_facts_totals,
     )
 
 
@@ -2683,19 +2688,12 @@ def plan_assistant(payload: PlanRequest, authorization: Optional[str] = Header(N
     if payload.avg_frequency <= 0:
         raise HTTPException(status_code=400, detail="avg_frequency must be positive")
     overview_context: Optional[Dict[str, object]] = None
+    global_overview_context: Optional[Dict[str, object]] = None
+    d_from, d_to = _assistant_history_range(payload)
     token = _get_bearer_token(authorization)
     current_user = _get_user_by_token(token)
     if current_user:
         try:
-            if payload.date_start and payload.date_end and payload.date_end >= payload.date_start:
-                d_from = payload.date_start.isoformat()
-                d_to = payload.date_end.isoformat()
-            else:
-                days = max(1, min(int(payload.period_days or 30), 180))
-                end_date = date.today()
-                start_date = end_date - timedelta(days=days - 1)
-                d_from = start_date.isoformat()
-                d_to = end_date.isoformat()
             overview_context = _build_insights_overview_for_user(
                 current_user=current_user,
                 date_from=d_from,
@@ -2703,9 +2701,23 @@ def plan_assistant(payload: PlanRequest, authorization: Optional[str] = Header(N
             )
         except Exception as exc:
             logging.warning("Assistant insights context error: %s", exc)
+    try:
+        global_overview_context = _build_insights_overview_global(d_from, d_to)
+    except Exception as exc:
+        logging.warning("Assistant global insights context error: %s", exc)
     baseline = build_plan(payload)
-    llm_data = _assistant_call_llm(payload, baseline, overview_context=overview_context)
-    return _build_assistant_response(payload, llm_data=llm_data, overview_context=overview_context)
+    llm_data = _assistant_call_llm(
+        payload,
+        baseline,
+        overview_context=overview_context,
+        global_overview_context=global_overview_context,
+    )
+    return _build_assistant_response(
+        payload,
+        llm_data=llm_data,
+        overview_context=overview_context,
+        global_overview_context=global_overview_context,
+    )
 
 
 @app.post("/plans/estimate/excel")
@@ -5198,6 +5210,118 @@ def _build_insights_overview_for_user(
         "tiktok": _finalize(daily_tiktok, "tiktok"),
     }
     return {"totals": totals, "daily": daily, "date_from": date_from, "date_to": date_to}
+
+
+def _assistant_history_range(req: PlanRequest) -> Tuple[str, str]:
+    mode = str(os.getenv("ASSISTANT_HISTORY_MODE", "full") or "full").lower()
+    end_date = date.today()
+    if mode == "plan" and req.date_start and req.date_end and req.date_end >= req.date_start:
+        return req.date_start.isoformat(), req.date_end.isoformat()
+    if mode == "lookback":
+        days = int(os.getenv("ASSISTANT_HISTORY_DAYS", "365") or 365)
+        start_date = end_date - timedelta(days=max(1, min(days, 3650)) - 1)
+        return start_date.isoformat(), end_date.isoformat()
+    # full history (bounded by configured start date to avoid unbounded API lookups)
+    start_str = os.getenv("ASSISTANT_HISTORY_START_DATE", "2023-01-01")
+    return start_str, end_date.isoformat()
+
+
+def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, object]:
+    cache_key = f"{date_from}:{date_to}"
+    now = time.time()
+    if (
+        _ASSISTANT_GLOBAL_OVERVIEW_CACHE.get("key") == cache_key
+        and float(_ASSISTANT_GLOBAL_OVERVIEW_CACHE.get("ts") or 0.0) + _ASSISTANT_GLOBAL_OVERVIEW_TTL_SEC > now
+        and isinstance(_ASSISTANT_GLOBAL_OVERVIEW_CACHE.get("data"), dict)
+    ):
+        return dict(_ASSISTANT_GLOBAL_OVERVIEW_CACHE["data"])  # type: ignore[index]
+
+    def _to_float(value: object) -> float:
+        try:
+            return float(value)
+        except Exception:
+            return 0.0
+
+    def _merge_daily(target: Dict[str, Dict[str, object]], date_key: str, row: Dict[str, object]) -> None:
+        date_val = row.get(date_key)
+        if not date_val:
+            return
+        if date_val not in target:
+            target[date_val] = {"date": date_val, "spend": 0.0, "impressions": 0.0, "clicks": 0.0}
+        target[date_val]["spend"] += _to_float(row.get("spend"))
+        target[date_val]["impressions"] += _to_float(row.get("impressions"))
+        target[date_val]["clicks"] += _to_float(row.get("clicks"))
+
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, platform, external_id, account_code, status
+            FROM ad_accounts
+            WHERE platform IN ('meta', 'google', 'tiktok')
+            """,
+        ).fetchall()
+        accounts = [dict(r) for r in rows]
+
+    ids_by_platform: Dict[str, set] = {"meta": set(), "google": set(), "tiktok": set()}
+    for acc in accounts:
+        status = str(acc.get("status") or "active").lower()
+        if status in {"archived", "disabled", "deleted"}:
+            continue
+        platform = str(acc.get("platform") or "").lower()
+        external_id = acc.get("external_id") or acc.get("account_code")
+        if platform in ids_by_platform and external_id:
+            ids_by_platform[platform].add(str(external_id))
+
+    totals = {
+        "meta": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},
+        "google": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},
+        "tiktok": {"spend": 0.0, "impressions": 0.0, "clicks": 0.0},
+    }
+    daily_meta: Dict[str, Dict[str, object]] = {}
+    daily_google: Dict[str, Dict[str, object]] = {}
+    daily_tiktok: Dict[str, Dict[str, object]] = {}
+
+    for external_id in sorted(ids_by_platform["meta"]):
+        try:
+            rows = _meta_fetch_daily(external_id, date_from, date_to)
+            for row in rows:
+                _merge_daily(daily_meta, "date_start", row)
+        except Exception:
+            continue
+
+    for external_id in sorted(ids_by_platform["google"]):
+        try:
+            rows = _google_fetch_daily(external_id, date_from, date_to)
+            for row in rows:
+                _merge_daily(daily_google, "date", row)
+        except Exception:
+            continue
+
+    for advertiser_id in sorted(ids_by_platform["tiktok"]):
+        try:
+            rows = _tiktok_fetch_daily(advertiser_id, date_from, date_to)
+            for row in rows:
+                _merge_daily(daily_tiktok, "date", row)
+        except Exception:
+            continue
+
+    def _finalize(daily_map: Dict[str, Dict[str, object]], platform: str) -> List[Dict[str, object]]:
+        rows = [daily_map[k] for k in sorted(daily_map.keys())]
+        totals[platform]["spend"] = sum(_to_float(r.get("spend")) for r in rows)
+        totals[platform]["impressions"] = sum(_to_float(r.get("impressions")) for r in rows)
+        totals[platform]["clicks"] = sum(_to_float(r.get("clicks")) for r in rows)
+        return rows
+
+    daily = {
+        "meta": _finalize(daily_meta, "meta"),
+        "google": _finalize(daily_google, "google"),
+        "tiktok": _finalize(daily_tiktok, "tiktok"),
+    }
+    payload = {"totals": totals, "daily": daily, "date_from": date_from, "date_to": date_to}
+    _ASSISTANT_GLOBAL_OVERVIEW_CACHE["key"] = cache_key
+    _ASSISTANT_GLOBAL_OVERVIEW_CACHE["ts"] = now
+    _ASSISTANT_GLOBAL_OVERVIEW_CACHE["data"] = payload
+    return payload
 
 
 @app.get("/insights/overview")

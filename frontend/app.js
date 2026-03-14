@@ -188,6 +188,9 @@ function applyAiAssistantDraft(draft, payload) {
     factsUsed: Boolean(draft?.facts_used),
     factsPeriod: draft?.facts_period || null,
     factsTotals: draft?.facts_totals || {},
+    globalFactsUsed: Boolean(draft?.global_facts_used),
+    globalFactsPeriod: draft?.global_facts_period || null,
+    globalFactsTotals: draft?.global_facts_totals || {},
   }
 }
 
@@ -219,7 +222,18 @@ function renderAiAssistant() {
     : '<li>Добавьте фактические данные и запустите AI-черновик снова.</li>'
   const factsUsed = Boolean(draft.factsUsed)
   const factsTotals = draft.factsTotals && typeof draft.factsTotals === 'object' ? draft.factsTotals : {}
+  const globalFactsUsed = Boolean(draft.globalFactsUsed)
+  const globalFactsTotals =
+    draft.globalFactsTotals && typeof draft.globalFactsTotals === 'object' ? draft.globalFactsTotals : {}
   const factsRows = Object.entries(factsTotals)
+    .map(([platform, row]) => {
+      const spend = row && typeof row === 'object' ? Number(row.spend || 0) : 0
+      const impressions = row && typeof row === 'object' ? Number(row.impressions || 0) : 0
+      const clicks = row && typeof row === 'object' ? Number(row.clicks || 0) : 0
+      return `<tr><td>${platform}</td><td>${usd(spend, 2)}</td><td>${num(impressions)}</td><td>${num(clicks)}</td></tr>`
+    })
+    .join('')
+  const globalFactsRows = Object.entries(globalFactsTotals)
     .map(([platform, row]) => {
       const spend = row && typeof row === 'object' ? Number(row.spend || 0) : 0
       const impressions = row && typeof row === 'object' ? Number(row.impressions || 0) : 0
@@ -238,6 +252,8 @@ function renderAiAssistant() {
       <span class="chip chip-ghost">Confidence: ${Math.round((draft.confidence || 0) * 100)}%</span>
       <span class="chip ${factsUsed ? 'chip-good' : 'chip-ghost'}">Факт из аккаунтов: ${factsUsed ? 'учтен' : 'не учтен'}</span>
       ${draft.factsPeriod ? `<span class="chip chip-ghost">Период факта: ${draft.factsPeriod}</span>` : ''}
+      <span class="chip ${globalFactsUsed ? 'chip-good' : 'chip-ghost'}">Global pool: ${globalFactsUsed ? 'учтен' : 'не учтен'}</span>
+      ${draft.globalFactsPeriod ? `<span class="chip chip-ghost">Период global: ${draft.globalFactsPeriod}</span>` : ''}
     </div>
     <div class="chips small" style="margin-top:8px;">${chips || '<span class="chip chip-ghost">Нет рекомендаций по сплиту</span>'}</div>
     <div style="margin-top:8px;">
@@ -256,6 +272,23 @@ function renderAiAssistant() {
           </tr>
         </thead>
         <tbody>${factsRows}</tbody>
+      </table>
+    </div>`
+        : ''
+    }
+    ${
+      globalFactsRows
+        ? `<div class="table-wrapper" style="margin-top:10px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Global pool</th>
+            <th>Spend (факт)</th>
+            <th>Impressions</th>
+            <th>Clicks</th>
+          </tr>
+        </thead>
+        <tbody>${globalFactsRows}</tbody>
       </table>
     </div>`
         : ''
