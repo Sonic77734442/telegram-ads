@@ -69,8 +69,8 @@ function renderClients(rows) {
           <td>${completedTotal ? `${formatMoney(completedTotal)} KZT` : '—'}</td>
           <td style="text-align:right;">
             <div class="inline-actions">
-              <button class="btn primary small" data-impersonate="${row.id}" data-email="${row.email || ""}">????? ??? ??????</button>
-              <button class="btn ghost small" data-client="${row.id}" data-email="${row.email}" data-completed-kzt="${completedTotal}">???????</button>
+              <button class="btn primary small" data-impersonate="${row.id}" data-email="${row.email || ""}">\u0412\u043e\u0439\u0442\u0438 \u043a\u0430\u043a \u043a\u043b\u0438\u0435\u043d\u0442</button>
+              <button class="btn ghost small" data-client="${row.id}" data-email="${row.email}" data-completed-kzt="${completedTotal}">\u041e\u0442\u043a\u0440\u044b\u0442\u044c</button>
             </div>
           </td>
         </tr>
@@ -96,7 +96,7 @@ async function impersonateClient(userId, email) {
     })
     window.open(`/dashboard?${params.toString()}`, '_blank', 'noopener')
   } catch (e) {
-    if (clientsStatus) clientsStatus.textContent = '?? ??????? ????? ? ??????? ???????.'
+    if (clientsStatus) clientsStatus.textContent = '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u043e\u0439\u0442\u0438 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u043a\u043b\u0438\u0435\u043d\u0442\u0430.'
   }
 }
 

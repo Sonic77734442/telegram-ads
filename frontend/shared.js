@@ -142,7 +142,7 @@ function renderHeader({ eyebrow, title, subtitle, buttons = [] }) {
         <div class="nav-drawer-footer">${authHtml}</div>
       </div>
     </div>
-    ${isImpersonating() ? `<div class="impersonation-banner"><span>?? ????? ??? ??????: ${window.sessionStorage.getItem('impersonation_label') || email || ''}</span><button class="btn ghost small" id="impersonation-exit" type="button">????????? ? ???????</button></div>` : ''}
+    ${isImpersonating() ? `<div class="impersonation-banner"><span>\u0412\u044b \u0432\u043e\u0448\u043b\u0438 \u043a\u0430\u043a \u043a\u043b\u0438\u0435\u043d\u0442: ${window.sessionStorage.getItem('impersonation_label') || email || ''}</span><button class="btn ghost small" id="impersonation-exit" type="button">\u0412\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f \u0432 \u0430\u0434\u043c\u0438\u043d\u043a\u0443</button></div>` : ''}
     <div class="topbar">
       <div class="topbar-right">
         ${eyebrow ? `<span class="topbar-context">${eyebrow}</span>` : ''}

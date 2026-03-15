@@ -2598,3 +2598,9 @@ h1 {
   color: #7c2d12;
 }
 
+
+.impersonation-banner .btn.ghost {
+  border-color: rgba(124, 45, 18, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  color: #7c2d12;
+}
