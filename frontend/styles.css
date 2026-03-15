@@ -1270,6 +1270,17 @@ h1 {
 .table-admin-accounts td:nth-child(6) { width: 140px; }
 .table-admin-accounts th:nth-child(7),
 .table-admin-accounts td:nth-child(7) { width: 170px; }
+
+.account-billing-cell {
+  overflow: hidden;
+}
+
+.account-billing-value {
+  max-width: 170px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .table-admin-accounts th:nth-child(8),
 .table-admin-accounts td:nth-child(8) { width: 132px; }
 
