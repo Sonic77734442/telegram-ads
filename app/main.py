@@ -3501,6 +3501,25 @@ def get_admin_user(current_user=Depends(get_current_user)):
     return current_user
 
 
+def _issue_user_token(conn, user_id: int) -> str:
+    token = secrets.token_hex(24)
+    conn.execute("INSERT INTO user_tokens (user_id, token) VALUES (?, ?)", (user_id, token))
+    return token
+
+
+@app.post("/admin/users/{user_id}/impersonate")
+def admin_impersonate_user(user_id: int, admin_user=Depends(get_admin_user)):
+    if not get_conn:
+        raise HTTPException(status_code=500, detail="DB not initialized")
+    with get_conn() as conn:
+        user = conn.execute("SELECT id, email FROM users WHERE id=?", (user_id,)).fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        token = _issue_user_token(conn, user_id)
+        conn.commit()
+        return {"id": user_id, "email": user["email"], "token": token}
+
+
 @app.get("/admin/check-key")
 def admin_check_key(key: str):
     admin_key = os.getenv("ADMIN_PORTAL_KEY")

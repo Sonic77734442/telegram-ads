@@ -59,7 +59,7 @@ const num = (v, d = 0) => (v ?? 0).toLocaleString('ru-RU', { minimumFractionDigi
 const pct = (v) => `${(v * 100).toFixed(1)}%`
 
 function authHeaders() {
-  const token = localStorage.getItem('auth_token')
+  const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

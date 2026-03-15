@@ -41,7 +41,7 @@ const docs = {
 const feesBody = document.getElementById('fees-body')
 
 function authHeaders() {
-  const token = localStorage.getItem('auth_token')
+  const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -167,7 +167,10 @@ async function changePassword() {
     }
     if (!res.ok) throw new Error('change failed')
     const data = await res.json()
-    if (data?.token) localStorage.setItem('auth_token', data.token)
+    if (data?.token) {
+      if (typeof setAuthState === 'function') setAuthState({ auth_token: data.token }, typeof isImpersonating === 'function' && isImpersonating() ? 'session' : 'local')
+      else localStorage.setItem('auth_token', data.token)
+    }
     if (password.status) password.status.textContent = 'Пароль обновлен.'
     if (password.current) password.current.value = ''
     if (password.next) password.next.value = ''
@@ -229,7 +232,7 @@ async function loadDocuments() {
       return
     }
     if (docs.empty) docs.empty.hidden = true
-    const token = localStorage.getItem('auth_token')
+    const token = typeof getAuthToken === 'function' ? getAuthToken() : localStorage.getItem('auth_token')
     docs.body.innerHTML = data
       .map(
         (row) => `
