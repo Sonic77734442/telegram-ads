@@ -1244,6 +1244,35 @@ h1 {
   text-align: center;
 }
 
+.table-admin-accounts {
+  width: 100%;
+  min-width: 980px;
+  table-layout: fixed;
+}
+
+.table-admin-accounts th,
+.table-admin-accounts td {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.table-admin-accounts th:nth-child(1),
+.table-admin-accounts td:nth-child(1) { width: 88px; }
+.table-admin-accounts th:nth-child(2),
+.table-admin-accounts td:nth-child(2) { width: 180px; }
+.table-admin-accounts th:nth-child(3),
+.table-admin-accounts td:nth-child(3) { width: 90px; }
+.table-admin-accounts th:nth-child(4),
+.table-admin-accounts td:nth-child(4) { width: 180px; }
+.table-admin-accounts th:nth-child(5),
+.table-admin-accounts td:nth-child(5) { width: 120px; }
+.table-admin-accounts th:nth-child(6),
+.table-admin-accounts td:nth-child(6) { width: 140px; }
+.table-admin-accounts th:nth-child(7),
+.table-admin-accounts td:nth-child(7) { width: 170px; }
+.table-admin-accounts th:nth-child(8),
+.table-admin-accounts td:nth-child(8) { width: 132px; }
+
 .table-wrapper-tight {
   overflow-x: auto;
   overflow-y: hidden;
