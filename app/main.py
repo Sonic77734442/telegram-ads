@@ -2514,20 +2514,36 @@ def _format_workbook(wb: Workbook) -> None:
 
 
 app = FastAPI(title="Envidicy Media Plan API", version="0.2.0")
+
+
+def _normalize_origin(origin: str) -> str:
+    return (origin or "").strip().rstrip("/")
+
+
 _default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8000",
-    "http://localhost:8000",
-    "https://envidicydashclientv20.vercel.app",
-    "https://envidicydashclientv20develop.vercel.app",
-    "https://app.envidicy.kz",
-    "https://www.envidicy.kz",
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:3001",
+      "http://127.0.0.1:8000",
+      "http://localhost:8000",
+      "https://envidicydashclientv20.vercel.app",
+      "https://envidicydashclientv20develop.vercel.app",
+      "https://envidicy-dash-client.onrender.com",
+      "https://client-dash-staging.onrender.com",
+      "https://app.envidicy.kz",
+      "https://www.envidicy.kz",
 ]
-_extra_origins = [o.strip() for o in (os.getenv("FRONTEND_ORIGINS") or "").split(",") if o.strip()]
+_default_origins = [_normalize_origin(o) for o in _default_origins if _normalize_origin(o)]
+_extra_origins = [
+    _normalize_origin(o)
+    for o in (os.getenv("FRONTEND_ORIGINS") or "").split(",")
+    if _normalize_origin(o)
+]
+_allow_origins = list(dict.fromkeys([*_default_origins, *_extra_origins]))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[*_default_origins, *_extra_origins],
+    allow_origins=_allow_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
