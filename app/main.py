@@ -4129,6 +4129,13 @@ def _google_normalize_customer_id(customer_id: str) -> str:
     return "".join(ch for ch in str(customer_id or "") if ch.isdigit())
 
 
+def _google_valid_customer_id_or_none(customer_id: object) -> Optional[str]:
+    normalized = _google_normalize_customer_id(str(customer_id or ""))
+    if len(normalized) != 10:
+        return None
+    return normalized
+
+
 def _tiktok_normalize_advertiser_id(advertiser_id: object) -> str:
     raw = str(advertiser_id or "").strip()
     digits = "".join(ch for ch in raw if ch.isdigit())
@@ -4136,7 +4143,7 @@ def _tiktok_normalize_advertiser_id(advertiser_id: object) -> str:
 
 
 def _google_fetch_account_billing(customer_id: str, force_refresh: bool = False) -> Dict[str, object]:
-    normalized_customer_id = _google_normalize_customer_id(customer_id)
+    normalized_customer_id = _google_valid_customer_id_or_none(customer_id) or ""
     cache_key = f"google:{normalized_customer_id}"
     cached = _live_billing_cache_get(cache_key)
     if cached and not force_refresh:
@@ -4361,7 +4368,9 @@ def _attach_live_billing(account: Dict[str, object], force_refresh: bool = False
         if platform == "meta":
             payload["live_billing"] = _meta_fetch_account_billing(str(external_id), force_refresh=force_refresh)
         elif platform == "google":
-            payload["live_billing"] = _google_fetch_account_billing(str(external_id), force_refresh=force_refresh)
+            normalized_google_id = _google_valid_customer_id_or_none(external_id)
+            if normalized_google_id:
+                payload["live_billing"] = _google_fetch_account_billing(normalized_google_id, force_refresh=force_refresh)
         elif platform == "tiktok":
             payload["live_billing"] = _tiktok_fetch_account_billing(str(external_id), force_refresh=force_refresh)
     except Exception as exc:
@@ -5624,7 +5633,7 @@ def google_insights(
     currency = None
 
     for acc in accounts:
-        external_id = acc.get("external_id") or acc.get("account_code")
+        external_id = _google_valid_customer_id_or_none(acc.get("external_id") or acc.get("account_code"))
         if not external_id:
             continue
         try:
@@ -5888,7 +5897,7 @@ def google_audience(
 
     results = []
     for acc in accounts:
-        customer_id = acc.get("external_id") or acc.get("account_code")
+        customer_id = _google_valid_customer_id_or_none(acc.get("external_id") or acc.get("account_code"))
         if not customer_id:
             continue
         payload: Dict[str, object] = {"account_id": acc.get("id"), "name": acc.get("name") or customer_id}
@@ -5973,7 +5982,7 @@ def _build_insights_overview_for_user(
             continue
 
     for acc in google_accounts:
-        external_id = acc.get("external_id") or acc.get("account_code")
+        external_id = _google_valid_customer_id_or_none(acc.get("external_id") or acc.get("account_code"))
         if not external_id:
             continue
         try:
@@ -6080,6 +6089,8 @@ def _build_insights_overview_global(date_from: str, date_to: str) -> Dict[str, o
         if platform in debug:
             debug[platform]["accounts_total"] = int(debug[platform]["accounts_total"]) + 1
         external_id = acc.get("external_id") or acc.get("account_code")
+        if platform == "google":
+            external_id = _google_valid_customer_id_or_none(external_id)
         if platform in ids_by_platform and external_id:
             ids_by_platform[platform].add(str(external_id))
         elif platform in debug:
@@ -8050,8 +8061,10 @@ def list_accounts_period_spend(
                 daily_rows = _meta_fetch_daily(str(external_id), date_from, date_to)
                 payload["spend"] = sum(_to_float(row.get("spend")) for row in daily_rows)
             elif platform == "google":
-                daily_rows = _google_fetch_daily(_google_normalize_customer_id(str(external_id)), date_from, date_to)
-                payload["spend"] = sum(_to_float(row.get("spend")) for row in daily_rows)
+                normalized_google_id = _google_valid_customer_id_or_none(external_id)
+                if normalized_google_id:
+                    daily_rows = _google_fetch_daily(normalized_google_id, date_from, date_to)
+                    payload["spend"] = sum(_to_float(row.get("spend")) for row in daily_rows)
             elif platform == "tiktok":
                 daily_rows = _tiktok_fetch_daily(_tiktok_normalize_advertiser_id(str(external_id)), date_from, date_to)
                 payload["spend"] = sum(_to_float(row.get("spend")) for row in daily_rows)
