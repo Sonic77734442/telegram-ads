@@ -30,6 +30,12 @@ function formatLiveBillingCell(liveBilling, fallbackCurrency) {
   return `${formatMoney(limit)} ${currency}`
 }
 
+function defaultCurrencyForPlatform(platform) {
+  if (platform === 'yandex') return 'KZT'
+  if (platform === 'telegram') return 'EUR'
+  return 'USD'
+}
+
 export default function AdminAccountsPage() {
   const router = useRouter()
   const [rows, setRows] = useState([])
@@ -97,7 +103,7 @@ export default function AdminAccountsPage() {
       name: '',
       external_id: '',
       account_code: '',
-      currency: 'USD',
+      currency: defaultCurrencyForPlatform('meta'),
       status: '',
     }))
     setBindStatus('')
@@ -114,7 +120,7 @@ export default function AdminAccountsPage() {
       name: form.name.trim(),
       external_id: form.external_id.trim() || null,
       account_code: form.account_code.trim() || null,
-      currency: form.currency || 'USD',
+      currency: form.platform === 'yandex' ? 'KZT' : form.currency || defaultCurrencyForPlatform(form.platform),
       status: form.status || null,
     }
     const isEdit = Boolean(form.id)
@@ -206,7 +212,7 @@ export default function AdminAccountsPage() {
                             name: row.name || '',
                             external_id: row.external_id || '',
                             account_code: row.account_code || '',
-                            currency: row.currency || 'USD',
+                            currency: row.currency || defaultCurrencyForPlatform(row.platform || 'meta'),
                             status: row.status || '',
                           })
                         }
@@ -240,7 +246,17 @@ export default function AdminAccountsPage() {
           </label>
           <label className="field">
             <span>Платформа</span>
-            <select value={form.platform} onChange={(e) => setForm((s) => ({ ...s, platform: e.target.value }))}>
+            <select
+              value={form.platform}
+              onChange={(e) => {
+                const nextPlatform = e.target.value
+                setForm((s) => ({
+                  ...s,
+                  platform: nextPlatform,
+                  currency: nextPlatform === 'yandex' ? 'KZT' : s.currency || defaultCurrencyForPlatform(nextPlatform),
+                }))
+              }}
+            >
               <option value="meta">Meta</option>
               <option value="google">Google</option>
               <option value="tiktok">TikTok</option>
@@ -254,9 +270,14 @@ export default function AdminAccountsPage() {
           <label className="field"><span>Договор / код</span><input value={form.account_code} onChange={(e) => setForm((s) => ({ ...s, account_code: e.target.value }))} /></label>
           <label className="field">
             <span>Валюта</span>
-            <select value={form.currency} onChange={(e) => setForm((s) => ({ ...s, currency: e.target.value }))}>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
+            <select
+              value={form.platform === 'yandex' ? 'KZT' : form.currency}
+              disabled={form.platform === 'yandex'}
+              onChange={(e) => setForm((s) => ({ ...s, currency: e.target.value }))}
+            >
+              {form.platform === 'yandex' ? <option value="KZT">KZT</option> : null}
+              {form.platform !== 'yandex' ? <option value="USD">USD</option> : null}
+              {form.platform !== 'yandex' ? <option value="EUR">EUR</option> : null}
               <option value="KZT">KZT</option>
             </select>
           </label>

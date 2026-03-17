@@ -7741,6 +7741,7 @@ def admin_list_accounts(admin_user=Depends(get_admin_user)):
 def admin_create_account(payload: AdminAccountCreate, admin_user=Depends(get_admin_user)):
     if not get_conn:
         raise HTTPException(status_code=500, detail="DB not initialized")
+    normalized_currency = "KZT" if payload.platform == "yandex" else payload.currency
     with get_conn() as conn:
         user = conn.execute("SELECT id FROM users WHERE id=?", (payload.user_id,)).fetchone()
         if not user:
@@ -7756,7 +7757,7 @@ def admin_create_account(payload: AdminAccountCreate, admin_user=Depends(get_adm
                 payload.name,
                 payload.external_id,
                 payload.account_code,
-                payload.currency,
+                normalized_currency,
                 payload.status or "pending",
             ),
         )
@@ -7768,7 +7769,7 @@ def admin_create_account(payload: AdminAccountCreate, admin_user=Depends(get_adm
             "name": payload.name,
             "external_id": payload.external_id,
             "account_code": payload.account_code,
-            "currency": payload.currency,
+            "currency": normalized_currency,
             "status": payload.status or "pending",
         }
 
@@ -7781,6 +7782,8 @@ def admin_update_account(account_id: int, payload: AdminAccountUpdate, admin_use
         row = conn.execute("SELECT * FROM ad_accounts WHERE id=?", (account_id,)).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Account not found")
+        current_platform = str(row["platform"] or "").lower()
+        next_platform = str(payload.platform or current_platform).lower()
         updates = []
         params: List[object] = []
         if payload.user_id is not None:
@@ -7805,7 +7808,10 @@ def admin_update_account(account_id: int, payload: AdminAccountUpdate, admin_use
             params.append(payload.account_code)
         if payload.currency is not None:
             updates.append("currency=?")
-            params.append(payload.currency)
+            params.append("KZT" if next_platform == "yandex" else payload.currency)
+        elif next_platform == "yandex":
+            updates.append("currency=?")
+            params.append("KZT")
         if payload.status is not None:
             updates.append("status=?")
             params.append(payload.status)
