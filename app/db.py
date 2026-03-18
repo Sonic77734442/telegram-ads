@@ -36,8 +36,8 @@ def _extract_search_path(url: str) -> str | None:
 def _rewrite_query(query: str) -> str:
     q = query.replace("?", "%s")
     q = q.replace("json(%s)", "%s::jsonb")
-    if re.search(r"(?i)\\bINSERT\\s+OR\\s+IGNORE\\b", q):
-        q = re.sub(r"(?i)INSERT\\s+OR\\s+IGNORE\\s+INTO\\s+", "INSERT INTO ", q)
+    if re.search(r"(?i)\bINSERT\s+OR\s+IGNORE\b", q):
+        q = re.sub(r"(?i)INSERT\s+OR\s+IGNORE\s+INTO\s+", "INSERT INTO ", q)
         if "ON CONFLICT" not in q.upper():
             q = q.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
     return q
