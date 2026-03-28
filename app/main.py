@@ -3667,6 +3667,17 @@ class WalletAdjust(BaseModel):
     note: Optional[str] = None
 
 
+class AdminAccountFundingCreate(BaseModel):
+    amount: float = Field(..., gt=0)
+    currency: str
+    note: Optional[str] = None
+    occurred_at: Optional[str] = None
+
+
+class AdminAccountFundingReverse(BaseModel):
+    note: Optional[str] = None
+
+
 class FeeConfigPayload(BaseModel):
     meta: Optional[float] = None
     google: Optional[float] = None
@@ -4394,7 +4405,10 @@ def _resolve_topup_account_amount(row: Dict[str, object]) -> Optional[float]:
     amount_net = row.get("amount_net")
     fx_rate = row.get("fx_rate")
     input_currency = str(row.get("currency") or "").upper()
+    platform = str(row.get("account_platform") or row.get("platform") or "").lower()
     account_currency = str(row.get("account_currency") or row.get("currency") or "").upper()
+    if platform == "yandex":
+        account_currency = "KZT"
 
     try:
         amount_input_value = float(amount_input) if amount_input is not None else None
@@ -4432,7 +4446,11 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
     for row in rows:
         payload = dict(row)
         payload["amount_account"] = _resolve_topup_account_amount(payload)
+        platform = str(payload.get("account_platform") or payload.get("platform") or "").lower()
         account_currency = payload.get("account_currency") or payload.get("currency") or "USD"
+        if platform == "yandex":
+            account_currency = "KZT"
+        payload["account_currency"] = account_currency
         payload["amount_account_usd"] = _convert_amount_to_usd(payload.get("amount_account"), account_currency, rates_data)
         payload["amount_account_kzt"] = _convert_amount_to_kzt(payload.get("amount_account"), account_currency, rates_data)
         def _num(value: object, default: Optional[float] = 0.0) -> Optional[float]:
@@ -4485,6 +4503,146 @@ def _attach_topup_account_amount(rows: List[Dict[str, object]]) -> List[Dict[str
         payload["profit_total_kzt"] = round(fx_profit_kzt + fee_amount_kzt, 2)
         prepared.append(payload)
     return prepared
+
+
+def _funding_source_key(source_type: str, source_id: Optional[object]) -> Optional[str]:
+    if source_id is None:
+        return None
+    return f"{source_type}:{source_id}"
+
+
+def _record_account_funding_event(
+    conn,
+    *,
+    account_id: int,
+    user_id: int,
+    platform: str,
+    amount: object,
+    currency: str,
+    source_type: str,
+    source_id: Optional[object] = None,
+    note: Optional[str] = None,
+    created_by: Optional[str] = None,
+    occurred_at: Optional[str] = None,
+    reversal_for_event_id: Optional[int] = None,
+) -> Optional[int]:
+    platform_code = str(platform or "").lower()
+    currency_code = str(currency or "USD").upper()
+    if platform_code == "yandex":
+        currency_code = "KZT"
+    source_key = _funding_source_key(source_type, source_id)
+    amount_usd = _convert_amount_to_usd(amount, currency_code)
+    amount_kzt = _convert_amount_to_kzt(amount, currency_code)
+    if source_key:
+        existing = conn.execute("SELECT id FROM account_funding_events WHERE source_key=?", (source_key,)).fetchone()
+        if existing:
+            return int(existing["id"])
+    created_at = occurred_at or datetime.utcnow().isoformat()
+    cur = conn.execute(
+        """
+        INSERT OR IGNORE INTO account_funding_events
+          (account_id, user_id, platform, amount, currency, amount_usd, amount_kzt, source_type, source_id, source_key, note, created_by, reversal_for_event_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            account_id,
+            user_id,
+            platform,
+            float(amount or 0),
+            currency_code,
+            amount_usd,
+            amount_kzt,
+            source_type,
+            source_id,
+            source_key,
+            note,
+            created_by,
+            reversal_for_event_id,
+            created_at,
+        ),
+    )
+    if cur.lastrowid is not None:
+        return int(cur.lastrowid)
+    if source_key:
+        row = conn.execute("SELECT id FROM account_funding_events WHERE source_key=?", (source_key,)).fetchone()
+        if row:
+            return int(row["id"])
+    row = conn.execute(
+        """
+        SELECT id
+        FROM account_funding_events
+        WHERE account_id=? AND user_id=? AND source_type=? AND created_at=?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (account_id, user_id, source_type, created_at),
+    ).fetchone()
+    return int(row["id"]) if row else None
+
+
+def _sync_completed_topup_funding_events(conn, user_id: Optional[int] = None, account_id: Optional[int] = None) -> None:
+    query = """
+        SELECT
+          t.*,
+          a.platform as account_platform,
+          a.currency as account_currency
+        FROM topups t
+        JOIN ad_accounts a ON a.id = t.account_id
+        WHERE t.status='completed'
+    """
+    params: List[object] = []
+    if user_id is not None:
+        query += " AND t.user_id=?"
+        params.append(user_id)
+    if account_id is not None:
+        query += " AND t.account_id=?"
+        params.append(account_id)
+    rows = conn.execute(query, params).fetchall()
+    prepared = _attach_topup_account_amount([dict(row) for row in rows])
+    for row in prepared:
+        account_id_value = row.get("account_id")
+        user_id_value = row.get("user_id")
+        if not account_id_value or not user_id_value:
+            continue
+        _record_account_funding_event(
+            conn,
+            account_id=int(account_id_value),
+            user_id=int(user_id_value),
+            platform=str(row.get("account_platform") or row.get("platform") or ""),
+            amount=row.get("amount_account") or 0,
+            currency=str(row.get("account_currency") or row.get("currency") or "USD"),
+            source_type="topup",
+            source_id=row.get("id"),
+            note=f"Topup #{row.get('id')}",
+            occurred_at=row.get("created_at"),
+        )
+
+
+def _account_funding_totals_map(conn, user_id: int) -> Dict[str, Dict[str, float]]:
+    _sync_completed_topup_funding_events(conn, user_id=user_id)
+    rows = conn.execute(
+        """
+        SELECT
+          account_id,
+          COALESCE(SUM(amount), 0) as total_amount,
+          MAX(currency) as currency,
+          COALESCE(SUM(amount_kzt), 0) as total_kzt,
+          COALESCE(SUM(amount_usd), 0) as total_usd
+        FROM account_funding_events
+        WHERE user_id=?
+        GROUP BY account_id
+        """,
+        (user_id,),
+    ).fetchall()
+    out: Dict[str, Dict[str, float]] = {}
+    for row in rows:
+        out[str(row["account_id"])] = {
+            "amount": float(row.get("total_amount") or 0),
+            "currency": row.get("currency") or "USD",
+            "amount_kzt": float(row.get("total_kzt") or 0),
+            "amount_usd": float(row.get("total_usd") or 0),
+        }
+    return out
 
 
 def _google_fetch_audience_age_gender(customer_id: str, date_from: str, date_to: str) -> Tuple[List[Dict[str, object]], Optional[str]]:
@@ -7652,9 +7810,9 @@ def list_account_requests(current_user=Depends(get_current_user)):
                    a.account_code as account_code_db,
                    a.budget_total as budget_total,
                    a.currency as account_currency,
-                   COALESCE((SELECT SUM(t.amount_input)
-                             FROM topups t
-                             WHERE t.account_id = a.id AND t.status='completed'), 0) as topup_completed_total
+                   COALESCE((SELECT SUM(COALESCE(afe.amount_kzt, 0))
+                             FROM account_funding_events afe
+                             WHERE afe.account_id = a.id), 0) as topup_completed_total
             FROM account_requests r
             LEFT JOIN ad_accounts a ON a.user_id = r.user_id AND a.platform = r.platform AND a.name = r.name
             WHERE r.user_id=?
@@ -7701,6 +7859,7 @@ def admin_list_account_requests(admin_user=Depends(get_admin_user)):
     if not get_conn:
         return []
     with get_conn() as conn:
+        _sync_completed_topup_funding_events(conn)
         rows = conn.execute(
             """
             SELECT r.*,
@@ -7709,9 +7868,9 @@ def admin_list_account_requests(admin_user=Depends(get_admin_user)):
                    a.account_code as account_code_db,
                    a.budget_total as budget_total,
                    a.currency as account_currency,
-                   COALESCE((SELECT SUM(t.amount_input)
-                             FROM topups t
-                             WHERE t.account_id = a.id AND t.status='completed'), 0) as topup_completed_total
+                   COALESCE((SELECT SUM(COALESCE(afe.amount_kzt, 0))
+                             FROM account_funding_events afe
+                             WHERE afe.account_id = a.id), 0) as topup_completed_total
             FROM account_requests r
             JOIN users u ON u.id = r.user_id
             LEFT JOIN ad_accounts a ON a.user_id = r.user_id AND a.platform = r.platform AND a.name = r.name
@@ -7862,6 +8021,7 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
     if not get_conn:
         return []
     with get_conn() as conn:
+        _sync_completed_topup_funding_events(conn)
         clients: List[Dict[str, object]] = []
         try:
             try:
@@ -7882,9 +8042,13 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                         COALESCE(SUM(CASE WHEN seen_by_admin=0 THEN 1 ELSE 0 END), 0) as unread_topups,
                         COALESCE(SUM(CASE WHEN status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
                         COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
-                        COALESCE(SUM(CASE WHEN status='completed' THEN COALESCE(amount_input, 0) ELSE 0 END), 0) as completed_total_kzt,
+                        COALESCE((
+                          SELECT SUM(COALESCE(afe.amount_kzt, 0))
+                          FROM account_funding_events afe
+                          WHERE afe.user_id = t.user_id
+                        ), 0) as completed_total_kzt,
                         MAX(created_at) as last_topup_at
-                      FROM topups
+                      FROM topups t
                       GROUP BY user_id
                     ) ts ON ts.user_id = u.id
                     LEFT JOIN (
@@ -7916,9 +8080,13 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                         user_id,
                         COALESCE(SUM(CASE WHEN status!='completed' THEN 1 ELSE 0 END), 0) as pending_requests,
                         COALESCE(SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END), 0) as completed_count,
-                        COALESCE(SUM(CASE WHEN status='completed' THEN COALESCE(amount_input, 0) ELSE 0 END), 0) as completed_total_kzt,
+                        COALESCE((
+                          SELECT SUM(COALESCE(afe.amount_kzt, 0))
+                          FROM account_funding_events afe
+                          WHERE afe.user_id = t.user_id
+                        ), 0) as completed_total_kzt,
                         MAX(created_at) as last_topup_at
-                      FROM topups
+                      FROM topups t
                       GROUP BY user_id
                     ) ts ON ts.user_id = u.id
                     LEFT JOIN (
@@ -7935,7 +8103,8 @@ def admin_list_clients(admin_user=Depends(get_admin_user)):
                 ).fetchall()
             clients = [dict(row) for row in rows]
             for row in clients:
-                row["completed_total_kzt"] = float(row.get("completed_total") or 0.0)
+                row["completed_total"] = float(row.get("completed_total") or 0.0)
+                row["completed_total_kzt"] = float(row.get("completed_total_kzt") or row.get("completed_total") or 0.0)
         except Exception:
             fallback_rows = conn.execute(
                 """
@@ -8406,9 +8575,29 @@ def admin_update_topup_status(topup_id: int, status: TopUpStatus, admin_user=Dep
                 "UPDATE ad_accounts SET budget_total=? WHERE id=?",
                 (new_total, row["account_id"]),
             )
+            account_row = conn.execute("SELECT platform, name, currency FROM ad_accounts WHERE id=?", (row["account_id"],)).fetchone()
+            topup_payload = _attach_topup_account_amount(
+                [
+                    {
+                        **dict(row),
+                        "account_platform": account_row["platform"] if account_row else None,
+                        "account_currency": account_row["currency"] if account_row else row["currency"],
+                    }
+                ]
+            )[0]
+            _record_account_funding_event(
+                conn,
+                account_id=int(row["account_id"]),
+                user_id=int(row["user_id"]),
+                platform=str(account_row["platform"] if account_row else ""),
+                amount=topup_payload.get("amount_account") or 0,
+                currency=str(account_row["currency"] if account_row else row["currency"] or "USD"),
+                source_type="topup",
+                source_id=topup_id,
+                note=f"Completed topup #{topup_id}",
+            )
             conn.execute("UPDATE users SET is_client=1 WHERE id=?", (row["user_id"],))
             user_row = conn.execute("SELECT email FROM users WHERE id=?", (row["user_id"],)).fetchone()
-            account_row = conn.execute("SELECT platform, name FROM ad_accounts WHERE id=?", (row["account_id"],)).fetchone()
             _send_telegram_alert(
                 "\n".join(
                     [
@@ -8833,6 +9022,125 @@ def list_topups(account_id: Optional[int] = None, status: Optional[str] = None, 
     except Exception as exc:
         logging.exception("Failed to list topups for user_id=%s: %s", current_user.get("id"), exc)
         return []
+
+
+@app.get("/accounts/funding-totals")
+def account_funding_totals(current_user=Depends(get_current_user)):
+    if not get_conn:
+        return {"items": []}
+    with get_conn() as conn:
+        totals_map = _account_funding_totals_map(conn, current_user["id"])
+        items = [
+            {
+                "account_id": int(account_id),
+                "amount": payload["amount"],
+                "currency": payload["currency"],
+                "amount_kzt": payload["amount_kzt"],
+                "amount_usd": payload["amount_usd"],
+            }
+            for account_id, payload in sorted(totals_map.items(), key=lambda item: int(item[0]))
+        ]
+        conn.commit()
+        return {"items": items}
+
+
+@app.get("/admin/accounts/{account_id}/funding-events")
+def admin_account_funding_events(account_id: int, admin_user=Depends(get_admin_user)):
+    if not get_conn:
+        return []
+    with get_conn() as conn:
+        _sync_completed_topup_funding_events(conn, account_id=account_id)
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM account_funding_events
+            WHERE account_id=?
+            ORDER BY created_at DESC, id DESC
+            """,
+            (account_id,),
+        ).fetchall()
+        conn.commit()
+        return [dict(row) for row in rows]
+
+
+@app.post("/admin/accounts/{account_id}/funding-events")
+def admin_create_account_funding_event(account_id: int, payload: AdminAccountFundingCreate, admin_user=Depends(get_admin_user)):
+    if not get_conn:
+        raise HTTPException(status_code=500, detail="DB not initialized")
+    with get_conn() as conn:
+        row = conn.execute("SELECT id, user_id, platform, currency, name FROM ad_accounts WHERE id=?", (account_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found")
+        currency = "KZT" if str(row["platform"] or "").lower() == "yandex" else str(payload.currency or row["currency"] or "USD").upper()
+        _record_account_funding_event(
+            conn,
+            account_id=account_id,
+            user_id=int(row["user_id"]),
+            platform=str(row["platform"] or ""),
+            amount=payload.amount,
+            currency=currency,
+            source_type="admin_manual",
+            note=payload.note or f"Manual funding for {row['name']}",
+            created_by=admin_user.get("email"),
+            occurred_at=payload.occurred_at,
+        )
+        conn.commit()
+        return {"status": "ok", "account_id": account_id, "currency": currency, "amount": payload.amount}
+
+
+@app.post("/admin/accounts/{account_id}/funding-events/{event_id}/reverse")
+def admin_reverse_account_funding_event(
+    account_id: int,
+    event_id: int,
+    payload: AdminAccountFundingReverse,
+    admin_user=Depends(get_admin_user),
+):
+    if not get_conn:
+        raise HTTPException(status_code=500, detail="DB not initialized")
+    with get_conn() as conn:
+        event = conn.execute(
+            """
+            SELECT *
+            FROM account_funding_events
+            WHERE id=? AND account_id=?
+            """,
+            (event_id, account_id),
+        ).fetchone()
+        if not event:
+            raise HTTPException(status_code=404, detail="Funding event not found")
+        if event.get("source_type") != "admin_manual":
+            raise HTTPException(status_code=400, detail="Only manual funding events can be reversed")
+        if event.get("reversal_for_event_id") is not None:
+            raise HTTPException(status_code=400, detail="Reversal events cannot be reversed")
+        if event.get("reversed_by_event_id") is not None:
+            raise HTTPException(status_code=400, detail="Funding event already reversed")
+
+        reversal_note = payload.note or f"Reverse manual funding #{event_id}"
+        reversal_id = _record_account_funding_event(
+            conn,
+            account_id=int(event["account_id"]),
+            user_id=int(event["user_id"]),
+            platform=str(event.get("platform") or ""),
+            amount=-float(event.get("amount") or 0),
+            currency=str(event.get("currency") or "USD"),
+            source_type="admin_reversal",
+            source_id=event_id,
+            note=reversal_note,
+            created_by=admin_user.get("email"),
+            reversal_for_event_id=event_id,
+        )
+        if reversal_id is None:
+            raise HTTPException(status_code=500, detail="Failed to create reversal event")
+        conn.execute(
+            """
+            UPDATE account_funding_events
+            SET reversed_by_event_id=?, voided_at=?, voided_by=?
+            WHERE id=?
+            """,
+            (reversal_id, datetime.utcnow().isoformat(), admin_user.get("email"), event_id),
+        )
+        conn.commit()
+        return {"status": "ok", "event_id": event_id, "reversal_event_id": reversal_id}
 
 
 class TopupCreatePayload(BaseModel):

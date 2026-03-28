@@ -74,10 +74,10 @@ function withMarkup(rate) {
   return Number(rate) + MARKUP
 }
 
-function getTopupAccountAmount(row) {
-  if (row?.amount_account != null) return Number(row.amount_account)
-  if (row?.amount_net != null) return Number(row.amount_net)
-  return Number(row?.amount_input || 0)
+function accountDisplayCurrency(platform, currency) {
+  if (platform === 'yandex') return 'KZT'
+  if (platform === 'telegram') return 'EUR'
+  return currency || 'USD'
 }
 
 function platformLabel(key) {
@@ -241,7 +241,7 @@ export default function TopupPage() {
   const router = useRouter()
 
   const [accountsFull, setAccountsFull] = useState([])
-  const [topups, setTopups] = useState([])
+  const [fundingTotals, setFundingTotals] = useState([])
   const [accountRequests, setAccountRequests] = useState([])
   const [fees, setFees] = useState(null)
   const [walletKzt, setWalletKzt] = useState(0)
@@ -359,9 +359,9 @@ export default function TopupPage() {
   async function loadAll() {
     setStatus('Загрузка данных...')
     try {
-      const [accountsRes, topupsRes, feesRes, walletRes, ratesRes, requestsRes] = await Promise.all([
+      const [accountsRes, fundingTotalsRes, feesRes, walletRes, ratesRes, requestsRes] = await Promise.all([
         safeFetch('/accounts'),
-        safeFetch('/topups'),
+        safeFetch('/accounts/funding-totals'),
         safeFetch('/fees'),
         safeFetch('/wallet'),
         apiFetch('/rates/bcc'),
@@ -374,14 +374,14 @@ export default function TopupPage() {
       }
 
       const accountsData = await accountsRes.json()
-      const topupsData = topupsRes.ok ? await topupsRes.json() : []
+      const fundingTotalsData = fundingTotalsRes.ok ? await fundingTotalsRes.json() : { items: [] }
       const feesData = feesRes.ok ? await feesRes.json() : null
       const walletData = walletRes.ok ? await walletRes.json() : { balance: 0 }
       const ratesData = ratesRes.ok ? await ratesRes.json() : { rates: {} }
       const requestsData = requestsRes.ok ? await requestsRes.json() : []
 
       setAccountsFull(Array.isArray(accountsData) ? accountsData : [])
-      setTopups(Array.isArray(topupsData) ? topupsData : [])
+      setFundingTotals(Array.isArray(fundingTotalsData?.items) ? fundingTotalsData.items : [])
       setFees(feesData || null)
       setWalletKzt(Number(walletData?.balance || 0))
       setRates({
@@ -435,16 +435,13 @@ export default function TopupPage() {
 
   const topupFactByAccountId = useMemo(() => {
     const map = new Map()
-    topups
-      .filter((t) => t.status === 'completed')
-      .forEach((t) => {
-        const key = String(t.account_id || '')
-        if (!key) return
-        const curr = map.get(key) || 0
-        map.set(key, curr + getTopupAccountAmount(t))
-      })
+    fundingTotals.forEach((row) => {
+      const key = String(row?.account_id || '')
+      if (!key) return
+      map.set(key, Number(row?.amount || 0))
+    })
     return map
-  }, [topups])
+  }, [fundingTotals])
 
   const openAccounts = useMemo(() => {
     const index = new Map()
@@ -460,7 +457,7 @@ export default function TopupPage() {
         created_at: acc.created_at || null,
         live_billing: acc.live_billing || null,
         email: '—',
-        currency: acc.currency || (acc.platform === 'telegram' ? 'EUR' : 'USD'),
+        currency: accountDisplayCurrency(acc.platform, acc.currency),
         status: normalizedStatus,
       }
     })
@@ -482,7 +479,7 @@ export default function TopupPage() {
           account_ref: row.external_id || row.account_code || null,
           account_db_id: accountDbId,
           email: payload?.access?.[0]?.email || payload?.mcc_email || payload?.yandex_email || payload?.telegram_channel || '',
-          currency: row.account_currency || (row.platform === 'telegram' ? 'EUR' : 'USD'),
+          currency: accountDisplayCurrency(row.platform, row.account_currency),
           status: normalizeRequestStatus(row.status),
         }
       })

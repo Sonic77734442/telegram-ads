@@ -266,6 +266,8 @@ export default function AdminRequestsPage() {
   const topupTotal = modalRow?.topup_completed_total != null ? Number(modalRow.topup_completed_total) : null
   const formatMoneyCurrency = (value) =>
     value == null || Number.isNaN(value) ? '—' : `${formatMoney(value)} ${accountCurrency}`
+  const formatMoneyKzt = (value) =>
+    value == null || Number.isNaN(value) ? '—' : `${formatMoney(value)} KZT`
 
   return (
     <AppShell
@@ -388,7 +390,7 @@ export default function AdminRequestsPage() {
                 ])}
                 {section('Финансы', [
                   ['Бюджет (ручной)', formatMoneyCurrency(budgetTotal)],
-                  ['Пополнено (completed)', formatMoneyCurrency(topupTotal)],
+                  ['Пополнено (completed)', formatMoneyKzt(topupTotal)],
                 ])}
                 {section('Ссылки', [
                   ['Сайт', modalPayload.website || '—'],

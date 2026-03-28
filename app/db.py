@@ -141,6 +141,32 @@ def apply_schema():
             conn.execute("ALTER TABLE topups ADD COLUMN IF NOT EXISTS hold_applied INTEGER DEFAULT 0")
             conn.execute("ALTER TABLE user_tokens ADD COLUMN IF NOT EXISTS login_email TEXT")
             conn.execute("""
+            CREATE TABLE IF NOT EXISTS account_funding_events (
+              id BIGSERIAL PRIMARY KEY,
+              account_id BIGINT REFERENCES ad_accounts(id) ON DELETE CASCADE,
+              user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+              platform TEXT NOT NULL,
+              amount DOUBLE PRECISION NOT NULL,
+              currency TEXT NOT NULL,
+              amount_usd DOUBLE PRECISION,
+              amount_kzt DOUBLE PRECISION,
+              source_type TEXT NOT NULL,
+              source_id BIGINT,
+              source_key TEXT UNIQUE,
+              note TEXT,
+              created_by TEXT,
+              reversed_by_event_id BIGINT,
+              reversal_for_event_id BIGINT,
+              voided_at TIMESTAMPTZ,
+              voided_by TEXT,
+              created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+            conn.execute("ALTER TABLE account_funding_events ADD COLUMN IF NOT EXISTS reversed_by_event_id BIGINT")
+            conn.execute("ALTER TABLE account_funding_events ADD COLUMN IF NOT EXISTS reversal_for_event_id BIGINT")
+            conn.execute("ALTER TABLE account_funding_events ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ")
+            conn.execute("ALTER TABLE account_funding_events ADD COLUMN IF NOT EXISTS voided_by TEXT")
+            conn.execute("""
             CREATE TABLE IF NOT EXISTS user_accesses (
               id BIGSERIAL PRIMARY KEY,
               user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
@@ -302,6 +328,32 @@ def apply_schema():
         )
         _ensure_table(
             conn,
+            "account_funding_events",
+            """
+            CREATE TABLE IF NOT EXISTS account_funding_events (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              account_id INTEGER REFERENCES ad_accounts(id) ON DELETE CASCADE,
+              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+              platform TEXT NOT NULL,
+              amount DOUBLE PRECISION NOT NULL,
+              currency TEXT NOT NULL,
+              amount_usd DOUBLE PRECISION,
+              amount_kzt DOUBLE PRECISION,
+              source_type TEXT NOT NULL,
+              source_id INTEGER,
+              source_key TEXT UNIQUE,
+              note TEXT,
+              created_by TEXT,
+              reversed_by_event_id INTEGER,
+              reversal_for_event_id INTEGER,
+              voided_at TEXT,
+              voided_by TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+        )
+        _ensure_table(
+            conn,
             "legal_entities",
             """
             CREATE TABLE IF NOT EXISTS legal_entities (
@@ -409,6 +461,10 @@ def apply_schema():
         _ensure_column(conn, "topups", "user_id", "INTEGER")
         _ensure_column(conn, "topups", "seen_by_admin", "INTEGER")
         _ensure_column(conn, "topups", "hold_applied", "INTEGER")
+        _ensure_column(conn, "account_funding_events", "reversed_by_event_id", "INTEGER")
+        _ensure_column(conn, "account_funding_events", "reversal_for_event_id", "INTEGER")
+        _ensure_column(conn, "account_funding_events", "voided_at", "TEXT")
+        _ensure_column(conn, "account_funding_events", "voided_by", "TEXT")
         conn.commit()
 
 
