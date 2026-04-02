@@ -5918,7 +5918,7 @@ def list_client_finance_documents(current_user=Depends(get_current_user)):
               updated_at
             FROM client_finance_documents
             WHERE user_id=?
-            ORDER BY COALESCE(document_date, created_at) DESC, id DESC
+            ORDER BY COALESCE(NULLIF(document_date, ''), CAST(created_at AS TEXT)) DESC, id DESC
             """,
             (current_user["id"],),
         ).fetchall()
@@ -5987,7 +5987,7 @@ def admin_client_finance_documents(user_id: int, admin_user=Depends(get_admin_us
               updated_at
             FROM client_finance_documents
             WHERE user_id=?
-            ORDER BY COALESCE(document_date, created_at) DESC, id DESC
+            ORDER BY COALESCE(NULLIF(document_date, ''), CAST(created_at AS TEXT)) DESC, id DESC
             """,
             (user_id,),
         ).fetchall()
