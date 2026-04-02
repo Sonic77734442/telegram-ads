@@ -215,6 +215,32 @@ export default function FundsPage() {
     })
   }, [funds, platform, accountFilter, dateFrom, dateTo])
 
+  const uploadedInvoices = useMemo(() => {
+    return financeDocs
+      .filter((row) => String(row.document_type || '').toLowerCase() === 'invoice')
+      .map((row) => ({
+        id: `finance-${row.id}`,
+        financeDocId: row.id,
+        date: fmtDate(row.document_date || row.created_at),
+        counterparty: row.title || '—',
+        amount: row.amount ?? 0,
+        currency: row.currency || 'KZT',
+        number: row.document_number || '',
+        fileName: row.file_name || '',
+        source: 'finance-doc',
+      }))
+  }, [financeDocs])
+
+  const closingDocs = useMemo(() => {
+    return financeDocs.filter((row) => String(row.document_type || '').toLowerCase() === 'avr')
+  }, [financeDocs])
+
+  const allInvoices = useMemo(() => {
+    const rows = [...uploadedInvoices, ...invoices]
+    rows.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+    return rows
+  }, [uploadedInvoices, invoices])
+
   const summary = useMemo(() => {
     const totalUsd = filteredFunds.filter((r) => r.currency === 'USD').reduce((acc, r) => acc + r.amount, 0)
     const totalKzt = filteredFunds.filter((r) => r.currency === 'KZT').reduce((acc, r) => acc + r.amount, 0)
@@ -358,14 +384,16 @@ export default function FundsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!invoices.length ? (
+                  {!allInvoices.length ? (
                     <tr>
                       <td colSpan={5}>Нет данных</td>
                     </tr>
                   ) : (
-                    invoices.map((r) => {
+                    allInvoices.map((r) => {
                       const token = getAuthToken()
-                      const pdfUrl = `${(process.env.NEXT_PUBLIC_API_BASE || 'https://envidicy-dash-client.onrender.com').replace(/\/$/, '')}/wallet/topup-requests/${r.id}/pdf-generated${token ? `?token=${encodeURIComponent(token)}` : ''}`
+                      const pdfUrl = r.source === 'finance-doc'
+                        ? `${(process.env.NEXT_PUBLIC_API_BASE || 'https://envidicy-dash-client.onrender.com').replace(/\/$/, '')}/client-finance-documents/${r.financeDocId}${token ? `?token=${encodeURIComponent(token)}` : ''}`
+                        : `${(process.env.NEXT_PUBLIC_API_BASE || 'https://envidicy-dash-client.onrender.com').replace(/\/$/, '')}/wallet/topup-requests/${r.id}/pdf-generated${token ? `?token=${encodeURIComponent(token)}` : ''}`
                       return (
                         <tr key={r.id}>
                           <td>{r.date}</td>
@@ -455,12 +483,12 @@ export default function FundsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!financeDocs.length ? (
+                  {!closingDocs.length ? (
                     <tr>
                       <td colSpan={7}>Нет документов</td>
                     </tr>
                   ) : (
-                    financeDocs.map((row) => {
+                    closingDocs.map((row) => {
                       const token = getAuthToken()
                       const href = `${(process.env.NEXT_PUBLIC_API_BASE || 'https://envidicy-dash-client.onrender.com').replace(/\/$/, '')}/client-finance-documents/${row.id}${token ? `?token=${encodeURIComponent(token)}` : ''}`
                       return (
