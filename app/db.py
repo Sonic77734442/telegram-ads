@@ -221,6 +221,37 @@ def apply_schema():
               created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             )
             """)
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS client_finance_documents (
+              id BIGSERIAL PRIMARY KEY,
+              user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+              document_type TEXT NOT NULL DEFAULT 'invoice',
+              title TEXT NOT NULL,
+              document_number TEXT,
+              document_date TEXT,
+              amount DOUBLE PRECISION,
+              currency TEXT DEFAULT 'KZT',
+              note TEXT,
+              file_name TEXT,
+              file_path TEXT NOT NULL,
+              mime_type TEXT,
+              uploaded_by TEXT,
+              created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS document_type TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS title TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS document_number TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS document_date TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS amount DOUBLE PRECISION")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS currency TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS note TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS file_name TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS file_path TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS mime_type TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS uploaded_by TEXT")
+            conn.execute("ALTER TABLE client_finance_documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP")
             conn.commit()
         return
     schema_path = os.path.join(os.path.dirname(__file__), "..", "db", "schema.sql")
