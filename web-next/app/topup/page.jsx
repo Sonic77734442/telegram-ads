@@ -127,14 +127,24 @@ function platformLogoNode(platform) {
 }
 
 function datePickerProps() {
+  const openPicker = (event) => {
+    const input = event.currentTarget
+    if (typeof input?.showPicker !== 'function') return
+    try {
+      input.showPicker()
+    } catch (_error) {
+      // Some browsers require a stricter user-gesture context; ignore and let native date input work.
+    }
+  }
+
   return {
     inputMode: 'none',
     onKeyDown: (e) => {
       if (e.key !== 'Tab') e.preventDefault()
     },
     onPaste: (e) => e.preventDefault(),
-    onFocus: (e) => e.currentTarget.showPicker?.(),
-    onClick: (e) => e.currentTarget.showPicker?.(),
+    onFocus: openPicker,
+    onClick: openPicker,
   }
 }
 
