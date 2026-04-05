@@ -4456,6 +4456,21 @@ def _google_fetch_account_billing(customer_id: str, force_refresh: bool = False)
     spend = None
 
     if not rows:
+        fallback_query = """
+            SELECT
+              customer.id,
+              customer.currency_code,
+              metrics.cost_micros
+            FROM customer
+            WHERE segments.date DURING THIS_MONTH
+        """
+        try:
+            fallback_rows = list(ga_service.search(customer_id=normalized_customer_id, query=fallback_query))
+            spend = sum(float(row.metrics.cost_micros or 0) for row in fallback_rows) / 1_000_000
+            if fallback_rows:
+                currency = fallback_rows[0].customer.currency_code or currency
+        except Exception:
+            spend = None
         payload = {
             "provider": "google",
             "currency": currency,
