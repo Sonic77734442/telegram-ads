@@ -92,6 +92,47 @@ const multiplier =
   // load ad meta
   useEffect(() => {
     if (!adId) return;
+
+    const normalizeAd = (data: any) => {
+      let parsed: any = {};
+      try {
+        parsed = data.raw ? JSON.parse(data.raw) : {};
+      } catch {}
+
+      return {
+        ...parsed,
+        title: data.title,
+        text: data.text,
+        url: data.url,
+        button: data.button,
+        mediaUrl: data.media_url,
+        mediaType: data.media_type,
+        cpm: data.cpm_client ?? data.cpm_net ?? data.cpm,
+        budget: data.budget_client ?? data.budget_net ?? data.budget,
+        views: data.views,
+        createdAt: data.created_at,
+      };
+    };
+
+    const loadAdFromCampaignsApi = async () => {
+      const role = localStorage.getItem("role") || "client";
+      const clientId = localStorage.getItem("user_id") || "";
+      const agencyId = localStorage.getItem("agency_id") || "";
+      const params = new URLSearchParams({ mode: role });
+
+      if (role === "client" && clientId) params.set("client_id", clientId);
+      if (role === "agency" && agencyId) params.set("agency_id", agencyId);
+
+      const resp = await fetch(`/api/campaigns?${params.toString()}`);
+      const json = await resp.json();
+
+      if (!resp.ok || json.error) {
+        throw new Error(json.error || `Campaigns API failed (${resp.status})`);
+      }
+
+      return (json.data || []).find((campaign: any) => campaign.id === adId) || null;
+    };
+
     (async () => {
       setAdLoadError(null);
       setAd(null);
@@ -102,34 +143,27 @@ const multiplier =
         .eq("id", adId)
         .maybeSingle();
 
+      if (!error && data) {
+        setAd(normalizeAd(data));
+        return;
+      }
+
       if (error) {
-        console.error("load ad error:", error);
-        setAdLoadError("Failed to load ad details.");
-        return;
+        console.warn("direct ad meta load failed; falling back to API:", error);
       }
 
-      if (!data) {
-        setAdLoadError("This ad is unavailable or you do not have access to it.");
-        return;
-      }
-
-      let parsed: any = {};
       try {
-        parsed = (data as any).raw ? JSON.parse((data as any).raw) : {};
-      } catch {}
-      setAd({
-        ...parsed,
-        title: data.title,
-        text: data.text,
-        url: data.url,
-        button: data.button,
-        mediaUrl: data.media_url,
-        mediaType: data.media_type,
-        cpm: data.cpm,
-        budget: data.budget,
-        views: data.views,
-        createdAt: data.created_at,
-      });
+        const apiAd = await loadAdFromCampaignsApi();
+        if (apiAd) {
+          setAd(normalizeAd(apiAd));
+          return;
+        }
+
+        setAdLoadError("This ad is unavailable or you do not have access to it.");
+      } catch (apiError) {
+        console.error("load ad meta from campaigns API failed:", apiError);
+        setAdLoadError("Failed to load ad details.");
+      }
     })();
   }, [adId]);
 
