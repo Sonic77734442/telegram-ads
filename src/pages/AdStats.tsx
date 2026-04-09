@@ -86,6 +86,22 @@ export default function AdStats() {
       }));
   };
 
+  const loadStatsFromApi = async (range: Range) => {
+    const resp = await fetch(`/api/stats?ad_id=${adId}&range=${range}`);
+    const json = await resp.json();
+
+    if (!resp.ok || json.error) {
+      throw new Error(json.error || `Stats API failed (${resp.status})`);
+    }
+
+    return (json.data || []).map((r: any) => ({
+      ...(range === "days" ? { date: r.date } : { ts: r.ts }),
+      views: Number(r.views ?? 0),
+      clicks: Number(r.clicks ?? 0),
+      video_opens: Number(r.video_opens ?? 0),
+    }));
+  };
+
   const reportsTotal = useMemo(
     () => ({
       views: reports.reduce((s, r) => s + (r.views || 0), 0),
@@ -208,28 +224,17 @@ const multiplier =
   useEffect(() => {
     if (!adId) return;
     (async () => {
-      const fn = statsRange === "days" ? "get_daily_ad_stats" : "get_5min_ad_stats";
-      const { data, error } = await supabase.rpc(fn, { input_ad_id: adId });
-      if (error) {
-        console.error("stats rpc error:", error);
-        if (statsRange === "days") {
-          setStatsData(await loadReportForStatsChart());
-          return;
-        }
-        setStatsData([]);
-        return;
+      try {
+        const apiStats = await loadStatsFromApi(statsRange);
+        setStatsData(
+          apiStats.length === 0 && statsRange === "days"
+            ? await loadReportForStatsChart()
+            : apiStats
+        );
+      } catch (apiError) {
+        console.error("stats api error:", apiError);
+        setStatsData(statsRange === "days" ? await loadReportForStatsChart() : []);
       }
-      const normalized = (data || []).map((r: any) => ({
-        ...(statsRange === "days" ? { date: r.date } : { ts: r.ts }),
-        views: Number(r.views ?? 0),
-        clicks: Number(r.clicks ?? 0),
-        video_opens: Number(r.video_opens ?? 0),
-      }));
-      setStatsData(
-        normalized.length === 0 && statsRange === "days"
-          ? await loadReportForStatsChart()
-          : normalized
-      );
     })();
   }, [adId, statsRange, monthTabs, selectedMonth]);
 
