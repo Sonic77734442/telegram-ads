@@ -49,6 +49,43 @@ export default function AdStats() {
     return arr;
   }, []);
   const [reports, setReports] = useState<ReportRow[]>([]);
+  const loadMonthlyReport = async (month: string) => {
+    const resp = await fetch(`/api/reports?ad_id=${adId}&ym=${month}`);
+    const json = await resp.json();
+
+    if (!resp.ok || json.error) {
+      throw new Error(json.error || `Reports API failed (${resp.status})`);
+    }
+
+    return (json.data || []).map((r: any) => {
+      const baseAmount = Number(r.amount_client ?? r.amount ?? 0);
+      return {
+        day: r.day,
+        views: Number(r.views || 0),
+        amount: baseAmount,
+      };
+    }) as ReportRow[];
+  };
+
+  const loadReportForStatsChart = async () => {
+    const months = monthTabs.includes(selectedMonth)
+      ? monthTabs
+      : [...monthTabs, selectedMonth];
+    const reportsByMonth = await Promise.all(
+      months.map((month) => loadMonthlyReport(month).catch(() => []))
+    );
+
+    return reportsByMonth
+      .flat()
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .map((row) => ({
+        date: row.day,
+        views: Number(row.views || 0),
+        clicks: 0,
+        video_opens: 0,
+      }));
+  };
+
   const reportsTotal = useMemo(
     () => ({
       views: reports.reduce((s, r) => s + (r.views || 0), 0),
@@ -175,6 +212,10 @@ const multiplier =
       const { data, error } = await supabase.rpc(fn, { input_ad_id: adId });
       if (error) {
         console.error("stats rpc error:", error);
+        if (statsRange === "days") {
+          setStatsData(await loadReportForStatsChart());
+          return;
+        }
         setStatsData([]);
         return;
       }
@@ -184,9 +225,13 @@ const multiplier =
         clicks: Number(r.clicks ?? 0),
         video_opens: Number(r.video_opens ?? 0),
       }));
-      setStatsData(normalized);
+      setStatsData(
+        normalized.length === 0 && statsRange === "days"
+          ? await loadReportForStatsChart()
+          : normalized
+      );
     })();
-  }, [adId, statsRange]);
+  }, [adId, statsRange, monthTabs, selectedMonth]);
 
    // load reports (table)
   useEffect(() => {
@@ -194,29 +239,7 @@ const multiplier =
 
     (async () => {
       try {
-        const resp = await fetch(
-          `/api/reports?ad_id=${adId}&ym=${selectedMonth}`
-        );
-        const json = await resp.json();
-
-        if (json.error) {
-          console.error("reports fetch error:", json.error);
-          setReports([]);
-          return;
-        }
-
-        const data = json.data || [];
-
-        setReports(
-          data.map((r: any) => {
-            const baseAmount = Number(r.amount_client ?? r.amount ?? 0);
-            return {
-              day: r.day, // 'YYYY-MM-DD'
-              views: Number(r.views || 0),
-              amount: baseAmount, // server already includes markup when present
-            };
-          })
-        );
+        setReports(await loadMonthlyReport(selectedMonth));
       } catch (e) {
         console.error("reports fetch exception:", e);
         setReports([]);
