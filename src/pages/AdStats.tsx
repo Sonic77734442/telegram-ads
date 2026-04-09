@@ -41,7 +41,7 @@ export default function AdStats() {
     const base = new Date();
     base.setUTCDate(1);
     const arr: string[] = [];
-    for (let i = 2; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 1));
       arr.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
     }
