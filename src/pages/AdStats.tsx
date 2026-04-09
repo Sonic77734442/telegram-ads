@@ -20,6 +20,7 @@ export default function AdStats() {
 
   // meta
   const [ad, setAd] = useState<any>(null);
+  const [adLoadError, setAdLoadError] = useState<string | null>(null);
 
   // markup (для клиента)
   const [markupPercent, setMarkupPercent] = useState<number>(0);
@@ -92,15 +93,26 @@ const multiplier =
   useEffect(() => {
     if (!adId) return;
     (async () => {
+      setAdLoadError(null);
+      setAd(null);
+
       const { data, error } = await supabase
         .from("ad_campaigns")
         .select("*")
         .eq("id", adId)
-        .single();
+        .maybeSingle();
+
       if (error) {
         console.error("load ad error:", error);
+        setAdLoadError("Failed to load ad details.");
         return;
       }
+
+      if (!data) {
+        setAdLoadError("This ad is unavailable or you do not have access to it.");
+        return;
+      }
+
       let parsed: any = {};
       try {
         parsed = (data as any).raw ? JSON.parse((data as any).raw) : {};
@@ -241,6 +253,7 @@ const multiplier =
   };
 
   if (!adId) return <div className="p-4">⚠️ No ad ID</div>;
+  if (adLoadError) return <div className="p-4 text-sm text-gray-600">{adLoadError}</div>;
   if (!ad) return <div className="p-4">Loading…</div>;
 
   const displayBudget = (() => {
