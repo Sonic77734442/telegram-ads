@@ -4,6 +4,7 @@ import Container from "../components/Container";
 import MultiSelect from "../components/MultiSelect";
 import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
+import AdScheduleControl from "../components/AdScheduleControl";
 import { supabase } from "../supabaseClient";
 import { useAdId } from "../hooks/useAdId";
 import { fetchCampaignById } from "../lib/campaignApi";
@@ -584,11 +585,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 		</Field>
 
           <Field label="Ad Schedule" info>
-            <Checkbox
-              label="Run this ad on schedule"
-              checked={schedule}
-              onChange={(e) => setSchedule(e.target.checked)}
-            />
+            <AdScheduleControl checked={schedule} onChange={setSchedule} />
           </Field>
 
           <Field label="Conversion event" info trailing={<LinkLbl>Create Pixel</LinkLbl>}>

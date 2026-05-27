@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import TelegramAdPreview from "../components/TelegramAdPreview";
+import AdScheduleControl from "../components/AdScheduleControl";
 import { supabase } from "../supabaseClient";
 import TagInput from "../components/TagInput";
 import { useAdId } from "../hooks/useAdId";
@@ -260,11 +261,7 @@ export default function BotAdForm() {
           </Field>
 
           <Field label="Ad Schedule">
-            <Checkbox
-              label="Run this ad on schedule"
-              checked={schedule}
-              onChange={(e) => setSchedule(e.target.checked)}
-            />
+            <AdScheduleControl checked={schedule} onChange={setSchedule} />
           </Field>
 
         </form>
