@@ -53,6 +53,7 @@ const TOPICS = [
 ];
 const DEVICES = ["All devices", "Mobile", "Desktop", "iOS", "Android"];
 const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia", "Other"];
+const AUDIENCES = ["Crypto traders", "Gamers", "Investors", "Developers", "Marketing professionals"];
 const CITIES_BY_COUNTRY: Record<string, string[]> = {
   Kazakhstan: ["Almaty", "Astana", "Shymkent", "Karaganda", "Atyrau", "Aktau", "Kostanay"],
   Uzbekistan: ["Tashkent", "Samarkand", "Bukhara", "Namangan", "Andijan", "Fergana", "Nukus"],
@@ -117,6 +118,7 @@ export default function ChannelAdForm() {
   const [topics, setTopics] = useState<string[]>([]);
   const [exTopics, setExTopics] = useState<string[]>([]);
   const [targetChannels, setTargetChannels] = useState<string[]>([]);
+  const [audiences, setAudiences] = useState<string[]>([]);
   const [excludeChannels, setExcludeChannels] = useState<string[]>([]);
   const [devices, setDevices] = useState<string[]>(["All devices"]);
   const [politicsOnly, setPoliticsOnly] = useState(false);
@@ -215,6 +217,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setTopics(data.topics || []);
       setExTopics(data.ex_topics || []);
       setTargetChannels(data.channels || []);
+      setAudiences(data.audiences || []);
       setExcludeChannels(data.exclude_channels || []);
       setDevices(data.devices || ["All devices"]);
       setPoliticsOnly(data.politics_only || false);
@@ -249,6 +252,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setTopics([]);
     setExTopics([]);
     setTargetChannels([]);
+    setAudiences([]);
     setExcludeChannels([]);
     setDevices(["All devices"]);
     setShowUserPic(false);
@@ -309,6 +313,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       topics,
       ex_topics: exTopics,
       channels: targetChannels,
+      audiences,
       exclude_channels: excludeChannels,
       devices,
       politics_only: politicsOnly,
@@ -606,7 +611,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           </Field>
 
           <Field label="Target countries">
-            <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} />
+            <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} locked />
           </Field>
 		  
 		<Field label="Target locations" info>
@@ -618,6 +623,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 				: countries.flatMap((c) => CITIES_BY_COUNTRY[c] || [])
 			}
 			onChange={setLocations}
+      locked
 		  />
 		  <Hint>
 			{countries.length === 0
@@ -629,23 +635,43 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 
           <Field label="Target user languages">
-            <MultiSelect value={langs} options={LANGS} onChange={setLangs} />
+            <MultiSelect value={langs} options={LANGS} onChange={setLangs} placeholder="Select languages (optional)" locked />
           </Field>
 
           <Field label="Target topics">
-            <MultiSelect value={topics} options={TOPICS} onChange={setTopics} />
+            <MultiSelect value={topics} options={TOPICS} onChange={setTopics} placeholder="Select topics (optional)" locked />
           </Field>
 
           <Field label="Target channel audiences">
-            <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" />
+            <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" locked />
+          </Field>
+
+          <Field label="Target audiences" info>
+            <MultiSelect
+              value={audiences}
+              options={AUDIENCES}
+              onChange={setAudiences}
+              placeholder="Select audiences or create a new one (optional)"
+              locked
+            />
           </Field>
 
           <Field label="Target device type">
-            <MultiSelect value={devices} options={DEVICES} onChange={setDevices} />
+            <MultiSelect value={devices} options={DEVICES} onChange={setDevices} locked />
           </Field>
 
+          <Checkbox
+            label={
+              <>
+                Show this ad in channels related to <strong>Politics & Incidents</strong> only
+              </>
+            }
+            checked={politicsOnly}
+            onChange={(e) => setPoliticsOnly(e.target.checked)}
+          />
+
           <Field label="Exclude topics">
-            <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} />
+            <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} placeholder="Select topics to exclude (optional)" locked />
           </Field>
 		  
 		  <Field label="Exclude channel audiences" info>
@@ -653,14 +679,17 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			value={excludeChannels}
 			onChange={setExcludeChannels}
 			placeholder="t.me channel URL to exclude (optional)"
+      locked
 		  />
 		</Field>
 
 		<Field label="Exclude audiences" info>
 		  <MultiSelect
 			value={[]}
-			options={["Crypto traders", "Gamers", "Investors", "Developers", "Marketing professionals"]}
+			options={AUDIENCES}
 			onChange={() => {}}
+      placeholder="Select audiences to exclude (optional)"
+      locked
 		  />
 		  <Hint>Only users from Uzbekistan will be affected.</Hint>
 		</Field>
@@ -758,7 +787,7 @@ const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   />
 );
 
-const Checkbox = ({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => (
+const Checkbox = ({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: React.ReactNode }) => (
   <label className="inline-flex items-center gap-2 text-[13px] cursor-pointer">
     <input {...rest} type="checkbox" className="accent-blue-600" />
     {label}
