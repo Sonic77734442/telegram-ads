@@ -720,10 +720,16 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             onChange={(e) => setExcludePolitics(e.target.checked)}
             disabled={targetLocked}
           />
-		
-
-          <p className="text-xs text-red-600">⚠ Will not be shown anywhere.</p>
-          <p className="text-xs text-amber-600">⚠ Target parameters can't be changed after the ad is created.</p>
+          <TargetingSummary
+            countries={countries}
+            locations={locations}
+            langs={langs}
+            topics={topics}
+            exTopics={exTopics}
+            devices={devices}
+            politicsOnly={politicsOnly}
+            excludePolitics={excludePolitics}
+          />
         </div>
       </div>
 
@@ -793,6 +799,102 @@ const InfoIcon = () => (
     <rect x="9" y="9" width="2" height="7" rx="1" fill="currentColor" />
   </svg>
 );
+
+const SummaryIcon = ({ type }: { type: "plus" | "minus" }) => (
+  <img
+    src={
+      type === "plus"
+        ? "data:image/svg+xml,%3Csvg%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20width%3D%2216%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20fill%3D%22%2328be1d%22%20r%3D%228%22%2F%3E%3Cpath%20d%3D%22m8%204c.44%200%20.8.36.8.8v2.4h2.4c.44%200%20.8.36.8.8s-.36.8-.8.8h-2.4v2.4c0%20.44-.36.8-.8.8s-.8-.36-.8-.8v-2.4h-2.4c-.44%200-.8-.36-.8-.8s.36-.8.8-.8h2.4v-2.4c0-.44.36-.8.8-.8z%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+        : "data:image/svg+xml,%3Csvg%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20width%3D%2216%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20fill%3D%22%23d64d4d%22%20r%3D%228%22%2F%3E%3Crect%20fill%3D%22%23fff%22%20height%3D%221.8%22%20rx%3D%22.9%22%20width%3D%229%22%20x%3D%223.5%22%20y%3D%227.1%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+    }
+    alt=""
+    className="mt-[2px] h-4 w-4 shrink-0"
+  />
+);
+
+const BoldList = ({ items }: { items: string[] }) => (
+  <strong>{items.filter(Boolean).join(", ")}</strong>
+);
+
+const TargetingSummary = ({
+  countries,
+  locations,
+  langs,
+  topics,
+  exTopics,
+  devices,
+  politicsOnly,
+  excludePolitics,
+}: {
+  countries: string[];
+  locations: string[];
+  langs: string[];
+  topics: string[];
+  exTopics: string[];
+  devices: string[];
+  politicsOnly: boolean;
+  excludePolitics: boolean;
+}) => {
+  const device = devices[0] && devices[0] !== "All devices" ? devices[0] : "";
+  const targetPlaces = locations.length > 0 ? locations : countries;
+  const hasTarget = targetPlaces.length || langs.length || topics.length || device || politicsOnly;
+
+  return (
+    <div className="flex flex-col gap-3 text-[14px] leading-[19px] text-[#222] antialiased">
+      {Boolean(hasTarget) && (
+        <div className="flex gap-3">
+          <SummaryIcon type="plus" />
+          <p>
+            Will be shown
+            {targetPlaces.length > 0 && (
+              <>
+                {" "}for users from <BoldList items={targetPlaces} />
+              </>
+            )}
+            {langs.length > 0 && (
+              <>
+                {" "}and who speak <BoldList items={langs} />
+              </>
+            )}
+            {topics.length > 0 && (
+              <>
+                {" "}and who subscribed to <BoldList items={topics} />
+              </>
+            )}
+            {politicsOnly && (
+              <>
+                {" "}and in channels related to <strong>Politics & Incidents</strong>
+              </>
+            )}
+            {device && (
+              <>
+                {" "}and using <strong>{device}</strong>
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
+      {exTopics.length > 0 && (
+        <div className="flex gap-3">
+          <SummaryIcon type="minus" />
+          <p>
+            Will not be shown for users subscribed to <BoldList items={exTopics} />
+          </p>
+        </div>
+      )}
+
+      {excludePolitics && (
+        <div className="flex gap-3">
+          <SummaryIcon type="minus" />
+          <p>
+            Will not be shown in channels related to <strong>Politics & Incidents</strong>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input
