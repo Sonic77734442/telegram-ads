@@ -6,6 +6,7 @@ interface TelegramAdPreviewProps {
   title?: string;
   text?: string;
   button?: string;
+  className?: string;
 }
 
 const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
@@ -14,6 +15,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
   title,
   text,
   button,
+  className = "min-h-[323px] w-[430px]",
 }) => {
   const bgUrl = "/assets/AdPreviewBackground.jpg";
   const hasMedia = Boolean(mediaUrl);
@@ -23,7 +25,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
   return (
     <div
       data-preview-version="telegram-card-v1"
-      className="relative min-h-[323px] w-[430px] overflow-hidden rounded-[6px]"
+      className={`relative overflow-hidden rounded-[6px] ${className}`}
       style={{
         backgroundImage: `url(${bgUrl})`,
         backgroundSize: "cover",

@@ -57,10 +57,9 @@ export default function CreateAdPage() {
   return (
     <div className="min-h-screen bg-gray-50 border-t">
       <Header />
+      {!adId && <div className="border-t border-[#e6e6e6]" />}
 
       <Container>
-        {!adId && <div className="border-t border-[#e6e6e6]" />}
-
         {adId && (
           <TabBar adId={adId} activeTab={subTab} onTabChange={setSubTab} />
         )}

@@ -331,20 +331,20 @@ export default function SearchAdForm() {
       </div>
 
       {adId ? (
-        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pb-8 pt-6">
           <p className="text-[15px] leading-[22px] text-[#222]">
             Changes will become visible to users once they are approved by the moderators.
           </p>
           <button
             type="button"
             onClick={onCreate}
-            className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+            className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
           >
             Save Changes
           </button>
         </div>
       ) : (
-        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pb-8 pt-6">
           <label className="inline-flex items-center gap-3 text-[15px] leading-[22px] text-[#222]">
             <input
               type="checkbox"
@@ -362,7 +362,7 @@ export default function SearchAdForm() {
             <button
               type="button"
               onClick={onCreate}
-              className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+              className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
             >
               Create Ad
             </button>

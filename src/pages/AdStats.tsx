@@ -344,13 +344,14 @@ const multiplier =
         {/* ========== Card with preview & meta ========== */}
         <div className="grid grid-cols-1 md:grid-cols-[320px,1fr] gap-6">
           <div className="justify-self-center md:justify-self-start">
-            <div className="w-[280px]">
+            <div className="w-[375px]">
               <TelegramAdPreview
                 title={ad.title}
                 text={ad.text}
                 mediaUrl={ad.mediaUrl}
                 mediaType={ad.mediaType}
                 button={ad.button}
+                className="min-h-[294px] w-[375px]"
               />
             </div>
           </div>
