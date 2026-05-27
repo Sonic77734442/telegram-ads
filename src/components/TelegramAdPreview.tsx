@@ -34,15 +34,15 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
       <button
         type="button"
         aria-label="Close preview"
-        className="absolute left-[350px] top-[34px] flex h-9 w-9 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
+        className="absolute left-[316px] top-[34px] flex h-9 w-9 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
       >
         <X size={20} strokeWidth={2.6} />
       </button>
 
       <div className="relative min-h-[323px] w-[328px]">
         <div className="relative left-[34px] top-4 w-[260px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
-          <div className="absolute -bottom-[1px] -left-[12px] h-0 w-0 border-r-[22px] border-t-[15px] border-r-white border-t-transparent" />
-          <div className="relative min-h-[291px] overflow-hidden rounded-[8px] bg-[#eef6ff]">
+          <div className="absolute bottom-0 left-[-8px] h-0 w-0 border-r-[18px] border-t-[12px] border-r-white border-t-transparent" />
+          <div className="relative overflow-hidden rounded-[8px] bg-[#eef6ff]">
             <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#4da3df]" />
 
             {hasMedia && (
