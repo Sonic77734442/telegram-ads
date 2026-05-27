@@ -36,6 +36,8 @@ const AD_BUTTON_OPTIONS = [
   "TRY",
   "LEAVE A REQUEST",
 ];
+const MEDIA_BUTTON_ICON =
+  "data:image/svg+xml,%3Csvg%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20width%3D%2220%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%3Cmask%20id%3D%22a%22%20fill%3D%22%23fff%22%3E%3Cpath%20d%3D%22m20%200v20h-20v-20zm-4%20.15h-.14c-1.08%200-1.95.87-1.95%201.95v.03h-.9c-1.07%200-1.95.87-1.95%201.95v.14c0%201.08.88%201.95%201.95%201.95h.9v.9c0%201.07.87%201.94%201.95%201.94h.14c1.08%200%201.95-.87%201.95-1.94v-.9h.03c1.07%200%201.94-.87%201.94-1.95v-.14c0-1.08-.87-1.95-1.94-1.95h-.03v-.03c0-1.08-.87-1.95-1.95-1.95z%22%20fill%3D%22%23fff%22%20fill-rule%3D%22evenodd%22%2F%3E%3C%2Fmask%3E%3Cg%20fill%3D%22%23fff%22%20fill-rule%3D%22evenodd%22%3E%3Crect%20height%3D%227.28%22%20rx%3D%22.79%22%20width%3D%221.58%22%20x%3D%2215.14%22%20y%3D%22.51%22%2F%3E%3Crect%20height%3D%221.58%22%20rx%3D%22.79%22%20width%3D%227.28%22%20x%3D%2212.29%22%20y%3D%223.36%22%2F%3E%3Cpath%20d%3D%22m13.24%202.69c2.1%200%203.8%201.69%203.8%203.79v7.59c0%202.1-1.7%203.8-3.8%203.8h-7.59c-2.1%200-3.8-1.7-3.8-3.8v-7.59c0-2.1%201.7-3.79%203.8-3.79zm-1.21%207.19c-.17-.23-.51-.23-.69-.01l-2.5%202.74c-.12.13-.32.14-.44.02l-1.64-1.51c-.18-.21-.51-.2-.67.02l-1.85%202.74c-.23.28-.23%201.31.65%201.31h9.21c.8%200%20.8-1.02.58-1.31z%22%20mask%3D%22url%28%23a%29%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
 /* ──────────────── component ──────────────── */
 export default function UserAdForm() {
@@ -45,6 +47,7 @@ export default function UserAdForm() {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
+  const [websiteName, setWebsiteName] = useState("");
   const [mediaUrl, setMediaUrl] = useState<string>("");
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
   const [adButton, setAdButton] = useState("OPEN WEBSITE");
@@ -52,10 +55,13 @@ export default function UserAdForm() {
 
   const [cpm, setCpm] = useState("0.00");
   const [budget, setBudget] = useState("0.00");
+  const [dailyBudget, setDailyBudget] = useState("0.00");
   const [dailyViews, setDailyViews] = useState(1);
   const [status, setStatus] = useState<"active" | "hold">("hold");
   const [schedule, setSchedule] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [otherInfo, setOtherInfo] = useState("");
+  const [conversionEvent, setConversionEvent] = useState("");
   const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
   const [markupPercent, setMarkupPercent] = useState(0);
@@ -146,12 +152,18 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setTitle(data.title || "");
       setText(data.text || "");
       setUrl(data.url || "");
+      setWebsiteName(data.website_name || "");
       setCpm(resolveValueForInput(data.cpm_client ?? data.cpm_net, data.cpm));
       const budgetValue = data.budget_client ?? data.budget_net ?? data.budget ?? 0;
       setBudget(Number(budgetValue || 0).toFixed(2));
+      const dailyBudgetValue =
+        data.daily_budget_client ?? data.daily_budget_net ?? data.daily_budget ?? 0;
+      setDailyBudget(Number(dailyBudgetValue || 0).toFixed(2));
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
       setSchedule(data.schedule_enabled || false);
+      setOtherInfo(data.other_info || "");
+      setConversionEvent(data.conversion_event || "");
       setStartDate(data.start_date || "");
       setEndDate(data.end_date || "");
       setShowDatePicker(Boolean(data.start_date || data.end_date));
@@ -174,12 +186,16 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setTitle("");
     setText("");
     setUrl("");
+    setWebsiteName("");
     setCpm("0.00");
     setBudget("0.00");
+    setDailyBudget("0.00");
     setDailyViews(1);
     setStatus("hold");
     setSchedule(false);
     setAgreeTerms(false);
+    setOtherInfo("");
+    setConversionEvent("");
     setMediaUrl("");
     setMediaType(null);
     setAdButton("OPEN WEBSITE");
@@ -212,6 +228,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+    const dailyBudgetNumber = Number(dailyBudget || 0);
     const scheduleEnabled = schedule || Boolean(startDate || endDate);
 
     const { data: userData } = await supabase
@@ -230,8 +247,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           title,
           text,
           url,
+          website_name: websiteName,
           cpm: Number(cpmNet.toFixed(4)),
           budget: Number(budgetNumber.toFixed(4)),
+          daily_budget: Number(dailyBudgetNumber.toFixed(4)),
           daily_views: dailyViews,
           status,
           schedule_enabled: scheduleEnabled,
@@ -249,6 +268,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           devices,
           politics_only: politicsOnly,
           exclude_politics: excludePolitics,
+          other_info: otherInfo,
+          conversion_event: conversionEvent,
           type: "channel",
           updated_at: new Date().toISOString(),
         })
@@ -268,8 +289,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         title,
         text,
         url,
+        website_name: websiteName,
         cpm: Number(cpmNet.toFixed(4)),
         budget: Number(budgetNumber.toFixed(4)),
+        daily_budget: Number(dailyBudgetNumber.toFixed(4)),
         daily_views: dailyViews,
         status,
         schedule_enabled: scheduleEnabled,
@@ -287,6 +310,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         devices,
         politics_only: politicsOnly,
         exclude_politics: excludePolitics,
+        other_info: otherInfo,
+        conversion_event: conversionEvent,
         created_at: new Date().toISOString(),
         client_id: clientId,
         agency_id,
@@ -307,7 +332,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       <div className="flex gap-10 py-6">
         {/* Левая колонка */}
         <form className="w-[320px] flex flex-col gap-5 text-[13px]">
-          <Field label="Ad title" info>
+          <Field label="Ad title" info trailing={<LinkLbl>Create a similar ad</LinkLbl>}>
             <Input placeholder="E.g. My first ad" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
 
@@ -319,7 +344,35 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           </Field>
 
           <Field label="URL you want to promote" info>
-            <Input placeholder="t.me/yourlink" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <div className="relative">
+              <Input
+                placeholder="t.me/yourlink"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="pr-12"
+              />
+              <button
+                type="button"
+                aria-label="Open promoted URL"
+                onClick={() => {
+                  if (url) window.open(url, "_blank", "noopener,noreferrer");
+                }}
+                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-[#5aa7ee] text-white"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4.93" />
+                  <path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07L13 19.07" />
+                </svg>
+              </button>
+            </div>
+          </Field>
+
+          <Field label="Website name" info>
+            <Input
+              placeholder="Website name"
+              value={websiteName}
+              onChange={(e) => setWebsiteName(e.target.value)}
+            />
           </Field>
 
           <Checkbox label="Show user picture" />
@@ -341,13 +394,14 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </div>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer"
+              className="mt-2 bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center gap-2 cursor-pointer"
             >
-              {mediaUrl ? "Change Photo or Video" : "Upload Photo or Video"}
+              {mediaUrl && <img src={MEDIA_BUTTON_ICON} alt="" className="h-5 w-5" />}
+              <span>{mediaUrl ? "Change Media" : "Upload Photo or Video"}</span>
             </div>
           </Field>
 
-          <Field label="Ad button">
+          <Field label="Ad Button" info>
             <select
               value={adButton}
               onChange={(e) => setAdButton(e.target.value)}
@@ -362,14 +416,55 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           </Field>
 
           <Field label="CPM in Euro" info>
-            <Input type="number" step="0.01" placeholder="€ 0.00" value={cpm} onChange={(e) => setCpm(e.target.value)} />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-[#222]">€</span>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={cpm}
+                onChange={(e) => setCpm(e.target.value)}
+                className="pl-8 pr-20"
+              />
+              {role === "client" && markupPercent > 0 && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded-[5px] bg-[#fff1e8] px-2 py-1 text-[13px] font-bold text-[#c98667]">
+                  +{markupPercent}%
+                </span>
+              )}
+            </div>
           </Field>
 
-          <Field label="Initial budget in Euro" trailing={<LinkLbl>Set daily limit</LinkLbl>}>
-            <Input type="number" step="0.01" placeholder="€ 0.00" value={budget} onChange={(e) => setBudget(e.target.value)} />
+          <Field label="Current budget in Euro">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-[#222]">€</span>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Hint>Ad will be put on hold once the budget is depleted.</Hint>
           </Field>
 
-          <Field label="Daily views limit per user">
+          <Field label="Daily budget in Euro" info trailing={<LinkLbl onClick={() => setDailyBudget("0.00")}>Remove</LinkLbl>}>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-[#222]">€</span>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={dailyBudget}
+                onChange={(e) => setDailyBudget(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Hint>€{Number(dailyBudget || 0).toFixed(2)} remaining today</Hint>
+          </Field>
+
+          <Field label="Daily views limit per user" info>
             <div className="flex gap-3">
               {[1, 2, 3, 4].map((n) => (
                 <button
@@ -386,7 +481,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </div>
           </Field>
 
-          <Field label="Initial status">
+          <Field label="Ad status" info>
             <div className="flex flex-col gap-2 pl-6">
               <Radio label="Active" checked={status === "active"} onChange={() => setStatus("active")} />
               <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
@@ -451,6 +546,33 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			<LinkLbl onClick={() => setShowDatePicker(true)}>Set start date</LinkLbl>
 		  )}
 		</Field>
+
+          <Field label="Ad Schedule" info>
+            <Checkbox
+              label="Run this ad on schedule"
+              checked={schedule}
+              onChange={(e) => setSchedule(e.target.checked)}
+            />
+          </Field>
+
+          <Field label="Conversion event" info trailing={<LinkLbl>Create Pixel</LinkLbl>}>
+            <Input
+              placeholder="Create a pixel first (optional)"
+              value={conversionEvent}
+              onChange={(e) => setConversionEvent(e.target.value)}
+            />
+            <Hint>
+              To track conversions, create a pixel first. <LinkLbl>Read more</LinkLbl>
+            </Hint>
+          </Field>
+
+          <Field label="Other information" info>
+            <Input
+              placeholder="E.g., ad identifier (optional)"
+              value={otherInfo}
+              onChange={(e) => setOtherInfo(e.target.value)}
+            />
+          </Field>
 
           <Checkbox
             label="I have read and agree with the Telegram Ad Platform Terms of Service"
@@ -536,7 +658,7 @@ const InfoIcon = () => (
 );
 
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+  <input {...props} className={`w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${props.className || ""}`} />
 );
 
 const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
