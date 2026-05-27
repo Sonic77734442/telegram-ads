@@ -1,12 +1,8 @@
 import { Outlet, useParams } from "react-router-dom";
 import TabBar from "../components/TabBar";
-import { createContext } from "react";
 import Header from "../components/Header";
 import Container from "../components/Container";
-
-
-// 👉 Контекст для передачи adId
-export const AdIdContext = createContext<string | null>(null);
+import { AdIdContext } from "../contexts/AdIdContext";
 
 export default function AdPageLayout() {
   const { adId } = useParams<{ adId: string }>();
@@ -17,7 +13,7 @@ export default function AdPageLayout() {
     <AdIdContext.Provider value={adId}>
       <Header />
       <Container>
-        <TabBar adId={adId} />
+        <TabBar adId={adId} activeTab="edit" />
         <div className="mt-4">
           <Outlet />
         </div>

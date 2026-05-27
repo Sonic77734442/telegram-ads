@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AdIdContext } from "../pages/AdPageLayout";
+import { AdIdContext } from "../contexts/AdIdContext";
 
 export function useAdId() {
   const [searchParams] = useSearchParams();

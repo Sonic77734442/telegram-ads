@@ -6,8 +6,8 @@ export default function TabBar({
   onTabChange,
 }: {
   adId?: string;
-  activeTab: "edit" | "stats";
-  onTabChange: (tab: "edit" | "stats") => void;
+  activeTab?: "edit" | "stats";
+  onTabChange?: (tab: "edit" | "stats") => void;
 }) {
   const navigate = useNavigate();
 
@@ -24,7 +24,7 @@ export default function TabBar({
         <button
           onClick={() => {
             navigate(`/create?id=${adId}`);
-            onTabChange("edit");
+            onTabChange?.("edit");
           }}
           className={`${linkStyle} ${activeTab === "edit" ? activeStyle : "text-[#139af5]"}`}
         >
@@ -33,7 +33,7 @@ export default function TabBar({
 
         <NavLink
           to={`/ad/${adId}/stats`}
-          onClick={() => onTabChange("stats")}
+          onClick={() => onTabChange?.("stats")}
           className={({ isActive }) =>
             `${linkStyle} ${isActive ? activeStyle : "text-[#139af5]"}`
           }

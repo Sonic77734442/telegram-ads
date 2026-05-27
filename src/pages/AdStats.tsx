@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useContext, useRef } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
-import { AdIdContext } from "./AdPageLayout";
+import { AdIdContext } from "../contexts/AdIdContext";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
