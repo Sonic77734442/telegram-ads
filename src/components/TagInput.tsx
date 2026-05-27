@@ -35,7 +35,7 @@ export default function TagInput({ value, onChange, placeholder }: Props) {
       {value.map((tag) => (
         <span
           key={tag}
-          className="flex h-[26px] items-center rounded-[3px] bg-[#22A3F5] px-2 text-[11px] font-bold text-white"
+          className="flex h-[26px] items-center rounded-[3px] bg-[#22A3F5] px-2 text-[12px] font-semibold leading-[16px] text-white"
         >
           {tag}
         </span>

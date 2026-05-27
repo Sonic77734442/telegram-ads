@@ -649,9 +649,17 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         </div>
       </div>
 
-      <div className="flex justify-between items-center border-t pt-4 mt-6">
-        <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
-        <Button onClick={onCreate}>{adId ? "Save Changes" : "Create Ad"}</Button>
+      <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+        <p className="text-[15px] leading-[22px] text-[#222]">
+          Changes will become visible to users once they are approved by the moderators.
+        </p>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+        >
+          {adId ? "Save Changes" : "Create Ad"}
+        </button>
       </div>
     </Container>
   );

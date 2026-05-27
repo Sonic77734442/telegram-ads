@@ -56,7 +56,7 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
         {value.map((v) => (
           <span
             key={v}
-            className="flex h-[26px] items-center rounded bg-[#22A3F5] px-2 text-xs font-bold text-white"
+            className="flex h-[26px] items-center rounded bg-[#22A3F5] px-2 text-[12px] font-semibold leading-[16px] text-white"
           >
             {v}
           </span>
