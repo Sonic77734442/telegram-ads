@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  LockKeyhole,
-} from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 
 const chartIcon =
   "data:image/svg+xml,%3Csvg%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22m3.5%204.8333v15c0%20.18.15.33.33.33h15.67m-12.33-5.16%203.26-3.42c.13-.14.34-.14.47-.01h.01l1.69%201.69c.13.13.34.13.47%200l6.93-6.93m.33%204.33v-4.66c0-.19-.15-.34-.33-.34h-4.67%22%20fill%3D%22none%22%20stroke%3D%22%23222%22%20stroke-linecap%3D%22round%22%20stroke-width%3D%221.47%22%2F%3E%3C%2Fsvg%3E";
@@ -131,11 +129,19 @@ export default function LoginPage() {
             <div className="space-y-5">
               {features.map(({ icon, title, text }) => (
                 <div key={title} className="grid grid-cols-[30px_1fr] gap-3">
-                  <div className="flex h-7 items-start justify-center pt-1 text-[#202124]">
+                  <div className="flex h-6 w-6 items-center justify-center text-[#202124]">
                     {typeof icon === "string" ? (
-                      <img src={icon} alt="" className="h-6 w-6" />
+                      <img
+                        src={icon}
+                        alt=""
+                        className="block h-6 w-6 object-contain"
+                      />
                     ) : (
-                      <LockKeyhole size={24} strokeWidth={1.9} />
+                      <LockKeyhole
+                        aria-hidden="true"
+                        className="h-6 w-6"
+                        strokeWidth={1.9}
+                      />
                     )}
                   </div>
                   <div>
