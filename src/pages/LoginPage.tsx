@@ -83,7 +83,7 @@ export default function LoginPage() {
       );
 
       if (data?.role === "admin") navigate("/admin");
-      else navigate("/");
+      else navigate("/welcome");
     } catch (e) {
       console.error("auth-login failed:", e);
       alert("Login failed. See console for details.");

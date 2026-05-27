@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import CreateAdPage from "./pages/CreateAdPage";
+import WelcomePage from "./pages/WelcomePage";
 import PrivateRoute from "./components/PrivateRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdPageLayout from "./pages/AdPageLayout";
@@ -16,6 +17,24 @@ export default function App() {
 
       <Route
         path="/"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/welcome"
+        element={
+          <PrivateRoute>
+            <WelcomePage />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard"
         element={
           <PrivateRoute>
             <Dashboard />
