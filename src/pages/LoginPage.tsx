@@ -92,8 +92,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#202124]">
-      <main className="mx-auto flex min-h-screen w-full items-start justify-center px-5">
-        <div className="pr-main-content-new my-[100px] grid w-full max-w-[890px] items-start gap-9 lg:grid-cols-[408px_1fr]">
+      <main className="mx-auto flex min-h-screen w-full items-center justify-center px-5 py-10">
+        <div className="pr-main-content-new grid w-full max-w-[890px] items-start gap-9 lg:grid-cols-[408px_1fr]">
           <section className="text-center">
             <div className="relative h-[226px] overflow-hidden rounded-[12px] bg-[#9abf83] shadow-sm">
               <div className="absolute inset-0 opacity-20">
