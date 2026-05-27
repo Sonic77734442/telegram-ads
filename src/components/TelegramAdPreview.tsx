@@ -40,9 +40,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
       </button>
 
       <div className="relative mt-0 w-full max-w-[320px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
-        <div className="absolute -bottom-[2px] -left-[12px] h-8 w-8 overflow-hidden">
-          <div className="absolute bottom-0 right-0 h-7 w-7 rounded-br-[24px] bg-white" />
-        </div>
+        <div className="absolute -bottom-[1px] -left-[12px] h-0 w-0 border-b-[15px] border-r-[22px] border-b-transparent border-r-white" />
         <div className="relative overflow-hidden rounded-[8px] bg-[#eef6ff]">
           <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#4da3df]" />
 
