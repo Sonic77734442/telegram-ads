@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   checked: boolean;
@@ -7,9 +7,47 @@ type Props = {
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+const ALL_SLOTS = DAYS.flatMap((day) => HOURS.map((hour) => `${day}-${hour}`));
 
 export default function AdScheduleControl({ checked, onChange }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSlots, setSelectedSlots] = useState<Set<string>>(
+    () => new Set(ALL_SLOTS)
+  );
+
+  useEffect(() => {
+    if (checked && selectedSlots.size === 0) {
+      setSelectedSlots(new Set(ALL_SLOTS));
+    }
+  }, [checked, selectedSlots.size]);
+
+  const summary = useMemo(() => {
+    if (selectedSlots.size === ALL_SLOTS.length) return "Mon-Sun: 00-24";
+    if (selectedSlots.size === 0) return "No hours selected";
+
+    const selectedDays = DAYS.filter((day) =>
+      HOURS.some((hour) => selectedSlots.has(`${day}-${hour}`))
+    );
+    return `${selectedDays.join(", ")}: custom schedule`;
+  }, [selectedSlots]);
+
+  const [summaryLead, summaryRest] = summary.includes(":")
+    ? summary.split(/:(.*)/s)
+    : [summary, ""];
+
+  const toggleSlot = (slot: string) => {
+    setSelectedSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot);
+      else next.add(slot);
+      return next;
+    });
+  };
+
+  const clearSchedule = () => {
+    setSelectedSlots(new Set());
+    onChange(false);
+  };
 
   return (
     <>
@@ -29,11 +67,26 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="block h-[130px] w-full rounded-[6px] bg-[#5a9fec]"
+              className="grid h-[130px] w-full overflow-hidden rounded-[6px] border border-[#5a9fec]"
+              style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}
               aria-label="Edit schedule"
-            />
+            >
+              {DAYS.map((day) =>
+                HOURS.map((hour) => {
+                  const slot = `${day}-${hour}`;
+                  return (
+                    <span
+                      key={slot}
+                      className={`border-b border-r border-[#77b2f1] last:border-r-0 ${
+                        selectedSlots.has(slot) ? "bg-[#5a9fec]" : "bg-white"
+                      }`}
+                    />
+                  );
+                })
+              )}
+            </button>
             <div className="mt-2 text-center text-[14px] leading-[20px] text-[#222]">
-              <strong>Mon-Sun:</strong> 00-24{" "}
+              <strong>{summaryLead}{summaryRest ? ":" : ""}</strong>{summaryRest}{" "}
               <span className="text-[#999]">(viewer's timezone)</span>
             </div>
             <button
@@ -61,7 +114,7 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
               </h2>
               <button
                 type="button"
-                onClick={() => onChange(false)}
+                onClick={clearSchedule}
                 className="text-[18px] leading-[24px] text-[#5288b1] hover:text-[#3e769f]"
               >
                 Clear schedule
@@ -99,8 +152,11 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
                       <button
                         key={`${day}-${hour}`}
                         type="button"
+                        onClick={() => toggleSlot(`${day}-${hour}`)}
                         className={`border-r border-[#ebebeb] last:border-r-0 ${
-                          index === 0 ? "bg-[#5a9fec]" : "bg-white hover:bg-[#eef6ff]"
+                          selectedSlots.has(`${day}-${hour}`)
+                            ? "bg-[#5a9fec] hover:bg-[#4b92df]"
+                            : "bg-white hover:bg-[#eef6ff]"
                         }`}
                         aria-label={`${day} ${hour}`}
                       />
