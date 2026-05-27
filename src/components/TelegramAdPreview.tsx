@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "lucide-react";
 
 interface TelegramAdPreviewProps {
   mediaUrl?: string;
@@ -15,70 +16,76 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
   text,
   button,
 }) => {
-  // 🔹 Рабочий путь для Vercel: public/asset → доступно как /asset/
   const bgUrl = "/assets/AdPreviewBackground.jpg";
+  const hasMedia = Boolean(mediaUrl);
 
   return (
     <div
-      data-preview-version="v7"
-      className="flex justify-center items-start rounded-lg p-4 min-h-[145px] transition-all duration-200"
+      data-preview-version="telegram-card-v1"
+      className="relative flex min-h-[468px] items-start justify-center overflow-hidden rounded-[6px] p-5 pr-12"
       style={{
         backgroundImage: `url(${bgUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        backgroundColor: "#6fa786", // базовый цвет Telegram
+        backgroundColor: "#9fc18c",
       }}
     >
-      <div className="bg-white/90 backdrop-blur-sm rounded-lg w-[320px] px-3 py-3 text-sm relative shadow-md">
-        {/* Media */}
-        {mediaUrl && (
-          <div className="rounded overflow-hidden mb-2 relative">
-            {mediaType === "image" ? (
-              <img src={mediaUrl} alt="Preview" className="w-full rounded" />
-            ) : mediaType === "video" ? (
-              <div className="relative">
+      <button
+        type="button"
+        aria-label="Close preview"
+        className="absolute right-3 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
+      >
+        <X size={22} strokeWidth={2.6} />
+      </button>
+
+      <div className="relative mt-0 w-full max-w-[380px] rounded-[18px] bg-white p-[10px] shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
+        <div className="absolute -bottom-1 -left-[10px] h-7 w-7 rounded-br-[22px] bg-white" />
+        <div className="relative overflow-hidden rounded-[8px] bg-[#eef6ff]">
+          <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#4da3df]" />
+
+          {hasMedia && (
+            <div className="bg-white px-3 pt-3">
+              {mediaType === "video" ? (
                 <video
                   src={mediaUrl}
-                  className="w-full rounded"
+                  className="h-[176px] w-full rounded-[3px] object-cover"
                   autoPlay
                   loop
                   muted
                   playsInline
                 />
-                <span className="absolute top-1 left-1 bg-black/70 text-white text-[11px] px-1 rounded">
-                  0:03
-                </span>
+              ) : (
+                <img
+                  src={mediaUrl}
+                  alt="Preview"
+                  className="h-[176px] w-full rounded-[3px] object-cover"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="px-4 pb-4 pt-3">
+            <div className="text-[20px] leading-[24px] text-[#5da0d7]">Ad</div>
+            {title && (
+              <div className="mt-1 text-[20px] font-semibold leading-[25px] text-[#1f2630]">
+                {title}
               </div>
-            ) : null}
-          </div>
-        )}
+            )}
+            {text && (
+              <div className="mt-1 whitespace-pre-line text-[20px] leading-[25px] text-[#1f2630]">
+                {text}
+              </div>
+            )}
 
-        {/* Ad label */}
-        <div className="flex items-center gap-1 text-[11px] text-purple-600 font-semibold mb-1">
-          <span className="border-l-4 border-purple-400 pl-2">Ad</span>
-          <span className="underline text-gray-400 cursor-pointer">
-            what’s this?
-          </span>
-        </div>
-
-        {/* Title */}
-        <div className="font-semibold text-[14px] text-gray-900">{title}</div>
-
-        {/* Text */}
-        <div className="text-[13px] text-gray-700 mt-1">{text}</div>
-
-        {/* CTA */}
-        {button && (
-          <div className="text-[#8e8ee0] font-semibold text-center mt-4 text-[12px] uppercase">
-            {button}
-          </div>
-        )}
-
-        {/* Menu / Close */}
-        <div className="absolute top-2 right-2 text-gray-400">
-          <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[16px]">
-            ⋮
+            {button && (
+              <>
+                <div className="mt-4 h-px bg-[#cfd9e3]" />
+                <div className="pt-3 text-center text-[16px] font-semibold uppercase leading-[22px] text-[#5d9bcc]">
+                  {button}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

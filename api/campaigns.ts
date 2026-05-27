@@ -18,21 +18,19 @@ export default async function handler(req: any, res: any) {
       queryMode === "agency" || queryMode === "admin" ? queryMode : "client";
 
     const session = readSessionFromRequest(req);
-    const allowClientQueryFallback = !session && requestedMode === "client" && Boolean(queryClientId);
-    if (!session && !allowClientQueryFallback) {
+    if (!session) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
     const supabase = getSupabaseAdmin();
 
-    const role: "client" | "agency" | "admin" = session
-      ? session.role === "agency" || session.role === "admin"
+    const role: "client" | "agency" | "admin" =
+      session.role === "agency" || session.role === "admin"
         ? session.role
-        : "client"
-      : "client";
+        : "client";
 
-    const clientId = session ? session.user_id : String(queryClientId);
-    const agencyId = session ? session.agency_id || null : null;
+    const clientId = session.user_id;
+    const agencyId = session.agency_id || null;
 
     let resolvedMode: "client" | "agency" | "admin" = role;
 

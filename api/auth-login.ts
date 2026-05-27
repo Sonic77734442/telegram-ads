@@ -2,6 +2,30 @@ import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { signSession, setSessionCookie } from "./auth-utils.js";
 
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_ATTEMPTS = 8;
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: any) {
+  const forwardedFor = String(req.headers?.["x-forwarded-for"] || "");
+  return forwardedFor.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+}
+
+function checkRateLimit(key: string) {
+  const now = Date.now();
+  const current = attempts.get(key);
+  if (!current || current.resetAt <= now) {
+    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= MAX_ATTEMPTS;
+}
+
+function clearRateLimit(key: string) {
+  attempts.delete(key);
+}
+
 /**
  * Login endpoint: validates credentials server-side and issues an HttpOnly session cookie.
  * Body: { email: string, password: string }
@@ -15,6 +39,11 @@ export default async function handler(req: any, res: any) {
     const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ error: "Email/username and password are required" });
+    }
+
+    const rateLimitKey = `${getClientIp(req)}:${String(email).toLowerCase()}`;
+    if (!checkRateLimit(rateLimitKey)) {
+      return res.status(429).json({ error: "Too many login attempts. Try again later." });
     }
 
     const supabase = getSupabaseAdmin();
@@ -34,6 +63,8 @@ export default async function handler(req: any, res: any) {
     if (!passwordMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    clearRateLimit(rateLimitKey);
 
     const role: "client" | "agency" | "admin" =
       user.role === "agency" || user.role === "admin" ? user.role : "client";

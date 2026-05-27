@@ -29,6 +29,13 @@ function base64url(input: Buffer | string) {
     .replace(/=+$/, "");
 }
 
+function timingSafeEqualString(a: string, b: string) {
+  const aBuffer = Buffer.from(a);
+  const bBuffer = Buffer.from(b);
+  if (aBuffer.length !== bBuffer.length) return false;
+  return crypto.timingSafeEqual(aBuffer, bBuffer);
+}
+
 export function signSession(payload: SessionPayload): string {
   const header = base64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
@@ -59,7 +66,7 @@ export function verifySession(token: string): SessionPayload | null {
     .replace(/\//g, "_")
     .replace(/=+$/, "");
 
-  if (expected !== signature) return null;
+  if (!timingSafeEqualString(expected, signature)) return null;
 
   try {
     const payload = JSON.parse(
