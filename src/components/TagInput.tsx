@@ -5,15 +5,17 @@ type Props = {
   onChange: (tags: string[]) => void;
   placeholder?: string;
   locked?: boolean;
+  disabled?: boolean;
 };
 
 const LOCK_ICON =
-  "data:image/svg+xml,%3Csvg%20height%3D%2218%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M5%208V6.2C5%204.43%206.4%203%208.13%203h1.74C11.6%203%2013%204.43%2013%206.2V8h.45c.58%200%201.05.47%201.05%201.05v4.9c0%20.58-.47%201.05-1.05%201.05h-8.9c-.58%200-1.05-.47-1.05-1.05v-4.9C3.5%208.47%203.97%208%204.55%208H5Zm1.5%200h5V6.2c0-.94-.73-1.7-1.63-1.7H8.13c-.9%200-1.63.76-1.63%201.7V8Z%22%20fill%3D%22%23b8b8b8%22%2F%3E%3C%2Fsvg%3E";
+  "data:image/svg+xml,%3Csvg%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Crect%20fill%3D%22%23c1c4c7%22%20height%3D%228%22%20rx%3D%222%22%20width%3D%2210%22%20x%3D%227%22%20y%3D%2210%22%2F%3E%3Crect%20height%3D%2210.5%22%20rx%3D%222.25%22%20stroke%3D%22%23c1c4c7%22%20stroke-width%3D%221.5%22%20width%3D%224.5%22%20x%3D%229.75%22%20y%3D%225.75%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
-export default function TagInput({ value, onChange, placeholder, locked = false }: Props) {
+export default function TagInput({ value, onChange, placeholder, locked = false, disabled = false }: Props) {
   const [input, setInput] = useState("");
 
   const addTag = () => {
+    if (disabled) return;
     const tag = input.trim();
     if (tag && !value.includes(tag)) {
       onChange([...value, tag]);
@@ -22,6 +24,7 @@ export default function TagInput({ value, onChange, placeholder, locked = false 
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addTag();
@@ -50,6 +53,7 @@ export default function TagInput({ value, onChange, placeholder, locked = false 
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="min-w-[120px] flex-1 text-sm outline-none"
+        disabled={disabled}
       />
       {locked && <img src={LOCK_ICON} alt="" className="pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2" />}
     </div>

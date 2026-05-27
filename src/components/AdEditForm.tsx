@@ -268,7 +268,7 @@ export default function AdEditForm({
           {/* right column */}
           <div className="flex-1 max-w-[420px] flex flex-col gap-6">
             <div className="border border-[#d9d9d9] rounded-[8px] overflow-hidden">
-              <div className="bg-gray-100 text-center py-2 text-sm font-medium">
+              <div className="mx-[13px] mb-[5px] flex h-[18px] items-center text-[14px] font-semibold leading-[19px] antialiased">
                 Preview
               </div>
               <div className="p-3">

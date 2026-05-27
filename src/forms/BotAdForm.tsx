@@ -270,7 +270,7 @@ export default function BotAdForm() {
         </form>
 
         <div className="flex flex-col gap-5 text-[13px] flex-1">
-          <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
+          <div className="mx-[13px] mb-[5px] flex h-[18px] items-center text-[14px] font-semibold leading-[19px] antialiased">Preview</div>
           <div className="p-0 bg-transparent">
             <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" />
           </div>
@@ -342,7 +342,7 @@ const Field = ({
 }) => (
   <div className="space-y-1">
     {label && (
-      <label className="flex items-center justify-between font-medium">
+      <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
         <span className="flex items-center gap-1">
           {label}
           {info && <InfoIcon />}

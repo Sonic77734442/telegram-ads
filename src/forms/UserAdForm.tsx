@@ -84,6 +84,7 @@ const MEDIA_BUTTON_ICON =
 export default function ChannelAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const targetLocked = Boolean(adId);
 
   /* form state */
   const [title, setTitle] = useState("");
@@ -600,7 +601,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         {/* RIGHT */}
         <div className="flex flex-col gap-5 text-[13px] flex-1">
-          <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
+          <div className="mx-[13px] mb-[5px] flex h-[18px] items-center text-[14px] font-semibold leading-[19px] antialiased">Preview</div>
           <TelegramAdPreview title={title} text={text} button={adButton} mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
 
           <Field label="Ad placement">
@@ -611,7 +612,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           </Field>
 
           <Field label="Target countries">
-            <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} locked />
+            <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} locked disabled={targetLocked} />
           </Field>
 		  
 		<Field label="Target locations" info>
@@ -624,6 +625,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			}
 			onChange={setLocations}
       locked
+      disabled={targetLocked}
 		  />
 		  <Hint>
 			{countries.length === 0
@@ -635,15 +637,15 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 
           <Field label="Target user languages">
-            <MultiSelect value={langs} options={LANGS} onChange={setLangs} placeholder="Select languages (optional)" locked />
+            <MultiSelect value={langs} options={LANGS} onChange={setLangs} placeholder="Select languages (optional)" locked disabled={targetLocked} />
           </Field>
 
           <Field label="Target topics">
-            <MultiSelect value={topics} options={TOPICS} onChange={setTopics} placeholder="Select topics (optional)" locked />
+            <MultiSelect value={topics} options={TOPICS} onChange={setTopics} placeholder="Select topics (optional)" locked disabled={targetLocked} />
           </Field>
 
           <Field label="Target channel audiences">
-            <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" locked />
+            <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" locked disabled={targetLocked} />
           </Field>
 
           <Field label="Target audiences" info>
@@ -653,11 +655,26 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
               onChange={setAudiences}
               placeholder="Select audiences or create a new one (optional)"
               locked
+              disabled={targetLocked}
             />
           </Field>
 
           <Field label="Target device type">
-            <MultiSelect value={devices} options={DEVICES} onChange={setDevices} locked />
+            <div className="relative">
+              <select
+                value={devices[0] || "All devices"}
+                onChange={(e) => setDevices([e.target.value])}
+                disabled={targetLocked}
+                className="min-h-[40px] w-full appearance-none rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] pr-10 text-[#222] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-default"
+              >
+                {DEVICES.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b-2 border-r-2 border-[#b8b8b8]" />
+            </div>
           </Field>
 
           <Checkbox
@@ -668,10 +685,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             }
             checked={politicsOnly}
             onChange={(e) => setPoliticsOnly(e.target.checked)}
+            disabled={targetLocked}
           />
 
           <Field label="Exclude topics">
-            <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} placeholder="Select topics to exclude (optional)" locked />
+            <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} placeholder="Select topics to exclude (optional)" locked disabled={targetLocked} />
           </Field>
 		  
 		  <Field label="Exclude channel audiences" info>
@@ -680,6 +698,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			onChange={setExcludeChannels}
 			placeholder="t.me channel URL to exclude (optional)"
       locked
+      disabled={targetLocked}
 		  />
 		</Field>
 
@@ -690,6 +709,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 			onChange={() => {}}
       placeholder="Select audiences to exclude (optional)"
       locked
+      disabled={targetLocked}
 		  />
 		  <Hint>Only users from Uzbekistan will be affected.</Hint>
 		</Field>
@@ -698,6 +718,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             label="Do not show this ad in channels related to Politics & Incidents"
             checked={excludePolitics}
             onChange={(e) => setExcludePolitics(e.target.checked)}
+            disabled={targetLocked}
           />
 		
 
@@ -753,7 +774,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const Field = ({ label, info, trailing, children }: any) => (
   <div className="space-y-1">
     {label && (
-      <label className="flex items-center justify-between font-medium">
+      <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
         <span className="flex items-center gap-1">
           {label}
           {info && <InfoIcon />}
