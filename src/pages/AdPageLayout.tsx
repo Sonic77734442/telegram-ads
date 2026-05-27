@@ -13,8 +13,11 @@ export default function AdPageLayout() {
     <AdIdContext.Provider value={adId}>
       <Header />
       <Container>
-        <TabBar adId={adId} activeTab="edit" />
-        <div className="mt-4">
+        <div className="border-t border-[#e6e6e6]" />
+        <div className="mt-6">
+          <TabBar adId={adId} activeTab="edit" />
+        </div>
+        <div className="mt-6">
           <Outlet />
         </div>
       </Container>
