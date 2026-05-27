@@ -20,6 +20,7 @@ export default function SearchAdForm() {
   const [dailyViews, setDailyViews] = useState(1);
   const [status, setStatus] = useState<"active" | "hold">("hold");
   const [schedule, setSchedule] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [targetQueries, setTargetQueries] = useState<string[]>([]);
   const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const clientId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
@@ -113,6 +114,7 @@ export default function SearchAdForm() {
     setDailyViews(1);
     setStatus("hold");
     setSchedule(false);
+    setAgreeTerms(false);
     setTargetQueries([]);
     setShowDatePicker(false);
     setStartDate("");
@@ -122,6 +124,11 @@ export default function SearchAdForm() {
 
   /* create/update */
   const onCreate = async () => {
+    if (!adId && !agreeTerms) {
+      alert("Please agree with the Terms of Service before creating an ad.");
+      return;
+    }
+
     if (!clientId) {
       alert("❌ Ошибка: user_id отсутствует в localStorage");
       return;
@@ -323,18 +330,45 @@ export default function SearchAdForm() {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
-        <p className="text-[15px] leading-[22px] text-[#222]">
-          Changes will become visible to users once they are approved by the moderators.
-        </p>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
-        >
-          {adId ? "Save Changes" : "Create Ad"}
-        </button>
-      </div>
+      {adId ? (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <p className="text-[15px] leading-[22px] text-[#222]">
+            Changes will become visible to users once they are approved by the moderators.
+          </p>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+          >
+            Save Changes
+          </button>
+        </div>
+      ) : (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <label className="inline-flex items-center gap-3 text-[15px] leading-[22px] text-[#222]">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="h-[18px] w-[18px] accent-[#5a9fec]"
+            />
+            <span>
+              I have read and agree with the{" "}
+              <span className="text-[#5288b1]">Telegram Ad Platform Terms of Service</span>
+            </span>
+          </label>
+          <div className="flex items-center gap-10">
+            <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
+            <button
+              type="button"
+              onClick={onCreate}
+              className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+            >
+              Create Ad
+            </button>
+          </div>
+        </div>
+      )}
     </Container>
   );
 }

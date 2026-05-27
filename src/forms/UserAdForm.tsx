@@ -11,16 +11,45 @@ import { fetchCampaignById } from "../lib/campaignApi";
 /* ──────────────── constants ──────────────── */
 const LANGS = ["English", "Russian", "Uzbek"];
 const TOPICS = [
-  "Finance",
-  "Technology",
-  "Entertainment",
-  "Sports",
-  "Crypto",
-  "Food & Cooking",
-  "Health & Medicine",
-  "Politics & Incidents",
+  "Art & Design",
   "Bets & Gambling",
+  "Books",
+  "Business & Entrepreneurship",
+  "Cars & Other Vehicles",
+  "Celebrities & Lifestyle",
+  "Cryptocurrencies",
+  "Culture & Events",
+  "Curious Facts",
+  "Directories of Channels & Bots",
+  "Economy & Finance",
+  "Education",
+  "Fashion & Beauty",
+  "Fitness",
+  "Food & Cooking",
+  "Foreign Language Learning",
+  "Health & Medicine",
+  "History",
+  "Humor & Memes",
+  "Investments",
+  "Job Listing",
+  "Kids & Parenting",
+  "Marketing & PR",
+  "Motivation & Self-Development",
+  "Movies",
+  "Music",
+  "Offers & Promotion",
+  "Pets",
+  "Politics & Incidents",
+  "Psychology & Relationships",
+  "Real Estate",
+  "Recreation & Entertainment",
   "Religion & Spirituality",
+  "Science",
+  "Sports",
+  "Technology & Internet",
+  "Travel & Tourism",
+  "Video Games",
+  "Other",
 ];
 const DEVICES = ["All devices", "Mobile", "Desktop", "iOS", "Android"];
 const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia", "Other"];
@@ -326,7 +355,11 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <Field label="Ad text">
             <Textarea rows={3} placeholder="Enter your ad text" value={text} onChange={(e) => setText(e.target.value)} />
             <Hint>
-              You can add custom emoji using <code>@AdsMarkdownBot</code>.
+              You can add custom emoji using{" "}
+              <a href="https://t.me/AdsMarkdownBot" target="_blank" rel="noreferrer" className="text-[#5288b1] hover:underline">
+                @AdsMarkdownBot
+              </a>
+              .
             </Hint>
           </Field>
 
@@ -558,11 +591,6 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <Input placeholder="E.g., ad identifier (optional)" value={otherInfo} onChange={(e) => setOtherInfo(e.target.value)} />
           </Field>
 
-          <Checkbox
-            label="I have read and agree with the Telegram Ad Platform Terms of Service"
-            checked={agreeTerms}
-            onChange={(e) => setAgreeTerms(e.target.checked)}
-          />
         </form>
 
         {/* RIGHT */}
@@ -649,18 +677,45 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
-        <p className="text-[15px] leading-[22px] text-[#222]">
-          Changes will become visible to users once they are approved by the moderators.
-        </p>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
-        >
-          {adId ? "Save Changes" : "Create Ad"}
-        </button>
-      </div>
+      {adId ? (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <p className="text-[15px] leading-[22px] text-[#222]">
+            Changes will become visible to users once they are approved by the moderators.
+          </p>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+          >
+            Save Changes
+          </button>
+        </div>
+      ) : (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <label className="inline-flex items-center gap-3 text-[15px] leading-[22px] text-[#222]">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="h-[18px] w-[18px] accent-[#5a9fec]"
+            />
+            <span>
+              I have read and agree with the{" "}
+              <span className="text-[#5288b1]">Telegram Ad Platform Terms of Service</span>
+            </span>
+          </label>
+          <div className="flex items-center gap-10">
+            <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
+            <button
+              type="button"
+              onClick={onCreate}
+              className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+            >
+              Create Ad
+            </button>
+          </div>
+        </div>
+      )}
     </Container>
   );
 }

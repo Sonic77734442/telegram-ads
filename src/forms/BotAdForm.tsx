@@ -94,6 +94,19 @@ export default function BotAdForm() {
     fetchAd();
   }, [adId, markupLoaded, multiplier]);
 
+  const onClear = () => {
+    setTitle("");
+    setText("");
+    setUrl("");
+    setCpm("0.00");
+    setBudget("0.00");
+    setDailyViews(1);
+    setStatus("hold");
+    setSchedule(false);
+    setAgreeTerms(false);
+    setTargetBots([]);
+  };
+
   const onCreate = async () => {
     if (!agreeTerms) {
       alert("Please agree with the Terms of Service before creating an ad.");
@@ -181,7 +194,11 @@ export default function BotAdForm() {
               onChange={(e) => setText(e.target.value)}
             />
             <Hint>
-              You can add custom emoji using <code>@AdsMarkdownBot</code>.
+              You can add custom emoji using{" "}
+              <a href="https://t.me/AdsMarkdownBot" target="_blank" rel="noreferrer" className="text-[#5288b1] hover:underline">
+                @AdsMarkdownBot
+              </a>
+              .
             </Hint>
           </Field>
 
@@ -250,11 +267,6 @@ export default function BotAdForm() {
             />
           </Field>
 
-          <Checkbox
-            label="I have read and agree with the Telegram Ad Platform Terms of Service"
-            checked={agreeTerms}
-            onChange={(e) => setAgreeTerms(e.target.checked)}
-          />
         </form>
 
         <div className="flex flex-col gap-5 text-[13px] flex-1">
@@ -274,18 +286,45 @@ export default function BotAdForm() {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
-        <p className="text-[15px] leading-[22px] text-[#222]">
-          Changes will become visible to users once they are approved by the moderators.
-        </p>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
-        >
-          {adId ? "Save Changes" : "Create Ad"}
-        </button>
-      </div>
+      {adId ? (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <p className="text-[15px] leading-[22px] text-[#222]">
+            Changes will become visible to users once they are approved by the moderators.
+          </p>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+          >
+            Save Changes
+          </button>
+        </div>
+      ) : (
+        <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pt-6">
+          <label className="inline-flex items-center gap-3 text-[15px] leading-[22px] text-[#222]">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="h-[18px] w-[18px] accent-[#5a9fec]"
+            />
+            <span>
+              I have read and agree with the{" "}
+              <span className="text-[#5288b1]">Telegram Ad Platform Terms of Service</span>
+            </span>
+          </label>
+          <div className="flex items-center gap-10">
+            <LinkLbl onClick={onClear}>Clear Draft</LinkLbl>
+            <button
+              type="button"
+              onClick={onCreate}
+              className="h-[46px] w-[217px] rounded-[6px] bg-[#5a9fec] text-[16px] font-bold text-white transition hover:bg-[#4b91df]"
+            >
+              Create Ad
+            </button>
+          </div>
+        </div>
+      )}
     </Container>
   );
 }
@@ -375,8 +414,16 @@ const Button = ({
   </button>
 );
 
-const LinkLbl = ({ children }: { children: React.ReactNode }) => (
-  <span className="text-blue-600 text-[12px] cursor-pointer hover:underline">{children}</span>
+const LinkLbl = ({
+  children,
+  onClick,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+}) => (
+  <span onClick={onClick} className="text-blue-600 text-[12px] cursor-pointer hover:underline">
+    {children}
+  </span>
 );
 
 const Hint = ({ children }: { children: React.ReactNode }) => (
