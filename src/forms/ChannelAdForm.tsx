@@ -394,7 +394,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </div>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center gap-2 cursor-pointer"
+              className="mt-2 flex h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[6px] bg-[#22A3F5] font-semibold text-white hover:bg-[#1D8ED5]"
             >
               {mediaUrl && <img src={MEDIA_BUTTON_ICON} alt="" className="h-5 w-5" />}
               <span>{mediaUrl ? "Change Media" : "Upload Photo or Video"}</span>
@@ -405,7 +405,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <select
               value={adButton}
               onChange={(e) => setAdButton(e.target.value)}
-              className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="min-h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               {AD_BUTTON_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -471,7 +471,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                   key={n}
                   type="button"
                   onClick={() => setDailyViews(n)}
-                  className={`w-[74px] h-[32px] text-[13px] font-medium rounded-[6px] border transition-all duration-150 ${
+                  className={`h-[40px] w-[74px] rounded-[6px] border text-[13px] font-medium transition-all duration-150 ${
                     n === dailyViews ? "bg-[#22A3F5] text-white border-[#22A3F5]" : "bg-white text-gray-700 border-[#d9d9d9] hover:bg-gray-100"
                   }`}
                 >
@@ -496,7 +496,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 				  type="date"
 				  value={startDate ? startDate.split("T")[0] : ""}
 				  onChange={(e) => setStartDate(e.target.value + "T00:00")}
-				  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+				  className="min-h-[40px] rounded-md border border-gray-300 px-2 py-[5px] text-sm"
 				/>
 				<input
 				  type="time"
@@ -506,7 +506,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 					  startDate.split("T")[0] + "T" + e.target.value
 					)
 				  }
-				  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+				  className="min-h-[40px] rounded-md border border-gray-300 px-2 py-[5px] text-sm"
 				/>
 				<span className="text-[12px] text-gray-600">UTC+5:00</span>
 				<LinkLbl onClick={() => { setShowDatePicker(false); setStartDate(""); setEndDate(""); }}>
@@ -520,7 +520,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 					type="date"
 					value={endDate ? endDate.split("T")[0] : ""}
 					onChange={(e) => setEndDate(e.target.value + "T00:00")}
-					className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+					className="min-h-[40px] rounded-md border border-gray-300 px-2 py-[5px] text-sm"
 				  />
 				  <input
 					type="time"
@@ -530,7 +530,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 						endDate.split("T")[0] + "T" + e.target.value
 					  )
 					}
-					className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+					className="min-h-[40px] rounded-md border border-gray-300 px-2 py-[5px] text-sm"
 				  />
 				  <span className="text-[12px] text-gray-600">UTC+5:00</span>
 				</div>
@@ -658,11 +658,11 @@ const InfoIcon = () => (
 );
 
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} className={`w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${props.className || ""}`} />
+  <input {...props} className={`min-h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${props.className || ""}`} />
 );
 
 const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea {...props} className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] resize-none bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+  <textarea {...props} className="min-h-[40px] w-full resize-none rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
 );
 
 const Checkbox = ({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) => (
@@ -680,7 +680,7 @@ const Radio = ({ label, checked, onChange }: { label: string; checked?: boolean;
 );
 
 const Button = ({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-  <button {...rest} type="button" className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white text-sm font-semibold px-5 h-[38px] rounded-[6px] transition">
+  <button {...rest} type="button" className="h-[40px] rounded-[6px] bg-[#22A3F5] px-5 text-sm font-semibold text-white transition hover:bg-[#1D8ED5]">
     {children}
   </button>
 );

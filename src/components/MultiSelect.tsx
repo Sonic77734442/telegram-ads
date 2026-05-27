@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface Props {
   value: string[];
@@ -18,6 +18,7 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
         setOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -29,8 +30,11 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
     }
   };
 
-  const removeItem = (option: string) => {
-    onChange(value.filter((v) => v !== option));
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && filter === "" && value.length > 0) {
+      e.preventDefault();
+      onChange(value.slice(0, -1));
+    }
   };
 
   const filteredOptions = options.filter(
@@ -41,28 +45,20 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
 
   return (
     <div
-      className="relative border border-gray-300 rounded-md px-2 py-2 bg-white min-h-[34px] cursor-text"
+      className="relative min-h-[40px] cursor-text rounded-md border border-gray-300 bg-white px-2 py-1"
       ref={wrapperRef}
       onClick={() => {
         setOpen(true);
         inputRef.current?.focus();
       }}
     >
-      {/* Теги + инпут в одной строке */}
-      <div className="flex flex-wrap gap-1 items-center">
+      <div className="flex min-h-[30px] flex-wrap items-center gap-1">
         {value.map((v) => (
           <span
             key={v}
-            className="bg-[#229ED9] text-white text-xs px-2 py-1 rounded flex items-center gap-1"
+            className="rounded bg-[#22A3F5] px-2 py-[3px] text-xs font-bold text-white"
           >
             {v}
-            <button
-              type="button"
-              onClick={() => removeItem(v)}
-              className="text-white text-[10px] hover:text-red-200"
-            >
-              ✕
-            </button>
           </span>
         ))}
 
@@ -70,21 +66,21 @@ export default function MultiSelect({ value, options = [], onChange }: Props) {
           ref={inputRef}
           type="text"
           placeholder=""
-          className="flex-1 min-w-[120px] text-sm px-1 py-1 bg-transparent border-none focus:outline-none"
+          className="min-w-[120px] flex-1 border-none bg-transparent px-1 py-[3px] text-sm focus:outline-none"
           onFocus={() => setOpen(true)}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={handleKeyDown}
         />
       </div>
 
-      {/* Дропдаун */}
       {open && filteredOptions.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full border rounded bg-white shadow text-sm max-h-60 overflow-auto">
+        <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow">
           {filteredOptions.map((option) => (
             <div
               key={option}
               onClick={() => addItem(option)}
-              className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+              className="cursor-pointer px-3 py-2 hover:bg-gray-100"
             >
               {option}
             </div>

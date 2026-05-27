@@ -17,26 +17,27 @@ export default function TagInput({ value, onChange, placeholder }: Props) {
     setInput("");
   };
 
-  const removeTag = (tag: string) => {
-    onChange(value.filter((t) => t !== tag));
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addTag();
+      return;
+    }
+
+    if (e.key === "Backspace" && input === "" && value.length > 0) {
+      e.preventDefault();
+      onChange(value.slice(0, -1));
     }
   };
 
   return (
-    <div className="border border-[#d9d9d9] rounded-[4px] px-2 py-1 bg-white flex flex-wrap gap-2">
+    <div className="flex min-h-[40px] flex-wrap items-center gap-2 rounded-[4px] border border-[#d9d9d9] bg-white px-2 py-1">
       {value.map((tag) => (
         <span
           key={tag}
-          className="bg-[#139af5] text-white text-[11px] px-2 py-[3px] rounded-[3px] cursor-pointer"
-          onClick={() => removeTag(tag)}
+          className="rounded-[3px] bg-[#22A3F5] px-2 py-[3px] text-[11px] font-bold text-white"
         >
-          {tag} ✕
+          {tag}
         </span>
       ))}
       <input
@@ -44,7 +45,7 @@ export default function TagInput({ value, onChange, placeholder }: Props) {
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="flex-1 min-w-[120px] outline-none text-sm"
+        className="min-w-[120px] flex-1 text-sm outline-none"
       />
     </div>
   );
