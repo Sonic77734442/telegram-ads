@@ -1,5 +1,4 @@
 import React from "react";
-import { X } from "lucide-react";
 
 interface TelegramAdPreviewProps {
   mediaUrl?: string;
@@ -18,6 +17,8 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
 }) => {
   const bgUrl = "/assets/AdPreviewBackground.jpg";
   const hasMedia = Boolean(mediaUrl);
+  const closeIcon =
+    "data:image/svg+xml,%3Csvg%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23fff%22%20stroke-linecap%3D%22round%22%20stroke-width%3D%221.8%22%3E%3Cpath%20d%3D%22M8%2016%2016%208M8%208%2016%2016%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
   return (
     <div
@@ -36,7 +37,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
         aria-label="Close preview"
         className="absolute left-[316px] top-[26px] flex h-9 w-9 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
       >
-        <X size={20} strokeWidth={2.6} />
+        <img src={closeIcon} alt="" className="h-6 w-6" />
       </button>
 
       <div className="relative min-h-[323px] w-[328px]">

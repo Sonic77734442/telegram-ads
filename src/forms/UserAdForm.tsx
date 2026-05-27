@@ -321,18 +321,22 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
           <Field label="Ad photo or video">
             <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
-            {mediaUrl && (
-              <div className="rounded-md overflow-hidden border">
-                {mediaType === "video" ? (
+            <div className="rounded-md overflow-hidden border bg-gray-50">
+              {mediaUrl ? (
+                mediaType === "video" ? (
                   <video src={mediaUrl} controls className="w-full h-[160px] object-cover" />
                 ) : (
                   <img src={mediaUrl} className="w-full h-[160px] object-cover" alt="Preview" />
-                )}
-              </div>
-            )}
+                )
+              ) : (
+                <div className="flex h-[96px] items-center justify-center text-[13px] text-gray-400">
+                  No photo or video uploaded
+                </div>
+              )}
+            </div>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`${mediaUrl ? "mt-2" : ""} bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer`}
+              className="mt-2 bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer"
             >
               {mediaUrl ? "Change Photo or Video" : "Upload Photo or Video"}
             </div>
