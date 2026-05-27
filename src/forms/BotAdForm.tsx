@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Container from "../components/Container";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 import TagInput from "../components/TagInput";
 
-/* ──────────────── component ──────────────── */
 export default function BotAdForm() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const adId = searchParams.get("id");
+
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
@@ -22,7 +26,6 @@ export default function BotAdForm() {
   const [markupLoaded, setMarkupLoaded] = useState(role !== "client");
   const multiplier = role === "client" && markupPercent > 0 ? 1 + markupPercent / 100 : 1;
 
-  // Load client markup to show CPM/budget with markup for client role.
   useEffect(() => {
     const loadMarkup = async () => {
       if (role !== "client" || !clientId) {
@@ -45,61 +48,128 @@ export default function BotAdForm() {
     loadMarkup();
   }, [role, clientId]);
 
-  /* ──────────────── create handler ──────────────── */
+  const resolveValueForInput = (valueWithMarkup: any, baseValue: any) => {
+    if (role === "client") {
+      if (valueWithMarkup !== undefined && valueWithMarkup !== null) {
+        return Number(valueWithMarkup || 0).toFixed(2);
+      }
+      return (Number(baseValue || 0) * multiplier).toFixed(2);
+    }
+    const effective = valueWithMarkup ?? baseValue ?? 0;
+    return Number(effective || 0).toFixed(2);
+  };
+
+  const parseTargetBots = (value: unknown) => {
+    if (Array.isArray(value)) {
+      return value.filter((item) => typeof item === "string") as string[];
+    }
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const fetchAd = async () => {
+      if (!adId || !markupLoaded) return;
+
+      const { data, error } = await supabase
+        .from("ad_campaigns")
+        .select("*")
+        .eq("id", adId)
+        .single();
+
+      if (error || !data) return;
+
+      setTitle(data.title || "");
+      setText(data.text || "");
+      setUrl(data.url || "");
+      setCpm(resolveValueForInput(data.cpm_client ?? data.cpm_net, data.cpm));
+      const budgetValue = data.budget_client ?? data.budget_net ?? data.budget ?? 0;
+      setBudget(Number(budgetValue || 0).toFixed(2));
+      setDailyViews(data.daily_views || 1);
+      setStatus(data.status || "hold");
+      setSchedule(data.schedule_enabled || false);
+      setTargetBots(parseTargetBots(data.target));
+      setAgreeTerms(true);
+    };
+
+    fetchAd();
+  }, [adId, markupLoaded, multiplier]);
+
   const onCreate = async () => {
     if (!agreeTerms) {
-      alert("❌ Please agree with the Terms of Service before creating an ad.");
+      alert("Please agree with the Terms of Service before creating an ad.");
       return;
     }
 
     if (!clientId) {
-      alert("❌ Ошибка: user_id отсутствует в localStorage");
+      alert("Error: user_id is missing in localStorage");
       return;
     }
 
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+    const adData = {
+      title,
+      text,
+      url,
+      cpm: Number(cpmNet.toFixed(4)),
+      budget: Number(budgetNumber.toFixed(4)),
+      daily_views: dailyViews,
+      status,
+      schedule_enabled: schedule,
+      target: targetBots.join(", "),
+      type: "bot",
+      updated_at: new Date().toISOString(),
+    };
 
-// получаем agency_id клиента из таблицы users
-const { data: userData, error: userError } = await supabase
-  .from("users")
-  .select("agency_id")
-  .eq("user_id", clientId)
-  .maybeSingle();
+    if (adId) {
+      const { error } = await supabase
+        .from("ad_campaigns")
+        .update(adData)
+        .eq("id", adId);
 
-if (userError) {
-  console.error("Ошибка при загрузке agency_id:", userError.message);
-}
+      if (error) alert("Update failed: " + error.message);
+      else {
+        alert("Campaign updated.");
+        navigate("/");
+      }
+      return;
+    }
 
-const agency_id = userData?.agency_id || null;
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("agency_id")
+      .eq("user_id", clientId)
+      .maybeSingle();
 
-// теперь сохраняем кампанию с агентством
-	const { error } = await supabase.from("ad_campaigns").insert([
-	  {
-		title,
-		text,
-		url,
-		cpm: Number(cpmNet.toFixed(4)),
-		budget: Number(budgetNumber.toFixed(4)),
-		daily_views: dailyViews,
-		status,
-		schedule_enabled: schedule,
-		target: targetBots.join(", "),
-		created_at: new Date().toISOString(),
-		client_id: clientId,
-		agency_id, // ✅ вот это — ключевой момент!
-		type: "bot",
-	  },
-	]);
-    if (error) alert("Ошибка при создании рекламы: " + error.message);
-    else alert("✅ Реклама успешно создана!");
+    if (userError) {
+      console.error("Failed to load agency_id:", userError.message);
+    }
+
+    const { error } = await supabase.from("ad_campaigns").insert([
+      {
+        ...adData,
+        created_at: new Date().toISOString(),
+        client_id: clientId,
+        agency_id: userData?.agency_id || null,
+      },
+    ]);
+
+    if (error) alert("Create failed: " + error.message);
+    else {
+      alert("Campaign created.");
+      navigate("/");
+    }
   };
 
-  /* ──────────────── UI ──────────────── */
   return (
     <Container>
       <div className="flex gap-10 py-6">
-        {/* Левая колонка */}
         <form className="w-[320px] flex flex-col gap-5 text-[13px]">
           <Field label="Ad title" info>
             <Input
@@ -135,7 +205,7 @@ const agency_id = userData?.agency_id || null;
             <Input
               type="number"
               step="0.01"
-              placeholder="€ 0.00"
+              placeholder="EUR 0.00"
               value={cpm}
               onChange={(e) => setCpm(e.target.value)}
             />
@@ -145,30 +215,30 @@ const agency_id = userData?.agency_id || null;
             <Input
               type="number"
               step="0.01"
-              placeholder="€ 0.00"
+              placeholder="EUR 0.00"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
             />
           </Field>
 
-			<Field label="Daily views limit per user">
-			  <div className="flex gap-3">
-				{[1, 2, 3, 4].map((n) => (
-				  <button
-					key={n}
-					type="button"
-					onClick={() => setDailyViews(n)}
-					className={`w-[74px] h-[32px] text-[13px] font-medium rounded-[6px] border transition-all duration-150 ${
-					  n === dailyViews
-						? "bg-[#22A3F5] text-white border-[#22A3F5]"
-						: "bg-white text-gray-700 border-[#d9d9d9] hover:bg-gray-100"
-					}`}
-				  >
-					{n}
-				  </button>
-				))}
-			  </div>
-			</Field>
+          <Field label="Daily views limit per user">
+            <div className="flex gap-3">
+              {[1, 2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setDailyViews(n)}
+                  className={`w-[74px] h-[32px] text-[13px] font-medium rounded-[6px] border transition-all duration-150 ${
+                    n === dailyViews
+                      ? "bg-[#22A3F5] text-white border-[#22A3F5]"
+                      : "bg-white text-gray-700 border-[#d9d9d9] hover:bg-gray-100"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </Field>
 
           <Field label="Initial status">
             <div className="flex flex-col gap-2 pl-6">
@@ -193,42 +263,31 @@ const agency_id = userData?.agency_id || null;
           />
         </form>
 
-        {/* Правая колонка */}
         <div className="flex flex-col gap-5 text-[13px] flex-1">
           <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
           <div className="p-0 bg-transparent">
-            <TelegramAdPreview
-              title={title}
-              text={text}
-              button="SEND MESSAGE"
-            />
+            <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" />
           </div>
 
           <Field label="Target specific bots" info>
-            <TagInput
-              value={targetBots}
-              onChange={setTargetBots}
-              placeholder="t.me bot URL"
-            />
+            <TagInput value={targetBots} onChange={setTargetBots} placeholder="t.me bot URL" />
           </Field>
 
-          <p className="text-xs text-red-600">⚠ Will not be shown anywhere.</p>
+          <p className="text-xs text-red-600">Will not be shown anywhere.</p>
           <p className="text-xs text-amber-600">
-            ⚠ Target parameters can't be changed after the ad is created.
+            Target parameters can't be changed after the ad is created.
           </p>
         </div>
       </div>
 
-      {/* Нижний контейнер с кнопками */}
       <div className="flex justify-between items-center border-t pt-4 mt-6">
         <LinkLbl>Clear Draft</LinkLbl>
-        <Button onClick={onCreate}>Create Ad</Button>
+        <Button onClick={onCreate}>{adId ? "Save Changes" : "Create Ad"}</Button>
       </div>
     </Container>
   );
 }
 
-/* ──────────────── helpers ──────────────── */
 const Field = ({
   label,
   info,

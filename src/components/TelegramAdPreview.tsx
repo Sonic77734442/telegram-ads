@@ -16,8 +16,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
   button,
 }) => {
   // 🔹 Рабочий путь для Vercel: public/asset → доступно как /asset/
-  const bgUrl =
-    "https://eoybnbhpqsqxeygsikkz.supabase.co/storage/v1/object/public/public-assets/AdPreviewBackground.jpg";
+  const bgUrl = "/assets/AdPreviewBackground.jpg";
 
   return (
     <div

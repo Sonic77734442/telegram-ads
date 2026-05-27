@@ -235,6 +235,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           devices,
           politics_only: politicsOnly,
           exclude_politics: excludePolitics,
+          type: "channel",
           updated_at: new Date().toISOString(),
         })
         .eq("id", adId);
@@ -274,6 +275,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         created_at: new Date().toISOString(),
         client_id: clientId,
         agency_id,
+        type: "channel",
       },
     ]);
 

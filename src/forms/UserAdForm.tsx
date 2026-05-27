@@ -251,6 +251,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       exclude_politics: excludePolitics,
       placement,
       other_info: otherInfo,
+      type: "user",
       updated_at: new Date().toISOString(),
       client_id: clientId,
       agency_id,
