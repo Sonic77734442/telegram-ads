@@ -39,9 +39,9 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
         <X size={20} strokeWidth={2.6} />
       </button>
 
-      <div className="relative mt-0 w-full max-w-[320px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
-        <div className="absolute -bottom-[1px] -left-[12px] h-0 w-0 border-b-[15px] border-r-[22px] border-b-transparent border-r-white" />
-        <div className="relative overflow-hidden rounded-[8px] bg-[#eef6ff]">
+      <div className="relative mt-0 w-[328px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
+        <div className="absolute -bottom-[1px] -left-[12px] h-0 w-0 border-r-[22px] border-t-[15px] border-r-white border-t-transparent" />
+        <div className="relative h-[323px] overflow-hidden rounded-[8px] bg-[#eef6ff]">
           <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#4da3df]" />
 
           {hasMedia && (
@@ -66,7 +66,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
           )}
 
           <div className="px-3 pb-3 pt-2">
-            <div className="text-[14px] leading-[18px] text-[#5da0d7]">Ad</div>
+            <div className="text-[14px] font-semibold leading-[18px] text-[#5da0d7]">Ad</div>
             {title && (
               <div className="mt-0.5 text-[15px] font-semibold leading-[19px] text-[#1f2630]">
                 {title}
