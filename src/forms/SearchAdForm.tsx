@@ -5,6 +5,7 @@ import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 import { useAdId } from "../hooks/useAdId";
+import { fetchCampaignById } from "../lib/campaignApi";
 
 /* ──────────────── component ──────────────── */
 export default function SearchAdForm() {
@@ -85,8 +86,7 @@ export default function SearchAdForm() {
   useEffect(() => {
     const fetchAd = async () => {
       if (!adId || !markupLoaded) return;
-      const { data } = await supabase.from("ad_campaigns").select("*").eq("id", adId).single();
-      if (!data) return;
+      const data = await fetchCampaignById(adId);
 
       setTitle(data.title || "");
       setUrl(data.url || "");

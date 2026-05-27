@@ -6,8 +6,8 @@ import UserAdForm from "../forms/UserAdForm";
 import BotAdForm from "../forms/BotAdForm";
 import SearchAdForm from "../forms/SearchAdForm";
 import TabBar from "../components/TabBar";
-import { supabase } from "../supabaseClient";
 import { useAdId } from "../hooks/useAdId";
+import { fetchCampaignById } from "../lib/campaignApi";
 
 type TargetTab = "search" | "bots" | "users" | "channels";
 
@@ -43,14 +43,11 @@ export default function CreateAdPage() {
     }
 
     const loadCampaignType = async () => {
-      const { data, error } = await supabase
-        .from("ad_campaigns")
-        .select("type,target,locations,countries,langs,topics,channels")
-        .eq("id", adId)
-        .maybeSingle();
-
-      if (!error) {
+      try {
+        const data = await fetchCampaignById(adId);
         setActiveTab(tabFromCampaign(data));
+      } catch (error) {
+        console.error("Failed to load campaign type:", error);
       }
     };
 
