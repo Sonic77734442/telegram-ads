@@ -57,8 +57,22 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
             type="checkbox"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
-            className="h-[21px] w-[21px] rounded-[4px] accent-[#5a9fec]"
+            className="peer sr-only"
           />
+          <span className="flex h-[21px] w-[21px] items-center justify-center rounded-[4px] border border-[#b8b8b8] bg-white peer-checked:border-[#5a9fec] peer-checked:bg-[#5a9fec]">
+            {checked && (
+              <svg width="15" height="12" viewBox="0 0 15 12" aria-hidden="true">
+                <path
+                  d="M1.5 6.1 5.4 10 13.5 1.5"
+                  fill="none"
+                  stroke="#fff"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.4"
+                />
+              </svg>
+            )}
+          </span>
           Run this ad on schedule
         </label>
 
