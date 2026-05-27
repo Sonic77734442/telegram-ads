@@ -342,16 +342,16 @@ const multiplier =
     <div className="min-h-screen bg-white">
       <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
         {/* ========== Card with preview & meta ========== */}
-        <div className="grid grid-cols-1 md:grid-cols-[320px,1fr] gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[330px,1fr]">
           <div className="justify-self-center md:justify-self-start">
-            <div className="w-[375px]">
+            <div className="w-[320px]">
               <TelegramAdPreview
                 title={ad.title}
                 text={ad.text}
                 mediaUrl={ad.mediaUrl}
                 mediaType={ad.mediaType}
                 button={ad.button}
-                className="min-h-[294px] w-[375px]"
+                className="min-h-[250px] w-[320px]"
               />
             </div>
           </div>
