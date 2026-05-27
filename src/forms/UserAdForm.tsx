@@ -31,6 +31,21 @@ const CITIES_BY_COUNTRY: Record<string, string[]> = {
   Armenia: ["Yerevan", "Gyumri", "Vanadzor"],
   Other: [],
 };
+const AD_BUTTON_OPTIONS = [
+  "OPEN WEBSITE",
+  "SUBSCRIBE",
+  "VIEW",
+  "READ",
+  "LEARN MORE",
+  "DOWNLOAD",
+  "OPEN",
+  "SIGN UP",
+  "BUY",
+  "ORDER",
+  "PLAY",
+  "TRY",
+  "LEAVE A REQUEST",
+];
 
 
 /* ──────────────── component ──────────────── */
@@ -45,6 +60,7 @@ export default function ChannelAdForm() {
   const [showUserPic, setShowUserPic] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string>("");
   const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [adButton, setAdButton] = useState("OPEN WEBSITE");
   const [placement, setPlacement] = useState<"message" | "banner">("message");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -166,6 +182,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setExcludePolitics(data.exclude_politics || false);
       setMediaUrl(data.media_url || "");
       setMediaType(data.media_type || null);
+      setAdButton(data.button || "OPEN WEBSITE");
       setPlacement(data.placement || "message");
 	  setLocations(data.locations || []);
     };
@@ -185,6 +202,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setAgreeTerms(false);
     setMediaUrl("");
     setMediaType(null);
+    setAdButton("OPEN WEBSITE");
     setCountries([]);
     setLangs([]);
     setTopics([]);
@@ -239,6 +257,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       end_date: endDate || null,
       media_url: mediaUrl,
       media_type: mediaType,
+      button: adButton,
       countries,
 	  locations, 
       langs,
@@ -301,15 +320,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <Checkbox label="Show picture" checked={showUserPic} onChange={(e) => setShowUserPic(e.target.checked)} />
 
           <Field label="Ad photo or video">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer"
-            >
-              Upload Photo or Video
-            </div>
             <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
             {mediaUrl && (
-              <div className="mt-2 rounded-md overflow-hidden border">
+              <div className="rounded-md overflow-hidden border">
                 {mediaType === "video" ? (
                   <video src={mediaUrl} controls className="w-full h-[160px] object-cover" />
                 ) : (
@@ -317,6 +330,26 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 )}
               </div>
             )}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={`${mediaUrl ? "mt-2" : ""} bg-[#22A3F5] hover:bg-[#1D8ED5] text-white font-semibold rounded-[6px] h-[36px] flex items-center justify-center cursor-pointer`}
+            >
+              {mediaUrl ? "Change Photo or Video" : "Upload Photo or Video"}
+            </div>
+          </Field>
+
+          <Field label="Ad button">
+            <select
+              value={adButton}
+              onChange={(e) => setAdButton(e.target.value)}
+              className="w-full border border-[#d9d9d9] rounded-[4px] px-3 py-[6px] bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {AD_BUTTON_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field label="CPM in Euro" info>
@@ -426,7 +459,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         {/* RIGHT */}
         <div className="flex flex-col gap-5 text-[13px] flex-1">
           <div className="text-black-600 font-medium text-sm mb-1">Preview</div>
-          <TelegramAdPreview title={title} text={text} button="SEND MESSAGE" mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
+          <TelegramAdPreview title={title} text={text} button={adButton} mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
 
           <Field label="Ad placement">
             <div className="flex flex-col gap-2 pl-6">
