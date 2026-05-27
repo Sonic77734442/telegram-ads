@@ -92,10 +92,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#202124]">
-      <main className="mx-auto flex min-h-screen w-full max-w-[1128px] items-center justify-center px-6 py-10">
-        <div className="grid w-full items-center gap-14 lg:grid-cols-[456px_1fr]">
+      <main className="mx-auto flex min-h-screen w-full items-start justify-center px-5">
+        <div className="pr-main-content-new my-[100px] grid w-full max-w-[890px] items-start gap-9 lg:grid-cols-[408px_1fr]">
           <section className="text-center">
-            <div className="relative h-[252px] overflow-hidden rounded-[12px] bg-[#9abf83] shadow-sm">
+            <div className="relative h-[226px] overflow-hidden rounded-[12px] bg-[#9abf83] shadow-sm">
               <div className="absolute inset-0 opacity-20">
                 <div className="absolute left-7 top-7 h-20 w-20 rounded-full border border-[#46765a]" />
                 <div className="absolute bottom-8 left-24 h-12 w-12 rounded-full border border-[#46765a]" />
@@ -103,21 +103,21 @@ export default function LoginPage() {
                 <div className="absolute bottom-5 right-8 h-24 w-24 rounded-full border border-[#46765a]" />
               </div>
               <div className="absolute left-0 top-0 h-10 w-10 rounded-br-[22px] bg-[#6ea77d]" />
-              <div className="absolute left-8 right-[108px] top-0 h-44 rounded-b-[10px] bg-[#edf7df]" />
+              <div className="absolute left-8 right-[96px] top-0 h-40 rounded-b-[10px] bg-[#edf7df]" />
               <div className="absolute right-10 top-72 hidden" />
 
-              <div className="absolute left-9 right-[108px] top-[62px] rounded-[18px] bg-white p-3 shadow-[0_6px_14px_rgba(79,112,74,0.16)]">
-                <div className="rounded-[12px] bg-[#f6eadf] p-6 text-left">
+              <div className="absolute left-8 right-[96px] top-[56px] rounded-[18px] bg-white p-3 shadow-[0_6px_14px_rgba(79,112,74,0.16)]">
+                <div className="rounded-[12px] bg-[#f6eadf] p-5 text-left">
                   <div className="flex items-start justify-between gap-5">
                     <div className="min-w-0 flex-1">
                       <p className="mb-3 text-[25px] font-bold leading-none text-[#d08635]">
                         AD
                       </p>
                       <div className="space-y-3">
-                        <span className="block h-2.5 w-[176px] rounded-full bg-[#e4bf98]" />
-                        <span className="block h-2.5 w-[126px] rounded-full bg-[#e4bf98]" />
-                        <span className="block h-2.5 w-[176px] rounded-full bg-[#e4bf98]" />
-                        <span className="block h-2.5 w-[126px] rounded-full bg-[#e4bf98]" />
+                        <span className="block h-2.5 w-[158px] rounded-full bg-[#e4bf98]" />
+                        <span className="block h-2.5 w-[114px] rounded-full bg-[#e4bf98]" />
+                        <span className="block h-2.5 w-[158px] rounded-full bg-[#e4bf98]" />
+                        <span className="block h-2.5 w-[114px] rounded-full bg-[#e4bf98]" />
                       </div>
                     </div>
                     <div className="flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-[8px] bg-[#c84f49] text-white">
@@ -127,21 +127,21 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="absolute right-[50px] top-[68px] flex h-[112px] w-[43px] flex-col items-center justify-center gap-4 rounded-full bg-[#7fa96f] text-white">
+              <div className="absolute right-[45px] top-[61px] flex h-[101px] w-[39px] flex-col items-center justify-center gap-4 rounded-full bg-[#7fa96f] text-white">
                 <X size={25} strokeWidth={3} />
                 <MoreVertical size={26} strokeWidth={3} />
               </div>
             </div>
 
-            <div className="mx-auto mt-9 max-w-[456px]">
-              <h1 className="text-[28px] font-bold leading-9 tracking-normal">
+            <div className="mx-auto mt-8 max-w-[408px]">
+              <h1 className="text-[26px] font-bold leading-8 tracking-normal">
                 Telegram Ads
               </h1>
-              <p className="mx-auto mt-4 max-w-[360px] text-[16px] leading-[23px] text-[#222]">
+              <p className="mx-auto mt-4 max-w-[348px] text-[15px] leading-[21px] text-[#222]">
                 Every month, <strong>1 billion</strong> Telegram users generate{" "}
                 <strong>1 trillion views</strong> in public broadcast channels.
               </p>
-              <p className="mx-auto mt-7 max-w-[360px] text-[16px] leading-[23px] text-[#222]">
+              <p className="mx-auto mt-6 max-w-[348px] text-[15px] leading-[21px] text-[#222]">
                 Anyone can display ads in specific Telegram{" "}
                 <strong>broadcast channels</strong> using this platform.
               </p>
@@ -149,26 +149,26 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsLoginOpen(true)}
-                className="mt-8 h-14 w-full rounded-[6px] bg-[#58a2ee] text-[16px] font-bold text-white transition hover:bg-[#4895e4] focus:outline-none focus:ring-2 focus:ring-[#3390ec] focus:ring-offset-2"
+                className="mt-7 h-[50px] w-full rounded-[6px] bg-[#58a2ee] text-[15px] font-bold text-white transition hover:bg-[#4895e4] focus:outline-none focus:ring-2 focus:ring-[#3390ec] focus:ring-offset-2"
               >
                 Log in to Start Advertising
               </button>
             </div>
           </section>
 
-          <aside className="relative rounded-[12px] border border-[#e1e4e8] bg-white px-9 py-7 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-            <div className="absolute -left-[11px] top-[116px] h-5 w-5 rotate-45 border-b border-l border-[#e1e4e8] bg-white" />
-            <div className="space-y-7">
+          <aside className="relative rounded-[12px] border border-[#e1e4e8] bg-white px-7 py-6 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <div className="absolute -left-[11px] top-[106px] h-5 w-5 rotate-45 border-b border-l border-[#e1e4e8] bg-white" />
+            <div className="space-y-5">
               {features.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="grid grid-cols-[34px_1fr] gap-4">
+                <div key={title} className="grid grid-cols-[30px_1fr] gap-3">
                   <div className="pt-1 text-[#202124]">
-                    <Icon size={27} strokeWidth={1.9} />
+                    <Icon size={24} strokeWidth={1.9} />
                   </div>
                   <div>
-                    <h2 className="text-[17px] font-bold leading-[22px]">
+                    <h2 className="text-[15px] font-bold leading-[20px]">
                       {title}
                     </h2>
-                    <p className="mt-1 text-[16px] leading-[23px] text-[#222]">
+                    <p className="mt-1 text-[15px] leading-[21px] text-[#222]">
                       {text}
                     </p>
                   </div>
