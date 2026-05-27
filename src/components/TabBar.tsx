@@ -18,7 +18,7 @@ export default function TabBar({
   const activeStyle = "bg-[#139af5] text-white";
 
   return (
-    <div className="flex items-center justify-between border-b pb-2 px-2">
+    <div className="flex items-center justify-between pb-2 px-2">
       <div className="flex gap-3">
         {/* ✅ Info ведёт на /create?id=... */}
         <button

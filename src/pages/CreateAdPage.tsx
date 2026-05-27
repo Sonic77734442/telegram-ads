@@ -55,11 +55,12 @@ export default function CreateAdPage() {
   }, [adId]);
 
   return (
-    <div className="min-h-screen bg-gray-50 border-t">
+    <div className="min-h-screen bg-white border-t">
       <Header />
-      <div className="border-t border-[#e6e6e6]" />
 
       <Container>
+        <div className="border-t border-[#e6e6e6]" />
+
         {!adId && (
           <div className="mt-6 mb-4 flex flex-wrap items-center justify-between">
             <h4 className="text-[19.5px] leading-[27px] font-semibold tracking-[-0.2px] text-[#212121]">
