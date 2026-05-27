@@ -565,7 +565,7 @@ export default function AdTable() {
                 {columnsToRender.map((col) => (
                   <th
                     key={col.id as string}
-                    className={`px-3 ${col.id === "title" ? "w-[200px]" : ""} ${col.widthClass || ""} ${
+                    className={`px-3 ${col.id === "title" ? "w-[240px]" : ""} ${col.widthClass || ""} ${
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
@@ -643,9 +643,9 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`p-0 align-middle w-[200px] h-[38px] ${col.widthClass || ""}`}
+                            className={`p-0 align-middle w-[240px] h-[38px] ${col.widthClass || ""}`}
                           >
-                            <div className="flex items-center gap-[6px] w-[200px] h-[38px] pl-[15px]">
+                            <div className="flex items-center gap-[6px] w-[240px] h-[38px] pl-[15px] pr-[20px]">
                               <div className="flex h-[18px] w-[18px] items-center justify-center rounded flex-shrink-0">
                                 <img
                                   src={
@@ -666,7 +666,7 @@ export default function AdTable() {
                                 />
                               </div>
 
-                              <div className="flex flex-col justify-center w-[175px] h-[31px]">
+                              <div className="flex min-w-0 flex-1 flex-col justify-center h-[31px]">
                                 <Link
                                   to={`/create?id=${ad.id}`}
                                   className="tg-title-link block text-[13px] font-semibold text-black truncate leading-[15px]"

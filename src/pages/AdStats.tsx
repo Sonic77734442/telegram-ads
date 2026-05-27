@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useContext, useRef } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 import { AdIdContext } from "../contexts/AdIdContext";
+import { fetchCampaignById } from "../lib/campaignApi";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 
@@ -68,15 +69,9 @@ export default function AdStats() {
   };
 
   const loadReportForStatsChart = async () => {
-    const months = monthTabs.includes(selectedMonth)
-      ? monthTabs
-      : [...monthTabs, selectedMonth];
-    const reportsByMonth = await Promise.all(
-      months.map((month) => loadMonthlyReport(month).catch(() => []))
-    );
+    const reportRows = await loadMonthlyReport(selectedMonth).catch(() => []);
 
-    return reportsByMonth
-      .flat()
+    return reportRows
       .sort((a, b) => a.day.localeCompare(b.day))
       .map((row) => ({
         date: row.day,
@@ -167,46 +162,12 @@ const multiplier =
       };
     };
 
-    const loadAdFromCampaignsApi = async () => {
-      const role = localStorage.getItem("role") || "client";
-      const clientId = localStorage.getItem("user_id") || "";
-      const agencyId = localStorage.getItem("agency_id") || "";
-      const params = new URLSearchParams({ mode: role });
-
-      if (role === "client" && clientId) params.set("client_id", clientId);
-      if (role === "agency" && agencyId) params.set("agency_id", agencyId);
-
-      const resp = await fetch(`/api/campaigns?${params.toString()}`);
-      const json = await resp.json();
-
-      if (!resp.ok || json.error) {
-        throw new Error(json.error || `Campaigns API failed (${resp.status})`);
-      }
-
-      return (json.data || []).find((campaign: any) => campaign.id === adId) || null;
-    };
-
     (async () => {
       setAdLoadError(null);
       setAd(null);
 
-      const { data, error } = await supabase
-        .from("ad_campaigns")
-        .select("*")
-        .eq("id", adId)
-        .maybeSingle();
-
-      if (!error && data) {
-        setAd(normalizeAd(data));
-        return;
-      }
-
-      if (error) {
-        console.warn("direct ad meta load failed; falling back to API:", error);
-      }
-
       try {
-        const apiAd = await loadAdFromCampaignsApi();
+        const apiAd = await fetchCampaignById(adId);
         if (apiAd) {
           setAd(normalizeAd(apiAd));
           return;
@@ -214,7 +175,7 @@ const multiplier =
 
         setAdLoadError("This ad is unavailable or you do not have access to it.");
       } catch (apiError) {
-        console.error("load ad meta from campaigns API failed:", apiError);
+        console.error("load ad meta failed:", apiError);
         setAdLoadError("Failed to load ad details.");
       }
     })();

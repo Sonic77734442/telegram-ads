@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 export default function TabBar({
   adId,
@@ -10,12 +10,15 @@ export default function TabBar({
   onTabChange?: (tab: "edit" | "stats") => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (!adId) return null;
 
   const linkStyle =
     "text-[14px] font-semibold px-3 py-[6px] rounded-full transition";
   const activeStyle = "bg-[#139af5] text-white";
+  const isStatsPath = location.pathname.endsWith("/stats");
+  const isInfoActive = !isStatsPath && activeTab === "edit";
 
   return (
     <div className="flex items-center justify-between pb-2 px-2">
@@ -26,7 +29,7 @@ export default function TabBar({
             navigate(`/create?id=${adId}`);
             onTabChange?.("edit");
           }}
-          className={`${linkStyle} ${activeTab === "edit" ? activeStyle : "text-[#139af5]"}`}
+          className={`${linkStyle} ${isInfoActive ? activeStyle : "text-[#139af5]"}`}
         >
           Info
         </button>
