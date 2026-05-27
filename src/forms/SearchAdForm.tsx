@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
+import { useAdId } from "../hooks/useAdId";
 
 /* ──────────────── component ──────────────── */
 export default function SearchAdForm() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const adId = searchParams.get("id");
+  const adId = useAdId();
 
   /* form state */
   const [title, setTitle] = useState("");

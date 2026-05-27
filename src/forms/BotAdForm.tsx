@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import { supabase } from "../supabaseClient";
 import TagInput from "../components/TagInput";
+import { useAdId } from "../hooks/useAdId";
 
 export default function BotAdForm() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const adId = searchParams.get("id");
+  const adId = useAdId();
 
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");

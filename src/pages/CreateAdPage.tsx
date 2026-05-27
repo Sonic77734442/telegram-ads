@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import Container from "../components/Container";
 import ChannelAdForm from "../forms/ChannelAdForm";
@@ -8,28 +7,37 @@ import BotAdForm from "../forms/BotAdForm";
 import SearchAdForm from "../forms/SearchAdForm";
 import TabBar from "../components/TabBar";
 import { supabase } from "../supabaseClient";
+import { useAdId } from "../hooks/useAdId";
 
 type TargetTab = "search" | "bots" | "users" | "channels";
 
-const tabFromCampaignType = (type?: string | null): TargetTab => {
-  const normalized = (type || "").toLowerCase();
+const hasItems = (value: unknown) =>
+  Array.isArray(value) ? value.length > 0 : Boolean(value);
+
+const tabFromCampaign = (campaign?: any): TargetTab => {
+  const normalized = (campaign?.type || "").toLowerCase();
   if (normalized === "search") return "search";
   if (normalized === "bot" || normalized === "bots") return "bots";
   if (normalized === "user" || normalized === "users") return "users";
+  if (normalized === "channel" || normalized === "channels") return "channels";
+
+  const target = typeof campaign?.target === "string" ? campaign.target : "";
+  if (target && !/t\.me\/|@/.test(target.toLowerCase())) return "search";
+  if (hasItems(campaign?.locations) || hasItems(campaign?.countries)) return "users";
+  if (hasItems(campaign?.langs) || hasItems(campaign?.topics) || hasItems(campaign?.channels)) {
+    return "channels";
+  }
+
   return "channels";
 };
 
 export default function CreateAdPage() {
   const [activeTab, setActiveTab] = useState<TargetTab>("channels");
   const [subTab, setSubTab] = useState<"edit" | "stats">("edit");
-  const [adId, setAdId] = useState<string | null>(null);
-  const [searchParams] = useSearchParams();
+  const adId = useAdId();
 
   useEffect(() => {
-    const id = searchParams.get("id");
-    setAdId(id);
-
-    if (!id) {
+    if (!adId) {
       setActiveTab("channels");
       return;
     }
@@ -37,17 +45,17 @@ export default function CreateAdPage() {
     const loadCampaignType = async () => {
       const { data, error } = await supabase
         .from("ad_campaigns")
-        .select("type")
-        .eq("id", id)
+        .select("type,target,locations,countries,langs,topics,channels")
+        .eq("id", adId)
         .maybeSingle();
 
       if (!error) {
-        setActiveTab(tabFromCampaignType(data?.type));
+        setActiveTab(tabFromCampaign(data));
       }
     };
 
     loadCampaignType();
-  }, [searchParams]);
+  }, [adId]);
 
   return (
     <div className="min-h-screen bg-gray-50 border-t">
