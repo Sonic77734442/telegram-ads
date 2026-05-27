@@ -471,7 +471,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                   key={n}
                   type="button"
                   onClick={() => setDailyViews(n)}
-                  className={`h-[40px] w-[74px] rounded-[6px] border text-[13px] font-medium transition-all duration-150 ${
+                  className={`h-[32px] w-[75.3px] rounded-[6px] border text-[13px] font-medium transition-all duration-150 ${
                     n === dailyViews ? "bg-[#22A3F5] text-white border-[#22A3F5]" : "bg-white text-gray-700 border-[#d9d9d9] hover:bg-gray-100"
                   }`}
                 >
