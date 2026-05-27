@@ -37,5 +37,16 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vite": "^7.0.4"
+  },
+  "overrides": {
+    "anymatch": {
+      "picomatch": "2.3.2"
+    },
+    "micromatch": {
+      "picomatch": "2.3.2"
+    },
+    "readdirp": {
+      "picomatch": "2.3.2"
+    }
   }
 }
