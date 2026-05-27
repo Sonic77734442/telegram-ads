@@ -90,7 +90,9 @@ export default function CreateAdPage() {
         )}
 
         {adId && (
-          <TabBar adId={adId} activeTab={subTab} onTabChange={setSubTab} />
+          <div className="mt-6">
+            <TabBar adId={adId} activeTab={subTab} onTabChange={setSubTab} />
+          </div>
         )}
 
         <div className="mt-6">
