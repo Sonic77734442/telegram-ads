@@ -57,9 +57,37 @@ export default function CreateAdPage() {
   return (
     <div className="min-h-screen bg-gray-50 border-t">
       <Header />
-      {!adId && <div className="border-t border-[#e6e6e6]" />}
+      <div className="border-t border-[#e6e6e6]" />
 
       <Container>
+        {!adId && (
+          <div className="mt-6 mb-4 flex flex-wrap items-center justify-between">
+            <h4 className="text-[19.5px] leading-[27px] font-semibold tracking-[-0.2px] text-[#212121]">
+              Create Your Ad
+            </h4>
+
+            <div className="flex flex-wrap items-center gap-2 text-[14px]">
+              <span className="font-medium text-gray-700">Target:</span>
+              {(["search", "bots", "users", "channels"] as TargetTab[]).map(
+                (tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-full border px-3 py-[4px] text-sm font-medium transition-all duration-150 ${
+                      activeTab === tab
+                        ? "border-[#22A3F5] bg-[#22A3F5] text-white"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-[#22A3F5] hover:text-[#22A3F5]"
+                    }`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        )}
+
         {adId && (
           <TabBar adId={adId} activeTab={subTab} onTabChange={setSubTab} />
         )}
