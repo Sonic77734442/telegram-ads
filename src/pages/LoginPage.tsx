@@ -197,7 +197,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="mt-[58px] flex justify-end gap-8">
+            <div className="mt-9 flex justify-end gap-8">
               <button
                 type="button"
                 onClick={() => setIsLoginOpen(false)}
