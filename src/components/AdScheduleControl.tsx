@@ -8,9 +8,40 @@ type Props = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 const ALL_SLOTS = DAYS.flatMap((day) => HOURS.map((hour) => `${day}-${hour}`));
+const TIMEZONES = [
+  "UTC-12:00",
+  "UTC-11:00",
+  "UTC-10:00",
+  "UTC-09:00",
+  "UTC-08:00",
+  "UTC-07:00",
+  "UTC-06:00",
+  "UTC-05:00",
+  "UTC-04:00",
+  "UTC-03:00",
+  "UTC-02:00",
+  "UTC-01:00",
+  "UTC+00:00",
+  "UTC+01:00",
+  "UTC+02:00",
+  "UTC+03:00",
+  "UTC+04:00",
+  "UTC+05:00",
+  "UTC+06:00",
+  "UTC+07:00",
+  "UTC+08:00",
+  "UTC+09:00",
+  "UTC+10:00",
+  "UTC+11:00",
+  "UTC+12:00",
+  "UTC+13:00",
+  "UTC+14:00",
+];
 
 export default function AdScheduleControl({ checked, onChange }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [timezoneMode, setTimezoneMode] = useState<"viewer" | "custom">("viewer");
+  const [timezone, setTimezone] = useState("UTC+5:00");
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(
     () => new Set(ALL_SLOTS)
   );
@@ -186,18 +217,33 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
               </h3>
               <div className="mt-7 flex flex-col gap-5 text-[18px] leading-[24px] text-[#222]">
                 <label className="inline-flex items-center gap-4">
-                  <input type="radio" checked readOnly className="h-[24px] w-[24px] accent-[#5a9fec]" />
+                  <input
+                    type="radio"
+                    name="schedule-timezone-mode"
+                    checked={timezoneMode === "viewer"}
+                    onChange={() => setTimezoneMode("viewer")}
+                    className="h-[24px] w-[24px] accent-[#5a9fec]"
+                  />
                   Use timezone of the viewer
                 </label>
                 <label className="inline-flex items-center gap-4">
-                  <input type="radio" readOnly className="h-[24px] w-[24px] accent-[#5a9fec]" />
+                  <input
+                    type="radio"
+                    name="schedule-timezone-mode"
+                    checked={timezoneMode === "custom"}
+                    onChange={() => setTimezoneMode("custom")}
+                    className="h-[24px] w-[24px] accent-[#5a9fec]"
+                  />
                   Select a timezone
                   <select
-                    disabled
-                    value="UTC+5:00"
-                    className="ml-4 h-[40px] rounded-[6px] border border-[#d9d9d9] bg-white px-4 text-[18px] text-[#222]"
+                    disabled={timezoneMode !== "custom"}
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    className="ml-4 h-[40px] rounded-[6px] border border-[#d9d9d9] bg-white px-4 text-[18px] text-[#222] disabled:bg-[#f5f5f5] disabled:text-[#999]"
                   >
-                    <option>UTC+5:00</option>
+                    {TIMEZONES.map((zone) => (
+                      <option key={zone}>{zone}</option>
+                    ))}
                   </select>
                 </label>
               </div>
