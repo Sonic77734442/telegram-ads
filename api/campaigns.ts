@@ -320,11 +320,9 @@ export default async function handler(req: any, res: any) {
         ctr,
 
 	cpc:
-  	row.id === "1815ba00-98f0-4e95-9803-fbf759a3a0b9"
-    	? 0.09
-    	: clicks > 0
-    	? Number((roundMoney(spendClientRaw) / clicks).toFixed(2))
-    	: 0,
+      	clicks > 0
+        ? Number((roundMoney(spendClientRaw) / clicks).toFixed(2))
+        : 0,
 
       });
 
