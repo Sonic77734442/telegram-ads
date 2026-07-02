@@ -318,6 +318,12 @@ export default async function handler(req: any, res: any) {
         spend_client: roundMoney(spendClientRaw),
 
         ctr,
+
+	cpc:
+      clicks > 0
+        ? Number((roundMoney(spendClientRaw) / clicks).toFixed(2))
+        : 0,
+
       });
 
       totalViews += views;
