@@ -449,7 +449,7 @@ export default function AdTable() {
 
         ctr: c.ctr,
         cvr: 0,
-        cpc: 0,
+        cpc: c.cpc,
         cpa: 0,
         cpv: 0,
 
