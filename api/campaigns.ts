@@ -360,7 +360,7 @@ export default async function handler(req: any, res: any) {
         daily_budget_client: dailyBudgetClient,
 
         spend_net: roundMoney(spendNetRaw),
-        spend_client: isClientMode ? undefined : roundMoney(spendClientRaw),
+        spend_client: roundMoney(spendClientRaw),
 
         ctr,
         cvr,
@@ -394,7 +394,7 @@ export default async function handler(req: any, res: any) {
         views: totalViews,
         clicks: totalClicks,
         spend_net: roundMoney(totalSpendNet),
-        spend_client: resolvedMode === "client" ? undefined : roundMoney(totalSpendClient),
+        spend_client: roundMoney(totalSpendClient),
         ctr: totalCtr,
         cpm_net: totalCpmNet,
         cpm_client: totalCpmClient,

@@ -108,7 +108,9 @@ export default async function handler(req: any, res: any) {
     const items = rows.map((r) => {
       const amount_client_raw = (r.amount ?? 0) * markupMultiplier;
       const amount_client = roundMoney(amount_client_raw);
-      return session.role === "client" ? { ...r } : { ...r, amount_client };
+      return session.role === "client"
+        ? { ...r, amount: amount_client }
+        : { ...r, amount_client };
     });
 
     const total_views = items.reduce((sum, r) => sum + (r.views || 0), 0);
@@ -135,9 +137,11 @@ export default async function handler(req: any, res: any) {
       data: items,
       total: {
         views: total_views,
-        amount_net: total_amount_net,
+        amount: session.role === "client" ? total_amount_client : undefined,
+        amount_net: session.role === "client" ? undefined : total_amount_net,
         amount_client: session.role === "client" ? undefined : total_amount_client,
-        cpm_net,
+        cpm: session.role === "client" ? cpm_client : undefined,
+        cpm_net: session.role === "client" ? undefined : cpm_net,
         cpm_client: session.role === "client" ? undefined : cpm_client,
       },
       markup_percent: session.role === "client" ? undefined : markupPercent,
