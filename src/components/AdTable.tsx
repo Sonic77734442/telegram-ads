@@ -455,7 +455,7 @@ export default function AdTable() {
         daily_budget: c.daily_budget_client,
         daily_budget_base: c.daily_budget_net,
 
-        spend: c.spend_client,
+        spend: c.spend_net,
         spend_base: c.spend_net,
 
         ctr: c.ctr,
@@ -465,7 +465,7 @@ export default function AdTable() {
         cpv: 0,
 
         spend_raw: c.spend_net,
-        spend_with_markup: c.spend_client,
+        spend_with_markup: c.spend_net,
 
         url: c.url,
         type: c.type,

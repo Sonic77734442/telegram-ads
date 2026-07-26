@@ -59,7 +59,7 @@ export default function AdStats() {
     }
 
     return (json.data || []).map((r: any) => {
-      const baseAmount = Number(r.amount_client ?? r.amount ?? 0);
+      const baseAmount = Number(r.amount ?? 0);
       return {
         day: r.day,
         views: Number(r.views || 0),
