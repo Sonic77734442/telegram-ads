@@ -91,10 +91,10 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     widthClass: "w-[73.98px]",
     defaultVisible: false,
-    format: (v, row) => {
+    format: (v) => {
       if (v === null || v === undefined) return "—";
       const value = (Number(v) || 0).toLocaleString("en-US");
-      return row.opened_is_estimated ? `≈ ${value}` : value;
+      return value;
     },
   },
   {
