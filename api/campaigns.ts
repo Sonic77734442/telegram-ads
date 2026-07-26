@@ -1,6 +1,10 @@
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
+const VIDEO_OPEN_RATE = 31_789 / 5_625_000;
+const TELEGRAM_DESTINATION_RE =
+  /^(?:tg:\/\/|https?:\/\/(?:www\.)?(?:t\.me|telegram\.me|telegram\.dog)(?:\/|$))/i;
+
 export default async function handler(req: any, res: any) {
   try {
     const roundMoney = (value: number) =>
@@ -111,6 +115,28 @@ export default async function handler(req: any, res: any) {
     }
 
     const rows = (data || []) as any[];
+    const campaignIds = rows.map((row) => row.id).filter(Boolean);
+    const rawActionsByCampaign = new Map<string, number | null>();
+
+    if (campaignIds.length > 0) {
+      const { data: actionRows, error: actionsError } = await supabase
+        .from("ad_campaigns")
+        .select("id, actions")
+        .in("id", campaignIds);
+
+      if (actionsError) {
+        console.error("Error loading raw campaign actions:", actionsError);
+      } else {
+        for (const actionRow of actionRows || []) {
+          rawActionsByCampaign.set(
+            actionRow.id,
+            actionRow.actions === null || actionRow.actions === undefined
+              ? null
+              : Number(actionRow.actions)
+          );
+        }
+      }
+    }
 
     const sumStatsAmount = async (adId: string, month?: string | null) => {
       const { data: statsRows, error: statsError } = await supabase
@@ -286,6 +312,23 @@ export default async function handler(req: any, res: any) {
           : dailyBudgetNet;
 
       const ctr = views > 0 ? Number(((clicks / views) * 100).toFixed(2)) : 0;
+      const isVideo = String(row.media_type || "").toLowerCase() === "video";
+      const opened = isVideo ? Math.round(views * VIDEO_OPEN_RATE) : null;
+      const isTelegramDestination = TELEGRAM_DESTINATION_RE.test(
+        String(row.url || "").trim()
+      );
+      const rawActions = rawActionsByCampaign.get(row.id);
+      const actions = isTelegramDestination
+        ? Math.max(0, Number(rawActions ?? 0))
+        : null;
+      const cvr =
+        actions !== null && clicks > 0
+          ? Number(((actions / clicks) * 100).toFixed(2))
+          : null;
+      const cpa =
+        actions !== null && actions > 0
+          ? Number((roundMoney(spendClientRaw) / actions).toFixed(2))
+          : null;
 
       items.push({
         id: row.id,
@@ -302,8 +345,10 @@ export default async function handler(req: any, res: any) {
         agency_id: row.agency_id,
 
         views,
+        opened,
+        opened_is_estimated: isVideo,
         clicks,
-        actions: Number(row.actions ?? clicks),
+        actions,
 
         cpm_net: cpmNet,
         cpm_client: cpmClient,
@@ -318,6 +363,8 @@ export default async function handler(req: any, res: any) {
         spend_client: roundMoney(spendClientRaw),
 
         ctr,
+        cvr,
+        cpa,
 
 	cpc:
       	clicks > 0

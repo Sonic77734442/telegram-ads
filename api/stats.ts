@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
 type Range = "days" | "5min";
+const VIDEO_OPEN_RATE = 31_789 / 5_625_000;
 
 export default async function handler(req: any, res: any) {
   try {
@@ -20,7 +21,7 @@ export default async function handler(req: any, res: any) {
 
     const { data: campaignRow, error: campaignError } = await supabase
       .from("ad_campaigns")
-      .select("client_id, agency_id")
+      .select("client_id, agency_id, media_type")
       .eq("id", ad_id)
       .single();
 
@@ -34,6 +35,7 @@ export default async function handler(req: any, res: any) {
     if (session.role === "agency" && campaignRow.agency_id !== session.agency_id) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    const isVideo = String(campaignRow.media_type || "").toLowerCase() === "video";
 
     const { data: statsRows, error: statsError } = await supabase
       .from("ad_stats")
@@ -52,7 +54,10 @@ export default async function handler(req: any, res: any) {
           ts: row.timestamp,
           views: Number(row.views || 0),
           clicks: Number(row.clicks || 0),
-          video_opens: 0,
+          video_opens: isVideo
+            ? Math.round(Number(row.views || 0) * VIDEO_OPEN_RATE)
+            : 0,
+          video_opens_estimated: isVideo,
         })),
       });
     }
@@ -65,6 +70,9 @@ export default async function handler(req: any, res: any) {
       const current = byDay.get(day) || { views: 0, clicks: 0, video_opens: 0 };
       current.views += Number(row.views || 0);
       current.clicks += Number(row.clicks || 0);
+      current.video_opens += isVideo
+        ? Math.round(Number(row.views || 0) * VIDEO_OPEN_RATE)
+        : 0;
       byDay.set(day, current);
     }
 
@@ -72,6 +80,7 @@ export default async function handler(req: any, res: any) {
       data: Array.from(byDay.entries()).map(([date, value]) => ({
         date,
         ...value,
+        video_opens_estimated: isVideo,
       })),
     });
   } catch (e: any) {

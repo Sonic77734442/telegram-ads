@@ -22,8 +22,9 @@ type AdRow = {
   // метрики
   views?: number;
   opened?: number; // opened video / opens
+  opened_is_estimated?: boolean;
   clicks?: number;
-  actions?: number;
+  actions?: number | null;
 
   // деньги (то, что показываем в таблице)
   cpm: number | string;
@@ -46,9 +47,9 @@ type AdRow = {
 
   // вычисляемые
   ctr?: number; // %
-  cvr?: number; // %
+  cvr?: number | null; // %
   cpc?: number;
-  cpa?: number;
+  cpa?: number | null;
   cpv?: number;
 
   url?: string | null;
@@ -90,7 +91,11 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     widthClass: "w-[73.98px]",
     defaultVisible: false,
-    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
+    format: (v, row) => {
+      if (v === null || v === undefined) return "—";
+      const value = (Number(v) || 0).toLocaleString("en-US");
+      return row.opened_is_estimated ? `≈ ${value}` : value;
+    },
   },
   {
     id: "clicks",
@@ -108,7 +113,10 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     widthClass: "w-[78.47px]",
     defaultVisible: true,
-    format: (v) => (Number(v) || 0).toLocaleString("en-US"),
+    format: (v) =>
+      v === null || v === undefined
+        ? "—"
+        : (Number(v) || 0).toLocaleString("en-US"),
   },
   {
     id: "ctr",
@@ -126,7 +134,8 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     defaultVisible: false,
     widthClass: "w-[65px]",
-    format: (v) => `${(Number(v) || 0).toFixed(2)}%`,
+    format: (v) =>
+      v === null || v === undefined ? "—" : `${Number(v).toFixed(2)}%`,
   },
   {
     id: "cpm",
@@ -161,7 +170,8 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     defaultVisible: false,
     widthClass: "w-[65px]",
-    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
+    format: (v) =>
+      v === null || v === undefined ? "—" : `€ ${Number(v).toFixed(2)}`,
   },
   {
     id: "spend",
@@ -431,9 +441,10 @@ export default function AdTable() {
         created_at: c.created_at,
 
         views: c.views,
-        opened: 0,
+        opened: c.opened,
+        opened_is_estimated: Boolean(c.opened_is_estimated),
         clicks: c.clicks,
-        actions: 0,
+        actions: c.actions,
 
         cpm: c.cpm_client,
         cpm_base: c.cpm_net,
@@ -448,9 +459,9 @@ export default function AdTable() {
         spend_base: c.spend_net,
 
         ctr: c.ctr,
-        cvr: 0,
+        cvr: c.cvr,
         cpc: c.cpc,
-        cpa: 0,
+        cpa: c.cpa,
         cpv: 0,
 
         spend_raw: c.spend_net,
