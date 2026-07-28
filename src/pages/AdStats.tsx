@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, useContext, useRef } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
+import TelegramStatsChart, {
+  getStatsPeriodLabel,
+} from "../components/TelegramStatsChart";
 import { supabase } from "../supabaseClient";
 import { AdIdContext } from "../contexts/AdIdContext";
 import { fetchCampaignById } from "../lib/campaignApi";
-import uPlot from "uplot";
-import "uplot/dist/uPlot.min.css";
 
 type Range = "days" | "5min";
 
@@ -342,13 +343,11 @@ const multiplier =
         <SectionHeader
           title="Statistics"
           right={<RangeToggle value={statsRange} onChange={setStatsRange} />}
-          periodLabel={periodLabel()}
+          periodLabel={getStatsPeriodLabel(statsData, statsRange)}
         />
-        <ChartContainer>
-          <UPlotChart range={statsRange} data={statsData} />
-        </ChartContainer>
-        <UnderChartBar
-          leftBadges={["Views", "Opened video", "Clicks"]}
+        <TelegramStatsChart
+          range={statsRange}
+          data={statsData}
           onCSV={() => downloadCSV(statsData as any[], `stats_${statsRange}.csv`)}
         />
         <div className="text-xs text-gray-500 leading-tight">
@@ -448,98 +447,6 @@ const multiplier =
   );
 }
 
-function UPlotChart({
-  range,
-  data,
-}: {
-  range: Range;
-  data: (StatPointDay | StatPoint5m)[];
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const plotRef = useRef<uPlot | null>(null);
-
-  const chartData = useMemo(() => {
-    const x: number[] = [];
-    const views: number[] = [];
-    const opens: number[] = [];
-    const clicks: number[] = [];
-
-    for (const point of data) {
-      const key =
-        range === "days"
-          ? (point as StatPointDay).date
-          : (point as StatPoint5m).ts;
-      const ts = Date.parse(range === "days" ? `${key}T00:00:00Z` : key);
-      if (Number.isNaN(ts)) continue;
-      x.push(ts);
-      views.push(Number(point.views ?? 0));
-      opens.push(Number(point.video_opens ?? 0));
-      clicks.push(Number(point.clicks ?? 0));
-    }
-
-    return [x, views, opens, clicks] as uPlot.AlignedData;
-  }, [data, range]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const render = () => {
-      if (!containerRef.current) return;
-      const width = containerRef.current.clientWidth || 600;
-      const height = containerRef.current.clientHeight || 300;
-
-      const opts: uPlot.Options = {
-        width,
-        height,
-        scales: { x: { time: true } },
-        axes: [
-          {
-            grid: { show: true, stroke: "#e5e7eb", width: 1 },
-            stroke: "#9ca3af",
-            values: (_, vals) =>
-              vals.map((v) =>
-                range === "days"
-                  ? new Date(v).toISOString().slice(5, 10)
-                  : new Date(v).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-              ),
-          },
-          {
-            grid: { show: true, stroke: "#e5e7eb", width: 1 },
-            stroke: "#9ca3af",
-          },
-        ],
-        series: [
-          {},
-          { label: "Views", stroke: "#007bff", width: 2 },
-          { label: "Opened video", stroke: "#34d399", width: 2 },
-          { label: "Clicks", stroke: "#10b981", width: 2 },
-        ],
-      };
-
-      plotRef.current?.destroy();
-      plotRef.current = new uPlot(opts, chartData, containerRef.current);
-    };
-
-    render();
-
-    const ro = new ResizeObserver(() => {
-      render();
-    });
-    ro.observe(containerRef.current);
-
-    return () => {
-      ro.disconnect();
-      plotRef.current?.destroy();
-      plotRef.current = null;
-    };
-  }, [chartData, range]);
-
-  return <div ref={containerRef} className="h-full w-full" />;
-}
-
 /* ========= small UI helpers ========= */
 
 function Meta({ label, children }: { label: string; children: any }) {
@@ -561,18 +468,18 @@ function SectionHeader({
   periodLabel?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        {title && <div className="text-lg font-semibold">{title}</div>}
-        <div className="hidden md:block text-sm text-gray-500">{periodLabel}</div>
+    <div>
+      <div className="flex items-center justify-between">
+        {title && <div className="text-[16px] font-semibold">{title}</div>}
+        <div className="flex items-center gap-3">{right}</div>
       </div>
-      <div className="flex items-center gap-3">{right}</div>
+      {periodLabel && (
+        <div className="mt-3 text-right text-[13px] font-semibold text-[#222]">
+          {periodLabel}
+        </div>
+      )}
     </div>
   );
-}
-
-function ChartContainer({ children }: { children: React.ReactNode }) {
-  return <div className="h-[300px] w-full">{children}</div>;
 }
 
 function RangeToggle({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
@@ -598,57 +505,3 @@ function RangeToggle({ value, onChange }: { value: Range; onChange: (r: Range) =
   );
 }
 
-function UnderChartBar({
-  leftBadges,
-  leftButtonLabel,
-  extraRight,
-  onCSV,
-}: {
-  leftBadges?: string[];
-  leftButtonLabel?: string;
-  extraRight?: React.ReactNode;
-  onCSV: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex gap-2">
-        {leftBadges?.map((b) => (
-          <span
-            key={b}
-            className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700"
-          >
-            {b}
-          </span>
-        ))}
-        {leftButtonLabel && (
-          <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-            {leftButtonLabel}
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-3">
-        {extraRight}
-        <button
-          onClick={onCSV}
-          className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
-        >
-          CSV
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function periodLabel() {
-  // декоративная подпись "10 November 2025 – 25 November 2025"
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - 3);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  return `${fmt(start)} – ${fmt(end)}`;
-}
