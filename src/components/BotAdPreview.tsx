@@ -20,6 +20,9 @@ const fallbackEntity = (url: string): TelegramEntity => {
   };
 };
 
+const MESSAGE_BUBBLE_TAIL =
+  "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%2216%22%20viewBox%3D%220%200%208%2016%22%20style%3D%22filter%3Adrop-shadow%280%200.5px%200%20rgba%28118%2C%20142%2C%20106%2C%20.3%29%29%3B%22%3E%3Cpath%20fill%3D%22%23fff%22%20fill-rule%3D%22evenodd%22%20d%3D%22M%200.33%200%20L%200.4%203.17%20C%200.4%205.6%200.67%208.67%202%2010.67%20C%203%2012.17%204.35%2013.13%205.7%2013.7%20C%205.8%2013.75%206%2013.95%206%2014.25%20C%206%2014.34%206%2014.43%206%2014.56%20C%206%2014.7%205.86%2015%205.53%2015%20C%205.32%2015%203.14%2015%20-1%2015%20L%20-1%200%20L%200.33%200%20Z%22%20transform%3D%22matrix%28-1%200%200%201%207%200%29%22%20style%3D%22filter%3Adrop-shadow%280%201px%201px%20rgba%2825%2C%2044%2C%2089%2C%20.1%29%29%3B%22%3E%3C%2Fpath%3E%3C%2Fsvg%3E";
+
 export default function BotAdPreview({
   url,
   text,
@@ -114,7 +117,12 @@ export default function BotAdPreview({
         style={{ backgroundImage: "url(/assets/AdPreviewBackground.jpg)" }}
       >
         <div className="relative w-[257px] rounded-[8px] bg-white px-[11px] pb-[7px] pt-[7px] text-[13px] leading-[16px] text-[#222] shadow-sm">
-          <span className="absolute bottom-0 left-[-6px] h-0 w-0 border-b-[8px] border-r-[10px] border-b-white border-r-transparent" />
+          <img
+            src={MESSAGE_BUBBLE_TAIL}
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 left-[-7px] h-[16px] w-[8px]"
+          />
           Welcome aboard! You can now tap the
           <br />
           button below to start this bot 🤖

@@ -190,7 +190,7 @@ export default function BotAdForm() {
     <Container>
       <div className="grid grid-cols-[330px_430px] gap-x-[82px] pt-[7px]">
         <form className="flex w-[330px] flex-col gap-[14px] text-[14px] leading-[18px]">
-          <Field label="Ad title" info>
+          <Field label="Ad title" info="Only displayed in the ad interface.">
             <Input
               placeholder="E.g., My first ad"
               value={title}
@@ -198,7 +198,7 @@ export default function BotAdForm() {
             />
           </Field>
 
-          <Field label="Ad text" info>
+          <Field label="Ad text" info="This is what your target audience will see.">
             <Textarea
               placeholder="Enter your ad text"
               value={text}
@@ -219,7 +219,7 @@ export default function BotAdForm() {
             </Hint>
           </Field>
 
-          <Field label="URL you want to promote" info>
+          <Field label="URL you want to promote" info="The button below the ad will open this link.">
             <Input
               placeholder="URL of the channel, post or bot you promote"
               value={url}
@@ -235,7 +235,7 @@ export default function BotAdForm() {
             />
           </div>
 
-          <Field label="CPM in Euro" info>
+          <Field label="CPM in Euro" info="Price per 1000 impressions.">
             <MoneyInput value={cpm} onChange={(e) => setCpm(e.target.value)} />
           </Field>
 
@@ -244,7 +244,10 @@ export default function BotAdForm() {
             <Hint>This amount will be added to the ad budget.</Hint>
           </Field>
 
-          <Field label="Daily views limit per user">
+          <Field
+            label="Daily views limit per user"
+            info="Choose how often this ad may be shown to the same user during one day"
+          >
             <div className="flex gap-3">
               {[1, 2, 3, 4].map((n) => (
                 <button
@@ -263,15 +266,21 @@ export default function BotAdForm() {
             </div>
           </Field>
 
-          <Field label="Initial status">
-            <div className="flex flex-col gap-[8px] px-[13px]">
+          <Field
+            label="Initial status"
+            info="This status will be applied to the ad after the review."
+          >
+            <div className="mt-[8px] flex flex-col gap-[1px] px-[13px]">
               <Radio label="Active" checked={status === "active"} onChange={() => setStatus("active")} />
               <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
             </div>
-            <div className="mt-[5px] px-[13px]"><LinkLbl>Set start date</LinkLbl></div>
+            <div className="mt-[8px] px-[13px]"><LinkLbl>Set start date</LinkLbl></div>
           </Field>
 
-          <Field label="Ad Schedule">
+          <Field
+            label="Ad Schedule"
+            info="Select an hourly schedule according to which the ad will be displayed."
+          >
             <div className="px-[13px]">
               <AdScheduleControl checked={schedule} onChange={setSchedule} />
             </div>
@@ -300,7 +309,7 @@ export default function BotAdForm() {
           )}
 
           <div className="mt-[14px]">
-            <Field label="Target specific bots" info>
+            <Field label="Target specific bots" info="List specific bots you’d like to target.">
               <TagInput value={targetBots} onChange={setTargetBots} placeholder="t.me bot URL" />
             </Field>
           </div>
@@ -380,7 +389,7 @@ const Field = ({
   children,
 }: {
   label?: string;
-  info?: boolean;
+  info?: string;
   trailing?: React.ReactNode;
   children: React.ReactNode;
 }) => (
@@ -389,7 +398,7 @@ const Field = ({
       <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
         <span className="flex items-center gap-1">
           {label}
-          {info && <InfoIcon />}
+          {info && <InfoIcon text={info} />}
         </span>
         {trailing}
       </label>
@@ -398,12 +407,28 @@ const Field = ({
   </div>
 );
 
-const InfoIcon = () => (
-  <svg className="w-[12px] h-[12px] text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-    <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    <circle cx="10" cy="6" r="1" fill="currentColor" />
-    <rect x="9" y="9" width="2" height="7" rx="1" fill="currentColor" />
-  </svg>
+const InfoIcon = ({ text }: { text: string }) => (
+  <span
+    className="group relative inline-flex h-[18px] w-[18px] flex-none cursor-help items-center justify-center outline-none"
+    tabIndex={0}
+    aria-label={text}
+    data-info-tooltip={text}
+  >
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 18 18" aria-hidden="true">
+      <g fill="none" fillRule="evenodd">
+        <circle cx="9" cy="9.5" r="5.6" stroke="#222" strokeWidth="1.2" />
+        <circle cx="9" cy="7.2" r="1" fill="#222" />
+        <path d="M9 12.1V9.277913" stroke="#222" strokeWidth="1.27" />
+      </g>
+    </svg>
+    <span
+      role="tooltip"
+      className="pointer-events-none invisible absolute bottom-[28px] left-[-37px] z-40 w-max max-w-[350px] rounded-[8px] bg-[rgba(32,36,38,0.85)] px-[12px] pb-[9px] pt-[10px] text-left text-[13px] font-normal leading-[16px] text-white opacity-0 shadow-sm transition-opacity duration-100 group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+    >
+      {text}
+      <span className="absolute bottom-[-7px] left-[36px] h-[8px] w-[18px] bg-[rgba(32,36,38,0.85)] [clip-path:polygon(0_0,100%_0,63.7%_86.4%,61%_94%,56%_99%,50%_100%,44%_99%,39%_94%,36.3%_86.4%)]" />
+    </span>
+  </span>
 );
 
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
@@ -468,7 +493,7 @@ const Radio = ({
   checked?: boolean;
   onChange?: () => void;
 }) => (
-  <label className="inline-flex cursor-pointer items-center gap-[10px] text-[14px] leading-[20px]">
+  <label className="inline-flex h-[30px] cursor-pointer items-center gap-[10px] py-[5px] text-[14px] leading-[20px]">
     <input type="radio" checked={checked} onChange={onChange} className="h-[20px] w-[20px] accent-[#5a9fec]" />
     {label}
   </label>
