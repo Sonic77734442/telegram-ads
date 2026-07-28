@@ -108,7 +108,7 @@ const Header = () => {
           </Link>
 
           <div className="flex items-center gap-4">
-            <span className="text-[14px] text-gray-600 font-bold">
+            <span className="text-[13px] font-bold text-[#555]">
               Budget: €{balance.toFixed(2)}
             </span>
             {/* Если захочешь — можно вывести и остаток:

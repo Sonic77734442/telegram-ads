@@ -43,7 +43,7 @@ export default function AdStats() {
     const base = new Date();
     base.setUTCDate(1);
     const arr: string[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 2; i >= 0; i--) {
       const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() - i, 1));
       arr.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
     }
@@ -118,6 +118,18 @@ export default function AdStats() {
     }),
     [reports]
   );
+
+  const displayedBudgetData = useMemo(() => {
+    if (budgetData.length > 0) return budgetData;
+    if (statsRange === "days" && reports.length > 0) {
+      return reports.map((row) => ({ date: row.day, amount: row.amount }));
+    }
+    return statsData.map((point) =>
+      "date" in point
+        ? { date: point.date, amount: 0 }
+        : { ts: point.ts, amount: 0 }
+    );
+  }, [budgetData, reports, statsData, statsRange]);
     // суммарные просмотры по данным top-чарта
   const totalViewsFromStats = useMemo(
     () =>
@@ -282,40 +294,53 @@ const multiplier =
   
   return (
     <div className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-10">
+      <div className="w-full space-y-[30px]">
         {/* ========== Card with preview & meta ========== */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[330px,1fr]">
-          <div className="justify-self-center md:justify-self-start">
-            <div className="w-[320px]">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[376px_1fr] md:gap-14">
+          <div className="justify-self-center pl-[7px] md:justify-self-start">
+            <div className="w-[376px]">
               <TelegramAdPreview
                 title={ad.title}
                 text={ad.text}
                 mediaUrl={ad.mediaUrl}
                 mediaType={ad.mediaType}
                 button={ad.button}
-                className="min-h-[250px] w-[320px]"
+                showClose={false}
+                className="min-h-[294px] w-[376px]"
               />
             </div>
           </div>
-			<div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-			  {/* Link на всю строку */}
-			  <div className="col-span-2 md:col-span-3 text-left">
-				<div className="text-gray-500">Link</div>
+          <div className="flex flex-col pt-1 text-[13px] leading-[18px]">
+			  <div className="text-left">
+				<div className="font-medium text-[#222]">Link</div>
 				<a
 				  href={ad.url?.startsWith("http") ? ad.url : `https://${ad.url}`}
-				  className="text-blue-600 hover:underline break-all"
+				  className="block max-w-[390px] break-words text-[#2481cc] hover:underline"
 				  target="_blank"
 				  rel="noreferrer"
 				>
 				  {ad.url}
 				</a>
 			  </div>
-            <Meta label="Date created">
-              {ad.createdAt ? new Date(ad.createdAt).toUTCString() : "Unknown"}
-            </Meta>
-            <Meta label="CPM">€ {displayCpm}</Meta>
-            <Meta label="Budget">€ {displayBudget}</Meta>
-            <Meta label="Views">{metaViews.toLocaleString()}</Meta>
+            <div className="mt-5">
+              <Meta label="Date created">
+                {ad.createdAt
+                  ? new Date(ad.createdAt).toLocaleString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "UTC",
+                    })
+                  : "Unknown"}
+              </Meta>
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-8">
+              <Meta label="CPM">€ {displayCpm}</Meta>
+              <Meta label="Budget">€ {displayBudget}</Meta>
+              <Meta label="Views">{metaViews.toLocaleString()}</Meta>
+            </div>
           </div>
         </div>
 
@@ -334,9 +359,9 @@ const multiplier =
           <div className="text-xs text-gray-500 leading-tight">
             * Time and date shown in UTC.
             <br />
-            ** Click statistics are available as of August 8, 2023.
+            ** Click statistics are available as of August 2023.
             <br />
-            *** Video open statistics are available as of October 7, 2023.
+            *** Video open statistics are available as of October 7, 2024.
           </div>
         </section>
 
@@ -344,12 +369,12 @@ const multiplier =
         <section className="space-y-2">
           <SectionHeader
             title=""
-            periodLabel={getStatsPeriodLabel(budgetData, statsRange)}
+            periodLabel={getStatsPeriodLabel(displayedBudgetData, statsRange)}
           />
           <TelegramStatsChart
             kind="budget"
             range={statsRange}
-            data={budgetData}
+            data={displayedBudgetData}
             onCSV={() => downloadServerCSV("budget", { range: statsRange })}
           />
           <div className="text-xs leading-tight text-gray-500">
@@ -358,60 +383,65 @@ const multiplier =
         </section>
 
         {/* ========== REPORTS TABLE ========== */}
-        <div className="flex items-center gap-3 justify-end">
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+          <h4 className="text-[16px] font-semibold leading-[18px]">Reports</h4>
+          <div className="flex items-center gap-1">
           {monthTabs.map((m) => {
-            const label = new Date(m + "-01").toLocaleString("en-US", {
+            const rawLabel = new Date(m + "-01").toLocaleString("en-US", {
               month: "short",
               year: "2-digit",
               timeZone: "UTC",
             });
+            const label = rawLabel.replace(" ", " '");
             return (
               <button
                 key={m}
                 onClick={() => setSelectedMonth(m)}
-                className={`px-3 py-1 rounded-full ${
+                className={`rounded-full px-3 py-[6px] text-[14px] font-medium leading-4 ${
                   selectedMonth === m
-                    ? "bg-blue-500 text-white"
-                    : "text-blue-700 hover:bg-blue-100"
+                    ? "bg-[#58a6e7] text-white"
+                    : "text-[#0288db] hover:bg-[#eaf4fb]"
                 }`}
               >
                 {label}
               </button>
             );
           })}
-        </div>
+          </div>
+          </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500">
+          <div>
+          <table className="w-full table-fixed text-[13px] leading-4">
+            <thead>
               <tr>
-                <th className="px-4 py-2 text-left">DAY</th>
-                <th className="px-4 py-2 text-right">VIEWS</th>
-                <th className="px-4 py-2 text-right">AMOUNT</th>
+                <th className="w-1/2 border-b border-[#e6e6e6] py-3 text-left text-[12px] font-semibold">DAY</th>
+                <th className="w-1/4 border-b border-[#e6e6e6] py-3 text-left text-[12px] font-semibold">VIEWS</th>
+                <th className="w-1/4 border-b border-[#e6e6e6] py-3 text-left text-[12px] font-semibold">AMOUNT</th>
               </tr>
             </thead>
             <tbody>
               {reports.map((r) => (
-                <tr key={r.day} className="border-t">
-                  <td className="px-4 py-2">
+                <tr key={r.day}>
+                  <td className="border-b border-[#ededed] py-[9px]">
                     {new Date(r.day).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
                     })}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="border-b border-[#ededed] py-[9px]">
                     {(r.views ?? 0).toLocaleString()}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="border-b border-[#ededed] py-[9px]">
                     € {(r.amount ?? 0).toFixed(2)}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t bg-gray-50 font-semibold">
-                <td className="px-4 py-2">
+              <tr className="font-semibold">
+                <td className="border-b border-[#e6e6e6] py-[11px]">
                   Total in{" "}
                   {new Date(selectedMonth + "-01").toLocaleString("en-US", {
                     month: "short",
@@ -419,24 +449,25 @@ const multiplier =
                     timeZone: "UTC",
                   })}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="border-b border-[#e6e6e6] py-[11px]">
                   {reportsTotal.views.toLocaleString()}
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="border-b border-[#e6e6e6] py-[11px]">
                   € {reportsTotal.amount.toFixed(2)}
                 </td>
               </tr>
             </tfoot>
           </table>
-        </div>
-        <div className="flex justify-end">
+          </div>
+          <div className="flex justify-end">
           <button
             onClick={() => downloadServerCSV("reports", { month: selectedMonth })}
-            className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
+            className="flex items-center gap-1.5 px-0 py-1 text-[14px] text-[#2481cc] hover:text-[#1a69a5]"
           >
-            CSV
+            <span aria-hidden="true">↧</span> CSV
           </button>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -447,7 +478,7 @@ const multiplier =
 function Meta({ label, children }: { label: string; children: any }) {
   return (
     <div className="text-left">
-      <div className="text-gray-500">{label}</div>
+      <div className="font-medium text-[#222]">{label}</div>
       <div>{children}</div>
     </div>
   );
@@ -464,12 +495,12 @@ function SectionHeader({
 }) {
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex min-h-[28px] items-center justify-between">
         {title && <div className="text-[16px] font-semibold">{title}</div>}
         <div className="flex items-center gap-3">{right}</div>
       </div>
       {periodLabel && (
-        <div className="mt-3 text-right text-[13px] font-semibold text-[#222]">
+        <div className="mt-[9px] text-right text-[13px] font-semibold leading-[18px] text-[#222]">
           {periodLabel}
         </div>
       )}
@@ -479,19 +510,19 @@ function SectionHeader({
 
 function RangeToggle({ value, onChange }: { value: Range; onChange: (r: Range) => void }) {
   return (
-    <div className="flex gap-2 text-sm">
+    <div className="flex gap-1 text-[14px] font-medium leading-4">
       <button
         onClick={() => onChange("5min")}
-        className={`px-3 py-1 rounded-full ${
-          value === "5min" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+        className={`rounded-full px-3 py-[6px] ${
+          value === "5min" ? "bg-[#58a6e7] text-white" : "text-[#0288db] hover:bg-[#eaf4fb]"
         }`}
       >
         5 min
       </button>
       <button
         onClick={() => onChange("days")}
-        className={`px-3 py-1 rounded-full ${
-          value === "days" ? "bg-blue-500 text-white" : "text-blue-700 hover:bg-blue-100"
+        className={`rounded-full px-3 py-[6px] ${
+          value === "days" ? "bg-[#58a6e7] text-white" : "text-[#0288db] hover:bg-[#eaf4fb]"
         }`}
       >
         Days

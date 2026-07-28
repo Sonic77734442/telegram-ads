@@ -155,6 +155,60 @@ export default function TelegramStatsChart({
       const height = Math.max(230, host.clientHeight);
       const stepped = uPlot.paths.stepped?.({ align: 1 });
 
+      const scaleRange = (
+        _u: uPlot,
+        min: number,
+        max: number
+      ): [number, number] => [Math.min(0, min), max * 1.06 || 1];
+      const valueAxes: uPlot.Axis[] =
+        kind === "budget"
+          ? [
+              {
+                scale: "amount",
+                side: 3,
+                stroke: "#8e969d",
+                size: 58,
+                gap: 8,
+                font: "12px Roboto, sans-serif",
+                grid: {
+                  show: true,
+                  stroke: "rgba(24, 45, 59, 0.1)",
+                  width: 1,
+                },
+                ticks: { show: false },
+                values: (_u, values) =>
+                  values.map((value) => `€ ${value.toFixed(3)}`),
+              },
+            ]
+          : [
+              {
+                scale: "views",
+                side: 3,
+                stroke: "#8e969d",
+                size: 48,
+                gap: 8,
+                font: "12px Roboto, sans-serif",
+                grid: {
+                  show: true,
+                  stroke: "rgba(24, 45, 59, 0.1)",
+                  width: 1,
+                },
+                ticks: { show: false },
+                values: (_u, values) => values.map(formatCompact),
+              },
+              {
+                scale: "secondary",
+                side: 1,
+                stroke: "#65b9ac",
+                size: 42,
+                gap: 8,
+                font: "12px Roboto, sans-serif",
+                grid: { show: false },
+                ticks: { show: false },
+                values: (_u, values) => values.map(formatCompact),
+              },
+            ];
+
       const opts: uPlot.Options = {
         width,
         height,
@@ -164,11 +218,16 @@ export default function TelegramStatsChart({
           show: true,
           x: true,
           y: false,
-          points: { show: false },
+          points: { show: true, size: 10, width: 2 },
         },
         scales: {
           x: { time: true },
-          y: { auto: true, range: (_u, min, max) => [Math.min(0, min), max * 1.06 || 1] },
+          ...(kind === "budget"
+            ? { amount: { auto: true, range: scaleRange } }
+            : {
+                views: { auto: true, range: scaleRange },
+                secondary: { auto: true, range: scaleRange },
+              }),
         },
         axes: [
           {
@@ -180,27 +239,23 @@ export default function TelegramStatsChart({
             ticks: { show: false },
             values: (_u, values) => values.map((value) => formatAxisDate(value * 1000, range)),
           },
-          {
-            stroke: "#8e969d",
-            size: 48,
-            gap: 8,
-            font: "12px Roboto, sans-serif",
-            grid: { show: true, stroke: "rgba(24, 45, 59, 0.1)", width: 1 },
-            ticks: { show: false },
-            values: (_u, values) =>
-              values.map((value) =>
-                kind === "budget" ? `€ ${value.toFixed(3)}` : formatCompact(value)
-              ),
-          },
+          ...valueAxes,
         ],
         series: [
           {},
           ...chartSeries.map((series) => ({
             label: series.label,
+            scale:
+              kind === "budget"
+                ? "amount"
+                : series.key === "views"
+                  ? "views"
+                  : "secondary",
             stroke: series.color,
             width: 2,
             show: active[series.key],
             paths: stepped,
+            points: { show: false },
           })),
         ],
         hooks: {
@@ -244,6 +299,19 @@ export default function TelegramStatsChart({
       const width = Math.max(320, host.clientWidth);
       const height = Math.max(38, host.clientHeight);
       const stepped = uPlot.paths.stepped?.({ align: 1 });
+      const navigatorScales = Object.fromEntries(
+        chartSeries.map((series) => [
+          `navigator_${series.key}`,
+          {
+            auto: true,
+            range: (
+              _u: uPlot,
+              min: number,
+              max: number
+            ): [number, number] => [Math.min(0, min), max || 1],
+          },
+        ])
+      );
       plot = new uPlot(
         {
           width,
@@ -251,16 +319,17 @@ export default function TelegramStatsChart({
           padding: [3, 0, 3, 0],
           legend: { show: false },
           cursor: { show: false },
-          select: { show: false },
           axes: [{ show: false }, { show: false }],
-          scales: { x: { time: true }, y: { auto: true, range: (_u, min, max) => [Math.min(0, min), max || 1] } },
+          scales: { x: { time: true }, ...navigatorScales },
           series: [
             {},
             ...chartSeries.map((series) => ({
+              scale: `navigator_${series.key}`,
               stroke: series.color,
               width: 1,
               show: active[series.key],
               paths: stepped,
+              points: { show: false },
             })),
           ],
         },
@@ -320,8 +389,8 @@ export default function TelegramStatsChart({
   const tooltipPoint = tooltipIndex >= 0 ? parsed[tooltipIndex] : null;
 
   return (
-    <div className="telegram-stats-chart">
-      <div className="relative h-[300px] w-full" onMouseLeave={() => setTooltip(null)}>
+    <div className="telegram-stats-chart min-h-[450px] pt-[6px]">
+      <div className="relative h-[334px] w-full" onMouseLeave={() => setTooltip(null)}>
         <div ref={mainRef} className="h-full w-full" />
         {tooltip && tooltipPoint && (
           <div
@@ -349,7 +418,7 @@ export default function TelegramStatsChart({
         )}
       </div>
 
-      <div className="relative mx-4 mt-1 h-10 overflow-hidden rounded-[8px] bg-[#edf4f8]">
+      <div className="relative mx-4 mt-1 h-10 overflow-hidden rounded-[5px] bg-[#edf4f8]">
         <div ref={navigatorRef} className="absolute inset-0 opacity-45" />
         <div
           className="absolute inset-y-0 bg-white/45"

@@ -7,6 +7,7 @@ interface TelegramAdPreviewProps {
   text?: string;
   button?: string;
   className?: string;
+  showClose?: boolean;
 }
 
 const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
@@ -16,6 +17,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
   text,
   button,
   className = "min-h-[323px] w-[430px]",
+  showClose = true,
 }) => {
   const bgUrl = "/assets/AdPreviewBackground.jpg";
   const hasMedia = Boolean(mediaUrl);
@@ -34,16 +36,18 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
         backgroundColor: "#9fc18c",
       }}
     >
-      <button
-        type="button"
-        aria-label="Close preview"
-        className="absolute left-[316px] top-[26px] flex h-9 w-9 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
-      >
-        <img src={closeIcon} alt="" className="h-6 w-6" />
-      </button>
+      {showClose && (
+        <button
+          type="button"
+          aria-label="Close preview"
+          className="absolute left-[316px] top-[26px] flex h-9 w-9 items-center justify-center rounded-full bg-[#6f9561]/70 text-white"
+        >
+          <img src={closeIcon} alt="" className="h-6 w-6" />
+        </button>
+      )}
 
-      <div className="relative min-h-[323px] w-[328px]">
-        <div className="relative left-[34px] top-8 w-[260px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
+      <div className="relative min-h-[294px] w-full">
+        <div className="relative left-6 top-3 w-[280px] rounded-[14px] bg-white p-2 shadow-[0_8px_18px_rgba(64,92,63,0.18)]">
           <div className="absolute bottom-0 left-[-8px] h-0 w-0 border-r-[18px] border-t-[12px] border-r-white border-t-transparent" />
           <div className="relative overflow-hidden rounded-[8px] bg-[#eef6ff]">
             <div className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#4da3df]" />
@@ -53,7 +57,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
                 {mediaType === "video" ? (
                   <video
                     src={mediaUrl}
-                    className="h-[118px] w-full rounded-[3px] object-cover"
+                    className="h-[136px] w-full rounded-[3px] object-cover"
                     autoPlay
                     loop
                     muted
@@ -63,7 +67,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
                   <img
                     src={mediaUrl}
                     alt="Preview"
-                    className="h-[118px] w-full rounded-[3px] object-cover"
+                    className="h-[136px] w-full rounded-[3px] object-cover"
                   />
                 )}
               </div>

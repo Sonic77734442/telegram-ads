@@ -14,10 +14,10 @@ export default function AdPageLayout() {
       <Header />
       <Container>
         <div className="border-t border-[#e6e6e6]" />
-        <div className="mt-6">
+        <div className="mt-8">
           <TabBar adId={adId} activeTab="edit" />
         </div>
-        <div className="mt-6">
+        <div className="mt-2">
           <Outlet />
         </div>
       </Container>

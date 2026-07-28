@@ -15,14 +15,14 @@ export default function TabBar({
   if (!adId) return null;
 
   const linkStyle =
-    "text-[14px] font-semibold px-3 py-[6px] rounded-full transition";
-  const activeStyle = "bg-[#139af5] text-white";
+    "rounded-full px-[11px] pb-[5px] pt-[6px] text-[14px] font-medium leading-4 transition";
+  const activeStyle = "bg-[#58a6e7] text-white";
   const isStatsPath = location.pathname.endsWith("/stats");
   const isInfoActive = !isStatsPath && activeTab === "edit";
 
   return (
-    <div className="flex items-center justify-between pb-2 px-2">
-      <div className="flex gap-3">
+    <div className="flex h-[35px] items-start justify-between">
+      <div className="flex gap-1">
         {/* ✅ Info ведёт на /create?id=... */}
         <button
           onClick={() => {
@@ -33,6 +33,10 @@ export default function TabBar({
         >
           Info
         </button>
+
+        <span className={`${linkStyle} cursor-default text-[#0288db]`}>
+          Budget
+        </span>
 
         <NavLink
           to={`/ad/${adId}/stats`}

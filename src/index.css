@@ -5,7 +5,11 @@
    Telegram Ads Base Styles
    ========================== */
 
-html, body {
+html {
+  font-size: 16px;
+}
+
+body {
   font-family: Roboto, sans-serif;
   font-size: 13px;
   line-height: 18px;
