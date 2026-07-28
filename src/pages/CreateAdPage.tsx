@@ -55,7 +55,7 @@ export default function CreateAdPage() {
   }, [adId]);
 
   return (
-    <div className="min-h-screen bg-white border-t">
+    <div className="min-h-screen bg-white">
       <Header />
 
       <Container>
