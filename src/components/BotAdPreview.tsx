@@ -125,7 +125,12 @@ export default function BotAdPreview({
           />
           Welcome aboard! You can now tap the
           <br />
-          button below to start this bot 🤖
+          button below to start this bot{" "}
+          <img
+            src="https://telegram.org/img/emoji/40/F09FA496.png"
+            alt="🤖"
+            className="inline-block h-[16px] w-[16px] align-[-3px]"
+          />
           <span className="ml-[8px] text-[11px] leading-[13px] text-[#aaa]">9:00</span>
         </div>
         <button
