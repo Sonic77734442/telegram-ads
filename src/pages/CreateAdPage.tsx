@@ -32,13 +32,13 @@ const tabFromCampaign = (campaign?: any): TargetTab => {
 };
 
 export default function CreateAdPage() {
-  const [activeTab, setActiveTab] = useState<TargetTab>("channels");
+  const [activeTab, setActiveTab] = useState<TargetTab>("search");
   const [subTab, setSubTab] = useState<"edit" | "stats">("edit");
   const adId = useAdId();
 
   useEffect(() => {
     if (!adId) {
-      setActiveTab("channels");
+      setActiveTab("search");
       return;
     }
 
@@ -62,23 +62,25 @@ export default function CreateAdPage() {
         <div className="border-t border-[#e6e6e6]" />
 
         {!adId && (
-          <div className="mt-6 mb-4 flex flex-wrap items-center justify-between">
-            <h4 className="text-[19.5px] leading-[27px] font-semibold tracking-[-0.2px] text-[#212121]">
+          <div className="mb-[10px] mt-[16px] flex h-[27px] items-stretch justify-between">
+            <h4 className="h-[27px] w-[330px] px-[13px] pb-[3px] pt-[5px] text-[16px] font-bold leading-[19px] text-[#222]">
               Create Your Ad
             </h4>
 
-            <div className="flex flex-wrap items-center gap-2 text-[14px]">
-              <span className="font-medium text-gray-700">Target:</span>
+            <div className="flex h-[27px] items-stretch text-[14px] leading-[16px]">
+              <span className="px-[4px] pb-[5px] pt-[6px] font-medium text-[#222]">
+                Target:
+              </span>
               {(["search", "bots", "users", "channels"] as TargetTab[]).map(
                 (tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setActiveTab(tab)}
-                    className={`rounded-full border px-3 py-[4px] text-sm font-medium transition-all duration-150 ${
+                    className={`ml-[5px] h-[27px] rounded-[14px] px-[12px] text-[14px] font-bold leading-[18px] transition-colors ${
                       activeTab === tab
-                        ? "border-[#22A3F5] bg-[#22A3F5] text-white"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-[#22A3F5] hover:text-[#22A3F5]"
+                        ? "bg-[#119af5] text-white"
+                        : "bg-white text-[#5288b1] hover:text-[#0278c1]"
                     }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -95,7 +97,7 @@ export default function CreateAdPage() {
           </div>
         )}
 
-        <div className={adId ? "mt-[15px]" : "mt-6"}>
+        <div className={adId ? "mt-[15px]" : ""}>
           {activeTab === "channels" && <ChannelAdForm />}
           {activeTab === "users" && <UserAdForm />}
           {activeTab === "bots" && <BotAdForm />}

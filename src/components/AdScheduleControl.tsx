@@ -83,16 +83,16 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
   return (
     <>
       <div className="flex flex-col gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-3 text-[14px] leading-5 text-[#222]">
+        <label className="inline-flex cursor-pointer items-center gap-[12px] text-[14px] leading-5 text-[#222]">
           <input
             type="checkbox"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             className="peer sr-only"
           />
-          <span className="flex h-[21px] w-[21px] items-center justify-center rounded-[4px] border border-[#b8b8b8] bg-white peer-checked:border-[#5a9fec] peer-checked:bg-[#5a9fec]">
+          <span className="flex h-[17px] w-[17px] items-center justify-center rounded-[2px] border border-[#aaa] bg-white peer-checked:border-[#5a9fec] peer-checked:bg-[#5a9fec]">
             {checked && (
-              <svg width="15" height="12" viewBox="0 0 15 12" aria-hidden="true">
+              <svg width="13" height="10" viewBox="0 0 15 12" aria-hidden="true">
                 <path
                   d="M1.5 6.1 5.4 10 13.5 1.5"
                   fill="none"
