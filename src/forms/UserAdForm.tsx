@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import MultiSelect from "../components/MultiSelect";
@@ -359,7 +359,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <Input placeholder="E.g. My first ad" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
 
-          <Field label="Ad text">
+          <Field label="Ad text" info>
             <Textarea rows={3} placeholder="Enter your ad text" value={text} onChange={(e) => setText(e.target.value)} />
             <Hint>
               You can add custom emoji using{" "}
@@ -404,7 +404,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
           <Checkbox label="Show picture" checked={showUserPic} onChange={(e) => setShowUserPic(e.target.checked)} />
 
-          <Field label="Ad photo or video">
+          <Field label="Ad photo or video" info>
             <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFileUpload} className="hidden" />
             <div className="rounded-md overflow-hidden border bg-gray-50">
               {mediaUrl ? (
@@ -602,14 +602,14 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <TelegramAdPreview title={title} text={text} button={adButton} mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
           </Field>
 
-          <Field label="Ad placement">
+          <Field label="Ad placement" info>
             <div className="flex flex-col gap-2 pl-6">
               <Radio label="Message in Channel" checked={placement === "message"} onChange={() => setPlacement("message")} />
               <Radio label="Banner in Video" checked={placement === "banner"} onChange={() => setPlacement("banner")} />
             </div>
           </Field>
 
-          <Field label="Target countries">
+          <Field label="Target countries" info>
             <MultiSelect value={countries} options={COUNTRIES} onChange={setCountries} locked disabled={targetLocked} />
           </Field>
 		  
@@ -634,15 +634,15 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 
 
-          <Field label="Target user languages">
+          <Field label="Target user languages" info>
             <MultiSelect value={langs} options={LANGS} onChange={setLangs} placeholder="Select languages (optional)" locked disabled={targetLocked} />
           </Field>
 
-          <Field label="Target topics">
+          <Field label="Target topics" info>
             <MultiSelect value={topics} options={TOPICS} onChange={setTopics} placeholder="Select topics (optional)" locked disabled={targetLocked} />
           </Field>
 
-          <Field label="Target channel audiences">
+          <Field label="Target channel audiences" info>
             <TagInput value={targetChannels} onChange={setTargetChannels} placeholder="t.me channel URL (optional)" locked disabled={targetLocked} />
           </Field>
 
@@ -657,7 +657,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             />
           </Field>
 
-          <Field label="Target device type">
+          <Field label="Target device type" info>
             <div className="relative">
               <select
                 value={devices[0] || "All devices"}
@@ -686,7 +686,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             disabled={targetLocked}
           />
 
-          <Field label="Exclude topics">
+          <Field label="Exclude topics" info>
             <MultiSelect value={exTopics} options={TOPICS} onChange={setExTopics} placeholder="Select topics to exclude (optional)" locked disabled={targetLocked} />
           </Field>
 		  
@@ -775,28 +775,77 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 /* ──────────────── helpers ──────────────── */
-const Field = ({ label, info, trailing, children }: any) => (
-  <div className="pt-[7px]">
-    {label && (
-      <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
-        <span className="flex items-center gap-1">
-          {label}
-          {info && <InfoIcon />}
-        </span>
-        {trailing}
-      </label>
-    )}
-    {children}
-  </div>
-);
+const FIELD_HINTS: Record<string, string> = {
+  "Ad title": "Only displayed in the ad interface.",
+  "Ad text": "This is what your target audience will see.",
+  "URL you want to promote": "The button below the ad will open this link.",
+  "Website name": "This name will be shown above the ad text.",
+  "Ad photo or video": "Upload an image or video that will be displayed in your ad.",
+  "Ad Button": "This text will be shown on the button below the ad.",
+  "CPM in Euro": "Price per 1000 impressions.",
+  "Daily budget in Euro": "The maximum amount can be spent daily.",
+  "Daily views limit per user": "Choose how often this ad may be shown to the same user during one day",
+  "Ad status": "This status will be applied to the ad if the ad has a positive balance.",
+  "Start date": "Select the date and time when the ad needs to be launched.",
+  "Ad Schedule": "Select an hourly schedule according to which the ad will be displayed.",
+  "Conversion event": "Select which action you want the user to take on your website.",
+  "Other information": "Only displayed in the ad interface.",
+  "Ad placement": "This defines where the ad will be displayed.",
+  "Target countries": "Target users from countries listed here.",
+  "Target locations": "Target users from locations listed here (i.e., city, populated area, district, etc).",
+  "Target user languages": "Target all users that use languages listed here.",
+  "Target topics": "List target topics you are interested in (optional).",
+  "Target channel audiences": "Target the audience of specific channels listed here (optional).",
+  "Target audiences": "Target audiences listed here (optional).",
+  "Target device type": "Target users using the selected device type",
+  "Exclude topics": "List topics you’d like to exclude even if the user matches some of your target topics (optional).",
+  "Exclude channel audiences": "List specific channels whose audience you'd like to exclude (optional).",
+  "Exclude audiences": "List audiences you’d like to exclude even if they match your target options (optional).",
+};
 
-const InfoIcon = () => (
-  <svg className="w-[12px] h-[12px] text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-    <circle cx="10" cy="10" r="9" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    <circle cx="10" cy="6" r="1" fill="currentColor" />
-    <rect x="9" y="9" width="2" height="7" rx="1" fill="currentColor" />
-  </svg>
-);
+const Field = ({ label, info, trailing, children }: any) => {
+  const hintText = typeof info === "string" ? info : info ? FIELD_HINTS[label] : "";
+
+  return (
+    <div className="pt-[7px]">
+      {label && (
+        <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
+          <span className="flex items-center">
+            {label}
+            {hintText && <InfoIcon text={hintText} />}
+          </span>
+          {trailing}
+        </label>
+      )}
+      {children}
+    </div>
+  );
+};
+
+const InfoIcon = ({ text }: { text: string }) => {
+  const tooltipId = useId();
+
+  return (
+    <span
+      tabIndex={0}
+      aria-describedby={tooltipId}
+      className="group relative left-[-2px] mx-[1px] inline-block h-[18px] w-[18px] shrink-0 cursor-help align-top outline-none"
+    >
+      <svg aria-hidden="true" viewBox="0 0 18 18" className="h-[18px] w-[18px]">
+        <circle cx="9" cy="9.5" r="5.6" fill="none" stroke="#222" strokeWidth="1.2" />
+        <circle cx="9" cy="7.2" r="1" fill="#222" />
+        <path d="M9 12.1V9.278" fill="none" stroke="#222" strokeWidth="1.27" />
+      </svg>
+      <span
+        id={tooltipId}
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-[35px] left-[-37px] z-50 w-max max-w-[350px] rounded-[8px] bg-[rgba(32,36,38,0.85)] px-3 pb-[9px] pt-[10px] text-[13px] font-normal leading-4 text-white opacity-0 transition-opacity duration-100 after:absolute after:left-[36px] after:top-full after:h-0 after:w-0 after:border-l-[9px] after:border-r-[9px] after:border-t-[8px] after:border-l-transparent after:border-r-transparent after:border-t-[rgba(32,36,38,0.85)] group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+};
 
 const SummaryIcon = ({ type }: { type: "plus" | "minus" }) => (
   <img
