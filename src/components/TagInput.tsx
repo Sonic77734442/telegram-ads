@@ -52,7 +52,7 @@ export default function TagInput({ value, onChange, placeholder, locked = false,
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="min-w-[120px] flex-1 text-sm outline-none"
+        className="min-w-[120px] flex-1 text-[14px] leading-[18px] outline-none"
         disabled={disabled}
       />
       {locked && <img src={LOCK_ICON} alt="" className="pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2" />}

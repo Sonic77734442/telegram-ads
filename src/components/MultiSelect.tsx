@@ -77,7 +77,7 @@ export default function MultiSelect({ value, options = [], onChange, placeholder
           ref={inputRef}
           type="text"
           placeholder={value.length === 0 ? placeholder : ""}
-          className="min-w-[120px] flex-1 border-none bg-transparent px-1 py-[3px] text-sm focus:outline-none"
+          className="min-w-[120px] flex-1 border-none bg-transparent px-1 py-[3px] text-[14px] leading-[18px] focus:outline-none"
           onFocus={() => {
             if (!disabled) setOpen(true);
           }}
@@ -91,7 +91,7 @@ export default function MultiSelect({ value, options = [], onChange, placeholder
       {locked && <img src={LOCK_ICON} alt="" className="pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2" />}
 
       {open && filteredOptions.length > 0 && (
-        <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-sm shadow">
+        <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded border bg-white text-[14px] leading-[18px] shadow">
           {filteredOptions.map((option) => (
             <div
               key={option}

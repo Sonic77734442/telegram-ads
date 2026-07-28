@@ -83,7 +83,7 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
   return (
     <>
       <div className="flex flex-col gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-3 text-[15px] leading-[22px] text-[#222]">
+        <label className="inline-flex cursor-pointer items-center gap-3 text-[14px] leading-5 text-[#222]">
           <input
             type="checkbox"
             checked={checked}
@@ -137,7 +137,7 @@ export default function AdScheduleControl({ checked, onChange }: Props) {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="mx-auto mt-1 block text-[14px] leading-[20px] text-[#5288b1] hover:text-[#3e769f]"
+              className="mx-auto mt-1 block text-[13px] leading-[18px] text-[#0288db] hover:text-[#0278c1]"
             >
               Edit Schedule
             </button>

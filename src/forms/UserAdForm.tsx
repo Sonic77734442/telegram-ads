@@ -421,7 +421,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             </div>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 flex h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[6px] bg-[#22A3F5] font-semibold text-white hover:bg-[#1D8ED5]"
+              className="mt-2 flex h-[40px] cursor-pointer items-center justify-center gap-2 rounded-[6px] bg-[#119af5] text-[14px] font-semibold leading-5 text-white hover:bg-[#0d8de0]"
             >
               {mediaUrl && <img src={MEDIA_BUTTON_ICON} alt="" className="h-5 w-5" />}
               <span>{mediaUrl ? "Change Media" : "Upload Photo or Video"}</span>
@@ -432,7 +432,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <select
               value={adButton}
               onChange={(e) => setAdButton(e.target.value)}
-              className="min-h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white py-[11px] pl-[13px] pr-10 text-[14px] leading-[18px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             >
               {AD_BUTTON_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -498,9 +498,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                   key={n}
                   type="button"
                   onClick={() => setDailyViews(n)}
-                  className={`h-[32px] w-[75.3px] rounded-[6px] border text-[13px] font-medium ${
+                  className={`h-[32px] w-[74px] rounded-[6px] border px-[15px] py-[6px] text-[14px] font-semibold leading-5 ${
                     n === dailyViews
-                      ? "bg-[#22A3F5] text-white border-[#22A3F5]"
+                      ? "border-[#119af5] bg-[#119af5] text-white"
                       : "bg-white text-gray-700 border-[#d9d9d9] hover:bg-gray-100"
                   }`}
                 >
@@ -663,7 +663,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                 value={devices[0] || "All devices"}
                 onChange={(e) => setDevices([e.target.value])}
                 disabled={targetLocked}
-                className="min-h-[40px] w-full appearance-none rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] pr-10 text-[#222] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-default"
+                className="h-[40px] w-full appearance-none rounded-[4px] border border-[#d9d9d9] bg-white py-[11px] pl-[13px] pr-10 text-[14px] leading-[18px] text-[#222] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:cursor-default"
               >
                 {DEVICES.map((option) => (
                   <option key={option} value={option}>
@@ -733,7 +733,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       {adId ? (
         <div className="mt-8 flex items-center justify-between border-t border-[#e6e6e6] pb-8 pt-6">
-          <p className="text-[15px] leading-[22px] text-[#222]">
+          <p className="text-[15px] leading-[18px] text-[#222]">
             Changes will become visible to users once they are approved by the moderators.
           </p>
           <button
@@ -904,19 +904,19 @@ const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
 const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea
     {...props}
-    className="h-[76px] w-full resize-none rounded-[4px] border border-[#d9d9d9] bg-white px-[13px] py-[11px] text-[14px] leading-[18px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    className="block h-[76px] w-full resize-none rounded-[4px] border border-[#d9d9d9] bg-white px-[13px] py-[11px] text-[14px] leading-[18px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
   />
 );
 
 const Checkbox = ({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: React.ReactNode }) => (
-  <label className="mx-[13px] inline-flex h-[20px] items-center gap-2 text-[14px] leading-5 cursor-pointer">
+  <label className="mx-[13px] mt-[4px] inline-flex h-[20px] items-center gap-2 text-[14px] leading-5 cursor-pointer">
     <input {...rest} type="checkbox" className="accent-blue-600" />
     {label}
   </label>
 );
 
 const Radio = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) => (
-  <label className="inline-flex items-center gap-2 cursor-pointer">
+  <label className="inline-flex items-center gap-2 text-[14px] leading-5 cursor-pointer">
     <input type="radio" checked={checked} onChange={onChange} className="accent-blue-600" />
     {label}
   </label>
@@ -929,9 +929,13 @@ const Button = ({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElem
 );
 
 const LinkLbl = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-  <span onClick={onClick} className="text-blue-600 text-[12px] cursor-pointer hover:underline select-none">
+  <span onClick={onClick} className="cursor-pointer select-none text-[13px] font-normal leading-[18px] text-[#0288db] hover:underline">
     {children}
   </span>
 );
 
-const Hint = ({ children }: { children: React.ReactNode }) => <p className="text-[11px] text-gray-500">{children}</p>;
+const Hint = ({ children }: { children: React.ReactNode }) => (
+  <p className="h-[22px] px-[13px] pb-0 pt-[5px] text-[12px] leading-[17px] text-[#808080] [&_span]:text-[12px] [&_span]:leading-[17px]">
+    {children}
+  </p>
+);
