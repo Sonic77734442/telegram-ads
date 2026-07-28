@@ -32,7 +32,6 @@ export default function AdStats() {
   const [statsData, setStatsData] = useState<(StatPointDay | StatPoint5m)[]>([]);
 
   // second chart (Spent budget)
-  const [budgetRange, setBudgetRange] = useState<Range>("days");
   const [budgetData, setBudgetData] = useState<(BudgetPointDay | BudgetPoint5m)[]>([]);
 
   // reports
@@ -96,6 +95,20 @@ export default function AdStats() {
       clicks: Number(r.clicks ?? 0),
       video_opens: Number(r.video_opens ?? 0),
     }));
+  };
+
+  const loadBudgetFromApi = async (range: Range) => {
+    const resp = await fetch(`/api/budget-stats?ad_id=${adId}&range=${range}`);
+    const json = await resp.json();
+
+    if (!resp.ok || json.error) {
+      throw new Error(json.error || `Budget stats API failed (${resp.status})`);
+    }
+
+    return (json.data || []).map((row: any) => ({
+      ...(range === "days" ? { date: row.date } : { ts: row.ts }),
+      amount: Number(row.amount || 0),
+    })) as (BudgetPointDay | BudgetPoint5m)[];
   };
 
   const reportsTotal = useMemo(
@@ -200,6 +213,18 @@ const multiplier =
     })();
   }, [adId, statsRange, monthTabs, selectedMonth]);
 
+  useEffect(() => {
+    if (!adId) return;
+    (async () => {
+      try {
+        setBudgetData(await loadBudgetFromApi(statsRange));
+      } catch (error) {
+        console.error("budget stats api error:", error);
+        setBudgetData([]);
+      }
+    })();
+  }, [adId, statsRange]);
+
    // load reports (table)
   useEffect(() => {
     if (!adId || !selectedMonth) return;
@@ -215,65 +240,20 @@ const multiplier =
   }, [adId, selectedMonth]);
 
 
-  // csv helpers
-  const downloadCSV = (rows: any[], fileName: string) => {
-  if (!rows?.length) return;
-
-  const separator = ";"; // под Windows/Excel на русском нужен ;
-
-  const headers = Object.keys(rows[0]);
-
-  const csvLines: string[] = [];
-
-  // заголовок
-  csvLines.push(headers.join(separator));
-
-  // строки
-  for (const row of rows) {
-    const line = headers
-      .map((h) => {
-        const raw = row[h] ?? "";
-        const value = String(raw).replace(/"/g, '""'); // эскейпим кавычки
-        return `"${value}"`; // каждое значение в кавычках
-      })
-      .join(separator);
-    csvLines.push(line);
-  }
-
-  const csv = csvLines.join("\n");
-
-  const blob = new Blob(["\uFEFF" + csv], {
-    // BOM чтобы Excel нормально понял UTF-8
-    type: "text/csv;charset=utf-8;",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-
-  // экспорт для клиента из v_ad_export_client_flat
-  const exportClientReport = async () => {
+  const downloadServerCSV = (
+    type: "stats" | "budget" | "reports",
+    options: { range?: Range; month?: string } = {}
+  ) => {
     if (!adId) return;
-    const { data, error } = await supabase
-      .from("v_ad_export_client_flat")
-      .select(
-        `"Ad ID","Title","Date","Views","Opens","Clicks","Joins","CPC","CTR","CPA","CPO","Spent Budget"`
-      )
-      .eq("ad_id", adId); // служебная колонка из view
-
-    if (error) {
-      console.error("client export error:", error.message);
-      return;
-    }
-    if (!data || !data.length) {
-      alert("Нет данных для экспорта");
-      return;
-    }
-    downloadCSV(data as any[], `ad_${adId}_client_report.csv`);
+    const params = new URLSearchParams({ ad_id: adId, type });
+    if (options.range) params.set("range", options.range);
+    if (options.month) params.set("ym", options.month);
+    const anchor = document.createElement("a");
+    anchor.href = `/api/export-csv?${params.toString()}`;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   };
 
   if (!adId) return <div className="p-4">⚠️ No ad ID</div>;
@@ -340,23 +320,42 @@ const multiplier =
         </div>
 
         {/* ========== STATISTICS (top chart) ========== */}
-        <SectionHeader
-          title="Statistics"
-          right={<RangeToggle value={statsRange} onChange={setStatsRange} />}
-          periodLabel={getStatsPeriodLabel(statsData, statsRange)}
-        />
-        <TelegramStatsChart
-          range={statsRange}
-          data={statsData}
-          onCSV={() => downloadCSV(statsData as any[], `stats_${statsRange}.csv`)}
-        />
-        <div className="text-xs text-gray-500 leading-tight">
-          * Time and date shown in UTC.
-          <br />
-          ** Click statistics are available as of August 8, 2023.
-          <br />
-          *** Video open statistics are available as of October 7, 2023.
-        </div>
+        <section className="space-y-2">
+          <SectionHeader
+            title="Statistics"
+            right={<RangeToggle value={statsRange} onChange={setStatsRange} />}
+            periodLabel={getStatsPeriodLabel(statsData, statsRange)}
+          />
+          <TelegramStatsChart
+            range={statsRange}
+            data={statsData}
+            onCSV={() => downloadServerCSV("stats", { range: statsRange })}
+          />
+          <div className="text-xs text-gray-500 leading-tight">
+            * Time and date shown in UTC.
+            <br />
+            ** Click statistics are available as of August 8, 2023.
+            <br />
+            *** Video open statistics are available as of October 7, 2023.
+          </div>
+        </section>
+
+        {/* ========== SPENT BUDGET ========== */}
+        <section className="space-y-2">
+          <SectionHeader
+            title=""
+            periodLabel={getStatsPeriodLabel(budgetData, statsRange)}
+          />
+          <TelegramStatsChart
+            kind="budget"
+            range={statsRange}
+            data={budgetData}
+            onCSV={() => downloadServerCSV("budget", { range: statsRange })}
+          />
+          <div className="text-xs leading-tight text-gray-500">
+            * Time and date shown in UTC.
+          </div>
+        </section>
 
         {/* ========== REPORTS TABLE ========== */}
         <div className="flex items-center gap-3 justify-end">
@@ -432,11 +431,7 @@ const multiplier =
         </div>
         <div className="flex justify-end">
           <button
-            onClick={
-              role === "client"
-                ? exportClientReport
-                : () => downloadCSV(reports as any[], `reports_${selectedMonth}.csv`)
-            }
+            onClick={() => downloadServerCSV("reports", { month: selectedMonth })}
             className="text-blue-700 hover:bg-blue-100 rounded-full px-3 py-1 text-sm"
           >
             CSV

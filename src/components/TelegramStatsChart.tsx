@@ -7,17 +7,22 @@ type Range = "days" | "5min";
 type StatsPoint = {
   date?: string;
   ts?: string;
-  views: number;
-  clicks: number;
-  video_opens: number;
+  views?: number;
+  clicks?: number;
+  video_opens?: number;
+  amount?: number;
 };
 
-type SeriesKey = "views" | "video_opens" | "clicks";
+type SeriesKey = "views" | "video_opens" | "clicks" | "amount";
 
 const SERIES: Array<{ key: SeriesKey; label: string; color: string }> = [
   { key: "views", label: "Views", color: "#0086d3" },
   { key: "video_opens", label: "Opened video", color: "#65b9ac" },
   { key: "clicks", label: "Clicks", color: "#73c03a" },
+];
+
+const BUDGET_SERIES: Array<{ key: SeriesKey; label: string; color: string }> = [
+  { key: "amount", label: "Spent budget", color: "#0086d3" },
 ];
 
 const numberFormatter = new Intl.NumberFormat("en-US");
@@ -80,10 +85,12 @@ export default function TelegramStatsChart({
   range,
   data,
   onCSV,
+  kind = "statistics",
 }: {
   range: Range;
   data: StatsPoint[];
   onCSV: () => void;
+  kind?: "statistics" | "budget";
 }) {
   const mainRef = useRef<HTMLDivElement | null>(null);
   const navigatorRef = useRef<HTMLDivElement | null>(null);
@@ -91,6 +98,7 @@ export default function TelegramStatsChart({
     views: true,
     video_opens: true,
     clicks: true,
+    amount: true,
   });
   const [windowPercent, setWindowPercent] = useState<[number, number]>([0, 100]);
   const [tooltip, setTooltip] = useState<{
@@ -98,6 +106,7 @@ export default function TelegramStatsChart({
     left: number;
     top: number;
   } | null>(null);
+  const chartSeries = kind === "budget" ? BUDGET_SERIES : SERIES;
 
   const parsed = useMemo(() => {
     return data
@@ -115,11 +124,11 @@ export default function TelegramStatsChart({
     const x = parsed.map((item) => item.timestamp / 1000);
     return [
       x,
-      parsed.map((item) => Number(item.point.views || 0)),
-      parsed.map((item) => Number(item.point.video_opens || 0)),
-      parsed.map((item) => Number(item.point.clicks || 0)),
+      ...chartSeries.map((series) =>
+        parsed.map((item) => Number(item.point[series.key] || 0))
+      ),
     ] as uPlot.AlignedData;
-  }, [parsed]);
+  }, [chartSeries, parsed]);
 
   const visibleBounds = useMemo(() => {
     if (!parsed.length) return { start: 0, end: 0 };
@@ -178,32 +187,21 @@ export default function TelegramStatsChart({
             font: "12px Roboto, sans-serif",
             grid: { show: true, stroke: "rgba(24, 45, 59, 0.1)", width: 1 },
             ticks: { show: false },
-            values: (_u, values) => values.map(formatCompact),
+            values: (_u, values) =>
+              values.map((value) =>
+                kind === "budget" ? `€ ${value.toFixed(3)}` : formatCompact(value)
+              ),
           },
         ],
         series: [
           {},
-          {
-            label: "Views",
-            stroke: SERIES[0].color,
+          ...chartSeries.map((series) => ({
+            label: series.label,
+            stroke: series.color,
             width: 2,
-            show: active.views,
+            show: active[series.key],
             paths: stepped,
-          },
-          {
-            label: "Opened video",
-            stroke: SERIES[1].color,
-            width: 2,
-            show: active.video_opens,
-            paths: stepped,
-          },
-          {
-            label: "Clicks",
-            stroke: SERIES[2].color,
-            width: 2,
-            show: active.clicks,
-            paths: stepped,
-          },
+          })),
         ],
         hooks: {
           setCursor: [
@@ -234,7 +232,7 @@ export default function TelegramStatsChart({
       observer.disconnect();
       plot?.destroy();
     };
-  }, [active, range, visibleData]);
+  }, [active, chartSeries, kind, range, visibleData]);
 
   useEffect(() => {
     if (!navigatorRef.current || fullData[0].length === 0) return;
@@ -258,9 +256,12 @@ export default function TelegramStatsChart({
           scales: { x: { time: true }, y: { auto: true, range: (_u, min, max) => [Math.min(0, min), max || 1] } },
           series: [
             {},
-            { stroke: SERIES[0].color, width: 1, show: active.views, paths: stepped },
-            { stroke: SERIES[1].color, width: 1, show: active.video_opens, paths: stepped },
-            { stroke: SERIES[2].color, width: 1, show: active.clicks, paths: stepped },
+            ...chartSeries.map((series) => ({
+              stroke: series.color,
+              width: 1,
+              show: active[series.key],
+              paths: stepped,
+            })),
           ],
         },
         fullData,
@@ -275,7 +276,7 @@ export default function TelegramStatsChart({
       observer.disconnect();
       plot?.destroy();
     };
-  }, [active, fullData]);
+  }, [active, chartSeries, fullData]);
 
   const beginDrag = (
     event: React.PointerEvent,
@@ -309,7 +310,7 @@ export default function TelegramStatsChart({
   };
 
   const toggleSeries = (key: SeriesKey) => {
-    const enabledCount = Object.values(active).filter(Boolean).length;
+    const enabledCount = chartSeries.filter((series) => active[series.key]).length;
     if (active[key] && enabledCount === 1) return;
     setActive((current) => ({ ...current, [key]: !current[key] }));
   };
@@ -330,12 +331,16 @@ export default function TelegramStatsChart({
             <div className="mb-1.5 text-[13px] font-bold tracking-[-0.015em]">
               {formatTooltipDate(tooltipPoint.timestamp, range)}
             </div>
-            {SERIES.map((series) =>
+            {chartSeries.map((series) =>
               active[series.key] ? (
                 <div key={series.key} className="mb-[7px] flex h-[14px] items-center justify-between gap-5 text-[13px]">
                   <span>{series.label}</span>
                   <strong style={{ color: series.color }}>
-                    {numberFormatter.format(Number(tooltipPoint.point[series.key] || 0)).replace(/,/g, "\u00a0")}
+                    {kind === "budget"
+                      ? `€ ${Number(tooltipPoint.point[series.key] || 0).toFixed(2)}`
+                      : numberFormatter
+                          .format(Number(tooltipPoint.point[series.key] || 0))
+                          .replace(/,/g, "\u00a0")}
                   </strong>
                 </div>
               ) : null
@@ -380,7 +385,7 @@ export default function TelegramStatsChart({
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3 px-4">
         <div className="flex flex-wrap gap-x-1.5">
-          {SERIES.map((series) => (
+          {chartSeries.map((series) => (
             <button
               type="button"
               key={series.key}
