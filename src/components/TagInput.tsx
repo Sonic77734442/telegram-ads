@@ -42,9 +42,19 @@ export default function TagInput({ value, onChange, placeholder, locked = false,
       {value.map((tag) => (
         <span
           key={tag}
-          className="flex h-[26px] items-center rounded-[3px] bg-[#22A3F5] px-2 text-[12px] font-semibold leading-[16px] text-white"
+          className="flex h-[26px] items-center gap-[6px] rounded-[3px] bg-[#5a9fec] px-2 text-[12px] font-semibold leading-[16px] text-white"
         >
           {tag}
+          {!locked && !disabled && (
+            <button
+              type="button"
+              aria-label={`Remove ${tag}`}
+              onClick={() => onChange(value.filter((item) => item !== tag))}
+              className="text-[18px] font-normal leading-[14px] text-white/90 hover:text-white"
+            >
+              ×
+            </button>
+          )}
         </span>
       ))}
       <input

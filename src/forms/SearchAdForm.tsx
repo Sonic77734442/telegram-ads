@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import TagInput from "../components/TagInput";
-import TelegramAdPreview from "../components/TelegramAdPreview";
+import SearchAdPreview from "../components/SearchAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
 import { supabase } from "../supabaseClient";
 import { useAdId } from "../hooks/useAdId";
@@ -320,7 +320,7 @@ export default function SearchAdForm() {
             Preview
           </div>
           {showPreview ? (
-            <TelegramAdPreview title={title} text="" button="SEND MESSAGE" />
+            <SearchAdPreview url={url} query={targetQueries[0] || ""} />
           ) : (
             <div className="flex h-[145px] items-center justify-center rounded-[5px] border border-[#d9d9d9] bg-[#f7f7f7] px-4 text-[14px] text-[#888]">
               Fill the required fields to preview your ad
@@ -338,7 +338,19 @@ export default function SearchAdForm() {
           </div>
 
           <div className="mt-[16px] flex flex-col gap-[7px] px-[4px]">
-            <NoticeIcon tone="danger" text="Will not be shown anywhere." />
+            <NoticeIcon
+              tone={targetQueries.length > 0 ? "success" : "danger"}
+              text={
+                targetQueries.length > 0 ? (
+                  <>
+                    Will be shown in search results for{" "}
+                    <strong>{targetQueries[0]}</strong>
+                  </>
+                ) : (
+                  "Will not be shown anywhere."
+                )
+              }
+            />
             <NoticeIcon
               tone="warning"
               text="Target parameters can't be changed after the ad is created."
@@ -496,18 +508,19 @@ const NoticeIcon = ({
   tone,
   text,
 }: {
-  tone: "danger" | "warning";
-  text: string;
+  tone: "danger" | "warning" | "success";
+  text: React.ReactNode;
 }) => {
   const danger = tone === "danger";
+  const success = tone === "success";
   return (
     <div className="flex h-[20px] items-center gap-[10px] text-[13px] leading-[20px] text-[#333]">
       <span
         className={`flex h-[16px] w-[16px] flex-none items-center justify-center rounded-full text-[12px] font-bold leading-none text-white ${
-          danger ? "bg-[#db4646]" : "bg-[#e1a539]"
+          danger ? "bg-[#db4646]" : success ? "bg-[#4fb84f]" : "bg-[#e1a539]"
         }`}
       >
-        {danger ? "−" : "!"}
+        {danger ? "−" : success ? "+" : "!"}
       </span>
       <span>{text}</span>
     </div>
