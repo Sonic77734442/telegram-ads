@@ -12,6 +12,53 @@ export default async function handler(req: any, res: any) {
         ? Math.round((value + Number.EPSILON) * 100) / 100
         : 0;
 
+    const getCampaignDayCount = (row: any, month?: string | null) => {
+      const now = new Date();
+      const campaignStart = new Date(row.start_date || row.created_at || now);
+      const configuredEnd = row.end_date ? new Date(row.end_date) : null;
+      const stoppedAt =
+        String(row.status || "").toLowerCase() === "active"
+          ? null
+          : new Date(row.updated_at || now);
+
+      let periodStart = campaignStart;
+      let periodEnd = configuredEnd || stoppedAt || now;
+
+      if (month) {
+        const monthStart = new Date(`${month}-01T00:00:00.000Z`);
+        const monthEnd = new Date(
+          Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0, 23, 59, 59, 999)
+        );
+        if (periodStart < monthStart) periodStart = monthStart;
+        if (periodEnd > monthEnd) periodEnd = monthEnd;
+      }
+
+      if (periodEnd > now) periodEnd = now;
+      if (
+        Number.isNaN(periodStart.getTime()) ||
+        Number.isNaN(periodEnd.getTime()) ||
+        periodEnd < periodStart
+      ) {
+        return 0;
+      }
+
+      return (
+        Math.floor(
+          (Date.UTC(
+            periodEnd.getUTCFullYear(),
+            periodEnd.getUTCMonth(),
+            periodEnd.getUTCDate()
+          ) -
+            Date.UTC(
+              periodStart.getUTCFullYear(),
+              periodStart.getUTCMonth(),
+              periodStart.getUTCDate()
+            )) /
+            86_400_000
+        ) + 1
+      );
+    };
+
     const {
       mode: queryMode,
       client_id: queryClientId,
@@ -329,6 +376,11 @@ export default async function handler(req: any, res: any) {
         actions !== null && actions > 0
           ? Number((roundMoney(spendClientRaw) / actions).toFixed(2))
           : null;
+      const campaignDayCount = getCampaignDayCount(row, ym);
+      const averageDailySpendNet =
+        campaignDayCount > 0 ? roundMoney(spendNetRaw / campaignDayCount) : 0;
+      const averageDailySpendClient =
+        campaignDayCount > 0 ? roundMoney(spendClientRaw / campaignDayCount) : 0;
 
       items.push({
         id: row.id,
@@ -361,6 +413,8 @@ export default async function handler(req: any, res: any) {
 
         spend_net: roundMoney(spendNetRaw),
         spend_client: roundMoney(spendClientRaw),
+        average_daily_spend_net: averageDailySpendNet,
+        average_daily_spend_client: averageDailySpendClient,
 
         ctr,
         cvr,

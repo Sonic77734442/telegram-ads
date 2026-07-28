@@ -12,6 +12,65 @@ const BOT_ICON =
 const SEARCH_ICON =
   "data:image/svg+xml,%3Csvg%20height%3D%2218%22%20viewBox%3D%220%200%2018%2018%22%20width%3D%2218%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%232b2b2b%22%20stroke-width%3D%222%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%228%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22m7%2011-3%203%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E";
 
+type ActionMenuIconName = "edit" | "info" | "clone" | "delete";
+
+function ActionMenuIcon({ name }: { name: ActionMenuIconName }) {
+  const commonClass =
+    "absolute left-[13px] top-1/2 h-[24px] w-[24px] -translate-y-1/2";
+
+  if (name === "edit") {
+    return (
+      <svg className={commonClass} viewBox="0 0 24 24" aria-hidden="true">
+        <g fill="none" fillRule="evenodd" stroke="#222" strokeWidth="1.2">
+          <path d="m5.5 20h3.06c.28 0 .55-.12.74-.32l9.47-10.25c.73-.8.7-2.03-.07-2.79l-1.22-1.19c-.79-.78-2.06-.76-2.83.03-.02.01-.03.03-.05.04l-9.34 10.19c-.17.19-.26.43-.26.68v3.11c0 .28.22.5.5.5z" />
+          <path d="m13.5 6.89 3.64 3.65" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (name === "info") {
+    return (
+      <svg className={commonClass} viewBox="0 0 24 24" aria-hidden="true">
+        <g fill="none" fillRule="evenodd">
+          <circle cx="12" cy="12" r="8" stroke="#222" strokeWidth="1.2" />
+          <path
+            d="M12 15.623992v-4.218672"
+            stroke="#222"
+            strokeLinecap="round"
+            strokeWidth="1.3"
+          />
+          <circle cx="12" cy="8.85" r="1" fill="#222" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (name === "clone") {
+    return (
+      <svg className={commonClass} viewBox="0 0 24 24" aria-hidden="true">
+        <g fill="none" fillRule="evenodd" stroke="#222" strokeWidth="1.2">
+          <path d="M16 7.1c.66 0 1.26.27 1.7.7.43.44.7 1.04.7 1.7v8c0 .66-.27 1.26-.7 1.7-.44.43-1.04.7-1.7.7h-5c-.66 0-1.26-.27-1.7-.7-.43-.44-.7-1.04-.7-1.7v-9c0-.39.16-.74.41-.99s.6-.41.99-.41z" />
+          <path d="M5.5 16V7c0-1.66 1.34-3 3-3h5.38" strokeLinecap="round" />
+        </g>
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={commonClass} viewBox="0 0 24 24" aria-hidden="true">
+      <g fill="none" fillRule="evenodd" stroke="#db4646" strokeWidth="1.2">
+        <path
+          d="M6.33 9.56c0 .01.5 3.04 1.51 9.11.02.45.46.81 1.01.81h6.36c.54 0 .99-.36 1-.81l1.32-8.89"
+          strokeLinecap="round"
+        />
+        <path d="M5 6.98h14" strokeLinecap="round" />
+        <path d="M9.03 6.98V5.5c0-.88.72-1.6 1.6-1.6h2.8c.88 0 1.6.72 1.6 1.6v1.64" />
+      </g>
+    </svg>
+  );
+}
+
 type AdRow = {
   id: string;
   title: string | null;
@@ -40,6 +99,8 @@ type AdRow = {
   budget_base?: number | string;
   cpm_base?: number | string;
   spend_base?: number | string;
+  average_daily_spend?: number | string;
+  average_daily_spend_base?: number | string;
 
   // НОВОЕ: явные поля из Supabase
   spend_raw?: number | string; // агентский спент
@@ -189,9 +250,16 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     defaultVisible: true,
     widthClass: "w-[85px]",
     format: (v, row) => (
-      <div>
+      <div className="h-[30px] overflow-hidden leading-[15px]">
         <div>€{(Number(v) || 0).toFixed(2)}</div>
-        <div>€{(Number(row.spend_base) || 0).toFixed(2)}</div>
+        <div
+          className="text-[11px]"
+          title={`Average daily spend: €${(
+            Number(row.average_daily_spend) || 0
+          ).toFixed(2)}`}
+        >
+          €{(Number(row.average_daily_spend) || 0).toFixed(2)}
+        </div>
       </div>
     ),
   },
@@ -514,6 +582,8 @@ export default function AdTable({
 
         spend: c.spend_client,
         spend_base: c.spend_net,
+        average_daily_spend: c.average_daily_spend_client,
+        average_daily_spend_base: c.average_daily_spend_net,
 
         ctr: c.ctr,
         cvr: c.cvr,
@@ -900,11 +970,17 @@ export default function AdTable({
                         }
                         className="inline-flex h-[18px] w-[18px] items-center justify-center rounded hover:bg-black/5"
                       >
-                        <span className="flex h-[14px] flex-col items-center justify-center gap-[2px]">
-                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
-                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
-                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
-                        </span>
+                        <svg
+                          className="h-[24px] w-[24px] max-w-none flex-none"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <g fill="#2b2b2b" fillRule="evenodd">
+                            <circle cx="12" cy="16.7" r="1.6" />
+                            <circle cx="12" cy="12" r="1.6" />
+                            <circle cx="12" cy="7.3" r="1.6" />
+                          </g>
+                        </svg>
                       </button>
 
                       {openActionId === ad.id && (
@@ -919,29 +995,33 @@ export default function AdTable({
                             <Link
                               to={`/create?id=${ad.id}`}
                               onClick={() => setOpenActionId(null)}
-                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                              className="relative block overflow-hidden text-ellipsis whitespace-nowrap py-[7px] pl-[50px] pr-[25px] text-[#222] hover:bg-[#f2f5f7]"
                             >
+                              <ActionMenuIcon name="edit" />
                               Edit Title
                             </Link>
                             <Link
                               to={`/create?id=${ad.id}`}
                               onClick={() => setOpenActionId(null)}
-                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                              className="relative block overflow-hidden text-ellipsis whitespace-nowrap py-[7px] pl-[50px] pr-[25px] text-[#222] hover:bg-[#f2f5f7]"
                             >
+                              <ActionMenuIcon name="info" />
                               View Detailed Info
                             </Link>
                             <Link
                               to={`/ad/new?clone=${encodeURIComponent(ad.id)}`}
                               onClick={() => setOpenActionId(null)}
-                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                              className="relative block overflow-hidden text-ellipsis whitespace-nowrap py-[7px] pl-[50px] pr-[25px] text-[#222] hover:bg-[#f2f5f7]"
                             >
+                              <ActionMenuIcon name="clone" />
                               Create Similar Ad
                             </Link>
                             <button
                               type="button"
                               onClick={() => handleDeleteAd(ad)}
-                              className="block w-full px-[14px] py-[7px] text-left text-[#d64d4d] hover:bg-[#f2f5f7]"
+                              className="relative block w-full overflow-hidden text-ellipsis whitespace-nowrap py-[7px] pl-[50px] pr-[25px] text-left text-[#db4646] hover:bg-[#f2f5f7]"
                             >
+                              <ActionMenuIcon name="delete" />
                               Delete Ad
                             </button>
                             <div className="mx-[14px] mt-[5px] border-t border-[#e6e6e6] pt-[9px]">
