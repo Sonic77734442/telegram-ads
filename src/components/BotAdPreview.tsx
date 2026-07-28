@@ -121,7 +121,7 @@ export default function BotAdPreview({
             src={MESSAGE_BUBBLE_TAIL}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 left-[-7px] h-[16px] w-[8px]"
+            className="pointer-events-none absolute bottom-0 left-[-5px] h-[16px] w-[8px]"
           />
           Welcome aboard! You can now tap the
           <br />
