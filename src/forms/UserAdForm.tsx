@@ -352,9 +352,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   /* UI */
   return (
     <Container>
-      <div className="flex gap-10 py-6">
+      <div className="flex gap-[82px]">
         {/* LEFT */}
-        <form className="w-[320px] flex flex-col gap-5 text-[13px]">
+        <form className="flex w-[330px] shrink-0 flex-col gap-[7px] text-[15px] leading-[18px]">
           <Field label="Ad title" info trailing={<LinkLbl>Create a similar ad</LinkLbl>}>
             <Input placeholder="E.g. My first ad" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
@@ -597,9 +597,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         </form>
 
         {/* RIGHT */}
-        <div className="flex flex-col gap-5 text-[13px] flex-1">
-          <div className="mx-[13px] mb-[5px] flex h-[18px] items-center text-[14px] font-semibold leading-[19px] antialiased">Preview</div>
-          <TelegramAdPreview title={title} text={text} button={adButton} mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
+        <div className="flex w-[430px] shrink-0 flex-col gap-[7px] text-[15px] leading-[18px]">
+          <Field label="Preview">
+            <TelegramAdPreview title={title} text={text} button={adButton} mediaUrl={mediaUrl} mediaType={mediaType || undefined} />
+          </Field>
 
           <Field label="Ad placement">
             <div className="flex flex-col gap-2 pl-6">
@@ -738,7 +739,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <button
             type="button"
             onClick={onCreate}
-            className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
+            className="h-[46px] w-[217px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold leading-5 text-white transition hover:bg-[#0d8de0]"
           >
             Save Changes
           </button>
@@ -762,7 +763,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <button
               type="button"
               onClick={onCreate}
-              className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
+              className="h-[46px] w-[217px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold leading-5 text-white transition hover:bg-[#0d8de0]"
             >
               Create Ad
             </button>
@@ -775,7 +776,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /* ──────────────── helpers ──────────────── */
 const Field = ({ label, info, trailing, children }: any) => (
-  <div className="space-y-1">
+  <div className="pt-[7px]">
     {label && (
       <label className="mx-[13px] mb-[5px] flex h-[18px] items-center justify-between text-[14px] font-semibold leading-[19px] antialiased">
         <span className="flex items-center gap-1">
@@ -896,19 +897,19 @@ const TargetingSummary = ({
 const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
   <input
     {...props}
-    className={`min-h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${props.className || ""}`}
+    className={`h-[40px] w-full rounded-[4px] border border-[#d9d9d9] bg-white px-[13px] py-[11px] text-[14px] leading-[18px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ${props.className || ""}`}
   />
 );
 
 const Textarea = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea
     {...props}
-    className="min-h-[40px] w-full resize-none rounded-[4px] border border-[#d9d9d9] bg-white px-3 py-[5px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    className="h-[76px] w-full resize-none rounded-[4px] border border-[#d9d9d9] bg-white px-[13px] py-[11px] text-[14px] leading-[18px] focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
   />
 );
 
 const Checkbox = ({ label, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: React.ReactNode }) => (
-  <label className="inline-flex items-center gap-2 text-[13px] cursor-pointer">
+  <label className="mx-[13px] inline-flex h-[20px] items-center gap-2 text-[14px] leading-5 cursor-pointer">
     <input {...rest} type="checkbox" className="accent-blue-600" />
     {label}
   </label>

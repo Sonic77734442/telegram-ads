@@ -95,7 +95,7 @@ export default function CreateAdPage() {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className={adId ? "mt-[15px]" : "mt-6"}>
           {activeTab === "channels" && <ChannelAdForm />}
           {activeTab === "users" && <UserAdForm />}
           {activeTab === "bots" && <BotAdForm />}
