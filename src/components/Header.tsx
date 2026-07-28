@@ -13,6 +13,7 @@ const Header = () => {
   const userId = localStorage.getItem("user_id") || "";
   const agencyId = localStorage.getItem("agency_id") || "";
   const [markupPercent, setMarkupPercent] = useState(0);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -92,6 +93,11 @@ const Header = () => {
   }, [role, userId, agencyId, markupPercent]);
 
   const remainingBalance = balance - totalSpend;
+  const accountName =
+    localStorage.getItem("account_name") ||
+    localStorage.getItem("client_name") ||
+    localStorage.getItem("agency_name") ||
+    (agencyId ? `#${agencyId}` : userId ? `#${userId}` : "Account");
 
   return (
     <header className="bg-white h-[48px]">
@@ -99,16 +105,16 @@ const Header = () => {
         <div className="flex items-center justify-between h-[48px]">
           <Link
             to="/dashboard"
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex cursor-pointer items-center"
           >
-            <img src={LOGO_SVG} alt="logo" className="w-[22px] h-[22px]" />
-            <span className="font-semibold text-[16px] text-[#119af5]">
+            <img src={LOGO_SVG} alt="logo" className="h-[22px] w-[24px]" />
+            <span className="ml-2 text-[15px] font-medium leading-[18px] text-[#0288db]">
               Telegram Ads
             </span>
           </Link>
 
-          <div className="flex items-center gap-4">
-            <span className="text-[13px] font-bold text-[#555]">
+          <div className="flex h-[32px] items-center text-[14px] font-medium leading-5 text-[#222]">
+            <span className="mr-[18px]">
               Budget: €{balance.toFixed(2)}
             </span>
             {/* Если захочешь — можно вывести и остаток:
@@ -116,17 +122,42 @@ const Header = () => {
               Remaining: €{remainingBalance.toFixed(2)}
             </span>
             */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-300" />
+            <div className="relative flex items-center">
               <button
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.href = "/login";
-                }}
-                className="text-[12px] text-gray-500 hover:text-red-500 transition"
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                className="flex items-center"
+                aria-expanded={accountMenuOpen}
               >
-                Log out
+                <span className="block max-w-[180px] truncate text-[14px] font-medium leading-5 text-[#0288db]">
+                  {accountName}
+                </span>
+                <span className="ml-[7px] h-[7px] w-[7px] rotate-45 border-b border-r border-[#0288db]" />
+                <span className="ml-[12px] h-8 w-8 rounded-full bg-[#d5d9df]" />
               </button>
+
+              {accountMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    aria-label="Close account menu"
+                    className="fixed inset-0 z-20 cursor-default"
+                    onClick={() => setAccountMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-[38px] z-30 w-[180px] rounded-[4px] bg-white py-1 shadow-[0_4px_18px_rgba(0,0,0,0.22)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.clear();
+                        window.location.href = "/login";
+                      }}
+                      className="block w-full px-4 py-2 text-left text-[13px] font-normal text-[#222] hover:bg-[#f2f5f7]"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

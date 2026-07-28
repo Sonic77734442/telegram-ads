@@ -54,6 +54,9 @@ type AdRow = {
 
   url?: string | null;
   type?: string | null;
+  countries?: string[] | null;
+  locations?: string[] | null;
+  langs?: string[] | null;
 };
 
 type ColumnConfig<Key extends keyof AdRow = keyof AdRow> = {
@@ -114,9 +117,14 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     widthClass: "w-[78.47px]",
     defaultVisible: true,
     format: (v) =>
-      v === null || v === undefined
-        ? "—"
-        : (Number(v) || 0).toLocaleString("en-US"),
+      v === null || v === undefined ? (
+        "—"
+      ) : (
+        <div>
+          <div>{(Number(v) || 0).toLocaleString("en-US")}</div>
+          <div>Join</div>
+        </div>
+      ),
   },
   {
     id: "ctr",
@@ -151,7 +159,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
         Number((row as any).cpm_base) ||
         0;
 
-      return <span className="text-[#139af5] font-normal">€ {cpm.toFixed(2)}</span>;
+      return <span className="font-normal text-[#0288db]">€{cpm.toFixed(2)}</span>;
     },
   },
   {
@@ -161,7 +169,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     defaultVisible: true,
     widthClass: "w-[65px]",
-    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
+    format: (v) => `€${(Number(v) || 0).toFixed(2)}`,
   },
   {
     id: "cpa",
@@ -171,7 +179,7 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     defaultVisible: false,
     widthClass: "w-[65px]",
     format: (v) =>
-      v === null || v === undefined ? "—" : `€ ${Number(v).toFixed(2)}`,
+      v === null || v === undefined ? "—" : `€${Number(v).toFixed(2)}`,
   },
   {
     id: "spend",
@@ -180,7 +188,12 @@ const TABLE_COLUMNS: ColumnConfig[] = [
     align: "left",
     defaultVisible: true,
     widthClass: "w-[85px]",
-    format: (v) => `€ ${(Number(v) || 0).toFixed(2)}`,
+    format: (v, row) => (
+      <div>
+        <div>€{(Number(v) || 0).toFixed(2)}</div>
+        <div>€{(Number(row.spend_base) || 0).toFixed(2)}</div>
+      </div>
+    ),
   },
   {
     id: "budget",
@@ -237,6 +250,9 @@ const TABLE_COLUMNS: ColumnConfig[] = [
       };
 
       const targetList = parseTargets(v);
+      const countries = parseTargets(row.countries);
+      const locations = parseTargets(row.locations);
+      const languages = parseTargets(row.langs);
       const targetText = typeof v === "string" ? v.toLowerCase() : "";
       const hasHandles = /t\.me\/|@/.test(targetText);
       const type = (row.type || "").toLowerCase();
@@ -249,13 +265,28 @@ const TABLE_COLUMNS: ColumnConfig[] = [
         return `${targetList.length} queries`;
       }
 
+      if (countries.length || locations.length || languages.length) {
+        return (
+          <div className="h-[30px] overflow-hidden leading-[15px]">
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap">
+              {countries.join(", ") || "—"}
+            </div>
+            <div className="overflow-hidden text-ellipsis whitespace-nowrap">
+              {[locations.join(", "), languages.length ? `${languages.length} languages` : ""]
+                .filter(Boolean)
+                .join(", ")}
+            </div>
+          </div>
+        );
+      }
+
       return "—";
     },
   },
   {
     id: "status",
     label: "STATUS",
-    sortable: true,
+    sortable: false,
     align: "left",
     defaultVisible: true,
     widthClass: "w-[85px]",
@@ -290,13 +321,39 @@ const TABLE_COLUMNS: ColumnConfig[] = [
 
 const STORAGE_KEY = "tgads_campaign_table_columns";
 
-export default function AdTable() {
+const COLUMN_WIDTHS: Record<string, number> = {
+  title: 200,
+  views: 76.2,
+  opened: 73.98,
+  clicks: 69.3,
+  actions: 78.47,
+  ctr: 65,
+  cvr: 65,
+  cpm: 65,
+  cpc: 65,
+  cpa: 65,
+  spend: 85,
+  budget: 85,
+  target: 140,
+  status: 85,
+  created_at: 114,
+};
+
+const ACTIONS_COLUMN_WIDTH = 43;
+
+export default function AdTable({
+  searchQuery = "",
+}: {
+  currentRole?: string;
+  searchQuery?: string;
+}) {
   const [ads, setAds] = useState<AdRow[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<{ id: string; dir: "asc" | "desc" } | null>(
     null
   );
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
 
   // ===== BUDGET MODAL =====
   const [budgetModalMode, setBudgetModalMode] = useState<"increase" | "edit" | null>(
@@ -469,6 +526,9 @@ export default function AdTable() {
 
         url: c.url,
         type: c.type,
+        countries: c.countries,
+        locations: c.locations,
+        langs: c.langs,
       }));
 
       setAds(rows);
@@ -518,11 +578,20 @@ export default function AdTable() {
   );
 
   const sortedAds = useMemo(() => {
-    if (!sortBy) return ads;
-    const col = TABLE_COLUMNS.find((c) => c.id === sortBy.id);
-    if (!col?.sortable) return ads;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filteredAds = normalizedQuery
+      ? ads.filter((ad) =>
+          [ad.title, ad.url]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+        )
+      : ads;
 
-    return [...ads].sort((a, b) => {
+    if (!sortBy) return filteredAds;
+    const col = TABLE_COLUMNS.find((c) => c.id === sortBy.id);
+    if (!col?.sortable) return filteredAds;
+
+    return [...filteredAds].sort((a, b) => {
       const av = a[col.id];
       const bv = b[col.id];
       if (av === bv) return 0;
@@ -537,7 +606,7 @@ export default function AdTable() {
         ? String(av).localeCompare(String(bv))
         : String(bv).localeCompare(String(av));
     });
-  }, [ads, sortBy]);
+  }, [ads, searchQuery, sortBy]);
 
   const handleToggleSort = (id: string) => {
     setSortBy((prev) => {
@@ -562,21 +631,53 @@ export default function AdTable() {
     });
   };
 
+  const handleDeleteAd = async (ad: AdRow) => {
+    setOpenActionId(null);
+    if (!window.confirm(`Delete "${ad.title || "Untitled"}"?`)) return;
+
+    const { error } = await supabase.from("ad_campaigns").delete().eq("id", ad.id);
+    if (error) {
+      console.error("delete campaign error:", error);
+      alert("Failed to delete ad");
+      return;
+    }
+
+    await fetchAds();
+  };
+
+  const tableWidth =
+    columnsToRender.reduce(
+      (sum, column) => sum + (COLUMN_WIDTHS[column.id as string] || 65),
+      0
+    ) + ACTIONS_COLUMN_WIDTH;
+
   return (
-    <div className="flex flex-col gap-4">
+    <div>
       {/* Хедер */}
-      <div className="flex items-center justify-between"></div>
+      <div className="hidden"></div>
 
       {/* Таблица */}
-      <div className="tg-root w-full flex justify-center">
-        <div className="w-full max-w-[1365px]">
-          <table className="w-max mx-auto text-[12px] leading-[15px] text-gray-800 table-fixed border-collapse">
-            <thead className="text-[11px] font-semibold text-gray-600">
+      <div className="tg-root flex w-full justify-center">
+        <div style={{ width: tableWidth }}>
+          <table
+            className="mx-auto table-fixed border-collapse text-[13px] leading-[15px] text-[#222]"
+            style={{ width: tableWidth }}
+          >
+            <colgroup>
+              {columnsToRender.map((column) => (
+                <col
+                  key={column.id as string}
+                  style={{ width: COLUMN_WIDTHS[column.id as string] || 65 }}
+                />
+              ))}
+              <col style={{ width: ACTIONS_COLUMN_WIDTH }} />
+            </colgroup>
+            <thead className="text-[11px] font-semibold leading-[15px] text-[#222]">
               <tr className="h-[38px]">
                 {columnsToRender.map((col) => (
                   <th
                     key={col.id as string}
-                    className={`px-3 ${col.id === "title" ? "w-[240px]" : ""} ${col.widthClass || ""} ${
+                    className={`${col.id === "title" ? "py-[3px] pl-[15px] pr-[10px]" : "px-[10px] py-[3px]"} font-semibold ${
                       col.align === "right"
                         ? "text-right"
                         : col.align === "center"
@@ -587,7 +688,7 @@ export default function AdTable() {
                       col.sortable && handleToggleSort(col.id as string)
                     }
                   >
-                    <span className="inline-flex items-center gap-1 tracking-wide">
+                    <span className="inline-flex items-center gap-1">
                       {col.label}
                       {col.sortable && col.id !== "target" && col.id !== "status" && (
                         <span className="inline-flex flex-col gap-[1px] text-black">
@@ -618,7 +719,7 @@ export default function AdTable() {
                   </th>
                 ))}
 
-                <th className="w-8 px-2 text-right">
+                <th className="py-[3px] pl-[10px] pr-[15px] text-right">
                   <button
                     type="button"
                     onClick={() => setIsCustomizeOpen(true)}
@@ -644,7 +745,11 @@ export default function AdTable() {
                 sortedAds.map((ad, index) => (
                   <tr
                     key={ad.id}
-                    className={`h-[38px] ${index % 2 === 0 ? "bg-[#f6f7f9]" : "bg-transparent"} hover:bg-[#e9f0f7]`}
+                    className={`h-[38px] ${
+                      index % 2 === 0
+                        ? "[&>td]:bg-[#f2f5f7]"
+                        : "[&>td]:bg-white"
+                    } hover:[&>td]:bg-[#e9f0f7]`}
                   >
                     {columnsToRender.map((col) => {
                       const value = ad[col.id];
@@ -654,9 +759,9 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`p-0 align-middle w-[240px] h-[38px] ${col.widthClass || ""}`}
+                            className="h-[38px] w-[200px] overflow-hidden p-0 align-middle"
                           >
-                            <div className="flex items-center gap-[6px] w-[240px] h-[38px] pl-[15px] pr-[20px]">
+                            <div className="flex h-[38px] w-[200px] min-w-0 items-center gap-[6px] overflow-hidden py-[3px] pl-[15px] pr-[10px]">
                               <div className="flex h-[18px] w-[18px] items-center justify-center rounded flex-shrink-0">
                                 <img
                                   src={
@@ -677,10 +782,11 @@ export default function AdTable() {
                                 />
                               </div>
 
-                              <div className="flex min-w-0 flex-1 flex-col justify-center h-[31px]">
+                              <div className="flex h-[31px] min-w-0 max-w-full flex-1 flex-col justify-center overflow-hidden">
                                 <Link
                                   to={`/create?id=${ad.id}`}
-                                  className="tg-title-link block text-[13px] font-semibold text-black truncate leading-[15px]"
+                                  title={ad.title || "Untitled"}
+                                  className="tg-title-link block w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-[15px] text-[#222]"
                                 >
                                   {ad.title || "Untitled"}
                                 </Link>
@@ -690,7 +796,8 @@ export default function AdTable() {
                                     href={ad.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="block text-[11px] text-blue-600 hover:underline truncate leading-[15px]"
+                                    title={ad.url}
+                                    className="block w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-[15px] text-[#0288db] hover:underline"
                                   >
                                     {ad.url}
                                   </a>
@@ -714,24 +821,24 @@ export default function AdTable() {
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-[4px] text-left whitespace-nowrap ${col.widthClass || ""}`}
+                            className="h-[38px] overflow-hidden whitespace-nowrap px-[10px] py-[3px] text-left align-middle"
                           >
                             {/* верх — общий бюджет (Increase Budget) */}
                             <button
                               type="button"
                               onClick={() => openBudgetModal("increase", ad)}
-                              className="text-[#139af5] font-normal hover:underline"
+                              className="font-normal text-[#0288db] hover:underline"
                             >
-                              € {Number(totalBudget || 0).toFixed(2)}
+                              €{Number(totalBudget || 0).toFixed(2)}
                             </button>
 
                             {/* низ — дневной бюджет (Edit Daily Budget) */}
                             <button
                               type="button"
                               onClick={() => openBudgetModal("edit", ad)}
-                              className="block text-[11px] leading-[15px] text-[#139af5] font-normal hover:underline text-left"
+                              className="block text-left text-[11px] font-normal leading-[15px] text-[#0288db] hover:underline"
                             >
-                              € {Number(dailyBudget || 0).toFixed(2)}
+                              €{Number(dailyBudget || 0).toFixed(2)}
                             </button>
                           </td>
                         );
@@ -739,17 +846,25 @@ export default function AdTable() {
 
                       // ==== STATUS (кликабельный) ====
                       if (col.id === "status") {
+                        const normalizedStatus = String(ad.status || "Active").toLowerCase();
+                        const displayStatus =
+                          normalizedStatus === "hold" ||
+                          normalizedStatus === "on hold" ||
+                          normalizedStatus === "stopped"
+                            ? "Stopped"
+                            : "Active";
+
                         return (
                           <td
                             key={col.id as string}
-                            className={`px-3 py-[4px] text-left ${col.widthClass || ""}`}
+                            className="h-[38px] overflow-hidden px-[10px] py-[3px] text-left align-middle"
                           >
                             <button
                               type="button"
                               onClick={() => openStatusModal(ad)}
-                              className="inline-flex items-center px-3 py-1 text-[13px] font-normal text-[#139af5] whitespace-nowrap"
+                              className="inline-flex items-center whitespace-nowrap text-[13px] font-normal leading-[15px] text-[#0288db]"
                             >
-                              {ad.status || "Active"}
+                              {displayStatus}
                             </button>
                           </td>
                         );
@@ -764,7 +879,7 @@ export default function AdTable() {
                       return (
                         <td
                           key={col.id as string}
-                          className={`px-3 py-[4px] ${baseClass} ${col.widthClass || ""} ${col.id === "created_at" ? "whitespace-nowrap" : ""}`}
+                          className={`h-[38px] overflow-hidden px-[10px] py-[3px] align-middle ${baseClass} ${col.id === "created_at" ? "whitespace-nowrap" : ""}`}
                         >
                           {display === "" ||
                           display === null ||
@@ -775,7 +890,74 @@ export default function AdTable() {
                       );
                     })}
 
-                    <td className="w-8 px-2" />
+                    <td className="relative h-[38px] overflow-visible py-[3px] pl-[10px] pr-[15px] text-right align-middle">
+                      <button
+                        type="button"
+                        aria-label={`Actions for ${ad.title || "Untitled"}`}
+                        aria-expanded={openActionId === ad.id}
+                        onClick={() =>
+                          setOpenActionId((current) => (current === ad.id ? null : ad.id))
+                        }
+                        className="inline-flex h-[18px] w-[18px] items-center justify-center rounded hover:bg-black/5"
+                      >
+                        <span className="flex h-[14px] flex-col items-center justify-center gap-[2px]">
+                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
+                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
+                          <span className="h-[2px] w-[2px] rounded-full bg-[#2b2b2b]" />
+                        </span>
+                      </button>
+
+                      {openActionId === ad.id && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Close actions"
+                            className="fixed inset-0 z-20 cursor-default"
+                            onClick={() => setOpenActionId(null)}
+                          />
+                          <div className="absolute right-[10px] top-[30px] z-30 w-[218px] rounded-[4px] bg-white py-[6px] text-left text-[13px] leading-[18px] shadow-[0_4px_18px_rgba(0,0,0,0.22)]">
+                            <Link
+                              to={`/create?id=${ad.id}`}
+                              onClick={() => setOpenActionId(null)}
+                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                            >
+                              Edit Title
+                            </Link>
+                            <Link
+                              to={`/create?id=${ad.id}`}
+                              onClick={() => setOpenActionId(null)}
+                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                            >
+                              View Detailed Info
+                            </Link>
+                            <Link
+                              to={`/ad/new?clone=${encodeURIComponent(ad.id)}`}
+                              onClick={() => setOpenActionId(null)}
+                              className="block px-[14px] py-[7px] text-[#222] hover:bg-[#f2f5f7]"
+                            >
+                              Create Similar Ad
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAd(ad)}
+                              className="block w-full px-[14px] py-[7px] text-left text-[#d64d4d] hover:bg-[#f2f5f7]"
+                            >
+                              Delete Ad
+                            </button>
+                            <div className="mx-[14px] mt-[5px] border-t border-[#e6e6e6] pt-[9px]">
+                              <div className="truncate font-semibold text-[#222]">
+                                {ad.title || "Untitled"}
+                              </div>
+                              {ad.url && (
+                                <div className="truncate text-[12px] text-[#0288db]">
+                                  {ad.url}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

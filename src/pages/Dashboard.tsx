@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import BudgetBar from "../components/BudgetBar";
@@ -6,6 +6,7 @@ import AdTable from "../components/AdTable";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     if (localStorage.getItem("auth") !== "1") {
@@ -23,10 +24,10 @@ const Dashboard = () => {
   return (
     <div className="font-sans">
       <Header />
-      <BudgetBar />
+      <BudgetBar query={query} onQueryChange={setQuery} />
 
       {/* 👉 Передаём роль в таблицу */}
-      <AdTable currentRole={currentRole} />
+      <AdTable currentRole={currentRole} searchQuery={query} />
     </div>
   );
 };
