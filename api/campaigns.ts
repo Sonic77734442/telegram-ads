@@ -164,17 +164,21 @@ export default async function handler(req: any, res: any) {
     const rows = (data || []) as any[];
     const campaignIds = rows.map((row) => row.id).filter(Boolean);
     const rawActionsByCampaign = new Map<string, number | null>();
+    const rawCampaignById = new Map<string, any>();
 
     if (campaignIds.length > 0) {
       const { data: actionRows, error: actionsError } = await supabase
         .from("ad_campaigns")
-        .select("id, actions")
+        .select(
+          "id, actions, type, target, countries, locations, langs, topics, channels, devices, politics_only"
+        )
         .in("id", campaignIds);
 
       if (actionsError) {
         console.error("Error loading raw campaign actions:", actionsError);
       } else {
         for (const actionRow of actionRows || []) {
+          rawCampaignById.set(actionRow.id, actionRow);
           rawActionsByCampaign.set(
             actionRow.id,
             actionRow.actions === null || actionRow.actions === undefined
@@ -217,6 +221,7 @@ export default async function handler(req: any, res: any) {
     const isClientMode = resolvedMode === "client";
 
     for (const row of rows) {
+      const rawCampaign = rawCampaignById.get(row.id) || {};
       let views = Number(row.views ?? 0);
       const clicks = Number(row.clicks ?? row.actions ?? 0);
 
@@ -390,7 +395,15 @@ export default async function handler(req: any, res: any) {
         media_url: row.media_url,
         media_type: row.media_type,
         status: row.status,
-        target: row.target,
+        target: row.target ?? rawCampaign.target,
+        type: row.type ?? rawCampaign.type,
+        countries: row.countries ?? rawCampaign.countries,
+        locations: row.locations ?? rawCampaign.locations,
+        langs: row.langs ?? rawCampaign.langs,
+        topics: row.topics ?? rawCampaign.topics,
+        channels: row.channels ?? rawCampaign.channels,
+        devices: row.devices ?? rawCampaign.devices,
+        politics_only: row.politics_only ?? rawCampaign.politics_only,
         created_at: row.created_at,
         updated_at: row.updated_at,
         client_id: row.client_id,

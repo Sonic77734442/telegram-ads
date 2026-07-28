@@ -118,6 +118,10 @@ type AdRow = {
   countries?: string[] | null;
   locations?: string[] | null;
   langs?: string[] | null;
+  topics?: string[] | null;
+  channels?: string[] | null;
+  devices?: string[] | null;
+  politics_only?: boolean | null;
 };
 
 type ColumnConfig<Key extends keyof AdRow = keyof AdRow> = {
@@ -321,31 +325,70 @@ const TABLE_COLUMNS: ColumnConfig[] = [
       const countries = parseTargets(row.countries);
       const locations = parseTargets(row.locations);
       const languages = parseTargets(row.langs);
+      const topics = parseTargets(row.topics);
+      const channels = parseTargets(row.channels);
+      const devices = parseTargets(row.devices).filter(
+        (device) => device.toLowerCase() !== "all devices"
+      );
       const targetText = typeof v === "string" ? v.toLowerCase() : "";
       const hasHandles = /t\.me\/|@/.test(targetText);
       const type = (row.type || "").toLowerCase();
 
-      if (type === "bot" || type === "bots" || hasHandles) {
+      if (type === "bot" || type === "bots") {
         return targetList.length > 0 ? `${targetList.length} bots` : "—";
       }
 
-      if (type === "search" || (targetList.length > 0 && !hasHandles)) {
-        return `${targetList.length} queries`;
+      if (type === "search") {
+        return targetList.length > 0 ? `${targetList.length} queries` : "—";
       }
 
-      if (countries.length || locations.length || languages.length) {
+      if (
+        countries.length ||
+        locations.length ||
+        languages.length ||
+        topics.length ||
+        channels.length ||
+        devices.length ||
+        row.politics_only
+      ) {
+        const primaryTargets =
+          locations.length > 0
+            ? locations
+            : countries.length > 0
+            ? countries
+            : languages.length > 0
+            ? languages
+            : topics.length > 0
+            ? topics
+            : channels;
+        const secondaryTargets =
+          primaryTargets !== languages && languages.length > 0
+            ? languages
+            : primaryTargets !== topics && topics.length > 0
+            ? topics
+            : devices.length > 0
+            ? devices
+            : row.politics_only
+            ? ["Political content"]
+            : [];
+
         return (
           <div className="h-[30px] overflow-hidden leading-[15px]">
             <div className="overflow-hidden text-ellipsis whitespace-nowrap">
-              {countries.join(", ") || "—"}
+              {primaryTargets.join(", ") || "—"}
             </div>
-            <div className="overflow-hidden text-ellipsis whitespace-nowrap">
-              {[locations.join(", "), languages.length ? `${languages.length} languages` : ""]
-                .filter(Boolean)
-                .join(", ")}
-            </div>
+            {secondaryTargets.length > 0 && (
+              <div className="overflow-hidden text-ellipsis whitespace-nowrap">
+                {secondaryTargets.join(", ")}
+              </div>
+            )}
           </div>
         );
+      }
+
+      if (targetList.length > 0) {
+        if (hasHandles) return `${targetList.length} bots`;
+        return targetList.join(", ");
       }
 
       return "—";
@@ -599,6 +642,10 @@ export default function AdTable({
         countries: c.countries,
         locations: c.locations,
         langs: c.langs,
+        topics: c.topics,
+        channels: c.channels,
+        devices: c.devices,
+        politics_only: c.politics_only,
       }));
 
       setAds(rows);
