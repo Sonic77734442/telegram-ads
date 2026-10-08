@@ -6,6 +6,7 @@ import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
 import { supabase } from "../supabaseClient";
+import { uploadFile } from "../utils/uploadToSupabase";
 import { useAdId } from "../hooks/useAdId";
 import { fetchCampaignById } from "../lib/campaignApi";
 
@@ -176,17 +177,14 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const filePath = `ads/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage
-      .from("media")
-      .upload(filePath, file, { contentType: file.type });
-
-    if (!error) {
-      const url = supabase.storage.from("media").getPublicUrl(filePath).data?.publicUrl;
-      if (url) {
-        setMediaUrl(url);
-        setMediaType(file.type.startsWith("video") ? "video" : "image");
-      }
+    try {
+      const url = await uploadFile(file);
+      setMediaUrl(url);
+      setMediaType(file.type.startsWith("video") ? "video" : "image");
+    } catch (error) {
+      alert(`Не удалось загрузить файл: ${error instanceof Error ? error.message : "Попробуйте ещё раз"}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 

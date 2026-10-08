@@ -43,16 +43,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setLoginError("");
+    setIsSubmitting(true);
 
     try {
       const resp = await fetch("/api/auth-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
 
       const isJson = resp.headers
@@ -64,7 +69,9 @@ export default function LoginPage() {
         const message =
           (json && json.error) ||
           `Login failed (${resp.status} ${resp.statusText})`;
-        alert(message);
+        setLoginError(resp.status === 401
+          ? "Неверный логин или пароль. Введите полный логин; регистр букв имеет значение."
+          : message);
         return;
       }
 
@@ -86,7 +93,9 @@ export default function LoginPage() {
       else navigate("/welcome");
     } catch (e) {
       console.error("auth-login failed:", e);
-      alert("Login failed. See console for details.");
+      setLoginError("Не удалось связаться с сервером. Попробуйте ещё раз.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -168,7 +177,7 @@ export default function LoginPage() {
         >
           <form
             onSubmit={handleLogin}
-            className="h-[367px] w-full max-w-[543px] rounded-[5px] bg-white px-[58px] pb-9 pt-[62px] shadow-[0_10px_28px_rgba(0,0,0,0.32)] max-sm:h-auto max-sm:px-7 max-sm:pb-8 max-sm:pt-10"
+            className="min-h-[367px] w-full max-w-[543px] rounded-[5px] bg-white px-[58px] pb-9 pt-[62px] shadow-[0_10px_28px_rgba(0,0,0,0.32)] max-sm:h-auto max-sm:px-7 max-sm:pb-8 max-sm:pt-10"
           >
             <h2 className="text-[28px] font-bold leading-[34px] text-[#222]">
               Log In
@@ -197,6 +206,8 @@ export default function LoginPage() {
               />
             </div>
 
+            {loginError && <p role="alert" className="mt-4 text-sm text-red-600">{loginError}</p>}
+
             <div className="mt-9 flex justify-end gap-8">
               <button
                 type="button"
@@ -207,9 +218,10 @@ export default function LoginPage() {
               </button>
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="rounded px-1 py-1 text-[16px] font-bold text-[#5288b1] transition hover:text-[#3e769f] focus:outline-none focus:ring-2 focus:ring-[#5da1dc]/40"
               >
-                Log in
+                {isSubmitting ? "Вход…" : "Log in"}
               </button>
             </div>
           </form>
