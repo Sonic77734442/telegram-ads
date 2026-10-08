@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { normalizeLogin, loginFilter } from "../shared/login-input.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { signSession, setSessionCookie } from "./auth-utils.js";
 
@@ -37,11 +38,12 @@ export default async function handler(req: any, res: any) {
     }
 
     const { email, password } = req.body || {};
-    if (!email || !password) {
+    const login = normalizeLogin(email);
+    if (!login || typeof password !== "string" || !password) {
       return res.status(400).json({ error: "Email/username and password are required" });
     }
 
-    const rateLimitKey = `${getClientIp(req)}:${String(email).toLowerCase()}`;
+    const rateLimitKey = `${getClientIp(req)}:${login.toLowerCase()}`;
     if (!checkRateLimit(rateLimitKey)) {
       return res.status(429).json({ error: "Too many login attempts. Try again later." });
     }
@@ -52,10 +54,15 @@ export default async function handler(req: any, res: any) {
     const { data: user, error } = await supabase
       .from("users")
       .select("*")
-      .or("username.eq." + email + ",email.eq." + email)
+      .or(loginFilter(login))
       .maybeSingle();
 
-    if (error || !user) {
+    if (error) {
+      console.error("auth-login lookup failed:", error.code);
+      return res.status(503).json({ error: "Sign-in is temporarily unavailable. Please try again." });
+    }
+
+    if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
