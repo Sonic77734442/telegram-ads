@@ -1,3 +1,4 @@
+import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
@@ -192,7 +193,7 @@ export default async function handler(req: any, res: any) {
     const sumStatsAmount = async (adId: string, month?: string | null) => {
       const { data: statsRows, error: statsError } = await supabase
         .from("ad_stats")
-        .select("views, amount, timestamp")
+        .select("views, cpm, day, timestamp")
         .eq("ad_id", adId);
 
       if (statsError || !statsRows) {
@@ -202,10 +203,10 @@ export default async function handler(req: any, res: any) {
 
       return statsRows.reduce(
         (sum: { views: number; amount: number }, r: any) => {
-          const ts = String(r.timestamp ?? "");
+          const ts = statDay(r);
           if (month && !ts.startsWith(`${month}-`)) return sum;
           sum.views += Number(r.views ?? 0);
-          sum.amount += Number(r.amount ?? 0);
+          sum.amount += statAmount(r);
           return sum;
         },
         { views: 0, amount: 0 }

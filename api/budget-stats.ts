@@ -1,3 +1,4 @@
+import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
@@ -45,7 +46,7 @@ export default async function handler(req: any, res: any) {
 
     const { data: rows, error } = await supabase
       .from("ad_stats")
-      .select("timestamp, amount")
+      .select("timestamp, day, views, cpm")
       .eq("ad_id", ad_id)
       .order("timestamp", { ascending: true });
 
@@ -57,16 +58,16 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         data: (rows || []).map((row: any) => ({
           ts: row.timestamp,
-          amount: Number((Number(row.amount || 0) * multiplier).toFixed(4)),
+          amount: Number((statAmount(row) * multiplier).toFixed(4)),
         })),
       });
     }
 
     const byDay = new Map<string, number>();
     for (const row of rows || []) {
-      const day = String(row.timestamp || "").slice(0, 10);
+      const day = statDay(row);
       if (!day) continue;
-      byDay.set(day, (byDay.get(day) || 0) + Number(row.amount || 0));
+      byDay.set(day, (byDay.get(day) || 0) + statAmount(row));
     }
 
     return res.status(200).json({

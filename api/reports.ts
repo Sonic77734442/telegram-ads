@@ -1,3 +1,4 @@
+import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
@@ -81,17 +82,17 @@ export default async function handler(req: any, res: any) {
     if (rows.length === 0) {
       const { data: statsRows, error: statsError } = await supabase
         .from("ad_stats")
-        .select("timestamp, views, amount")
+        .select("timestamp, day, views, cpm")
         .eq("ad_id", ad_id);
 
       if (!statsError && Array.isArray(statsRows) && statsRows.length > 0) {
         const byDay = new Map<string, { views: number; amount: number }>();
         for (const r of statsRows) {
-          const ts = String(r.timestamp ?? "");
+          const ts = statDay(r);
           if (!ts.startsWith(`${ym}-`)) continue;
           const day = ts.slice(0, 10);
           const views = Number(r.views ?? 0);
-          const amount = Number(r.amount ?? 0);
+          const amount = statAmount(r);
           const current = byDay.get(day) || { views: 0, amount: 0 };
           current.views += views;
           current.amount += amount;
