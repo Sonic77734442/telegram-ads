@@ -1,3 +1,4 @@
+import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
@@ -70,7 +71,7 @@ export default async function handler(req: any, res: any) {
     if (type === "stats" || type === "budget") {
       const { data: statsRows, error: statsError } = await supabase
         .from("ad_stats")
-        .select("timestamp, views, clicks, amount")
+        .select("timestamp, day, views, clicks, cpm")
         .eq("ad_id", ad_id)
         .order("timestamp", { ascending: true });
 
@@ -94,7 +95,7 @@ export default async function handler(req: any, res: any) {
           headers = ["Timestamp (UTC)", "Spent budget"];
           rows = (statsRows || []).map((row: any) => ({
             "Timestamp (UTC)": row.timestamp,
-            "Spent budget": (Number(row.amount || 0) * multiplier).toFixed(4),
+            "Spent budget": (statAmount(row) * multiplier).toFixed(4),
           }));
         }
       } else {
@@ -103,12 +104,12 @@ export default async function handler(req: any, res: any) {
           { views: number; clicks: number; amount: number }
         >();
         for (const row of statsRows || []) {
-          const day = String(row.timestamp || "").slice(0, 10);
+          const day = statDay(row);
           if (!day) continue;
           const current = byDay.get(day) || { views: 0, clicks: 0, amount: 0 };
           current.views += Number(row.views || 0);
           current.clicks += Number(row.clicks || 0);
-          current.amount += Number(row.amount || 0);
+          current.amount += statAmount(row);
           byDay.set(day, current);
         }
 
@@ -156,19 +157,19 @@ export default async function handler(req: any, res: any) {
       if (sourceRows.length === 0) {
         const { data: fallbackRows, error: fallbackError } = await supabase
           .from("ad_stats")
-          .select("timestamp, views, amount")
+          .select("timestamp, day, views, cpm")
           .eq("ad_id", ad_id);
         if (fallbackError) {
           return res.status(500).json({ error: fallbackError.message });
         }
         const byDay = new Map<string, { views: number; amount: number }>();
         for (const row of fallbackRows || []) {
-          const timestamp = String(row.timestamp || "");
+          const timestamp = statDay(row);
           if (!timestamp.startsWith(`${ym}-`)) continue;
           const day = timestamp.slice(0, 10);
           const current = byDay.get(day) || { views: 0, amount: 0 };
           current.views += Number(row.views || 0);
-          current.amount += Number(row.amount || 0);
+          current.amount += statAmount(row);
           byDay.set(day, current);
         }
         sourceRows = Array.from(byDay.entries()).map(([day, value]) => ({
