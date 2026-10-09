@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/creative-media/:path*",
+      "destination": "https://eoybnbhpqsqxeygsikkz.supabase.co/storage/v1/object/public/media/ads/:path*"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

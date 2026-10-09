@@ -1,3 +1,4 @@
+import { mediaDisplayUrl } from "../utils/mediaDisplayUrl";
 import React from "react";
 
 interface TelegramAdPreviewProps {
@@ -56,7 +57,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
               <div className="bg-white px-3 pt-3">
                 {mediaType === "video" ? (
                   <video
-                    src={mediaUrl}
+                    src={mediaDisplayUrl(mediaUrl)}
                     className="h-[136px] w-full rounded-[3px] object-cover"
                     autoPlay
                     loop
@@ -65,7 +66,7 @@ const TelegramAdPreview: React.FC<TelegramAdPreviewProps> = ({
                   />
                 ) : (
                   <img
-                    src={mediaUrl}
+                    src={mediaDisplayUrl(mediaUrl)}
                     alt="Preview"
                     className="h-[136px] w-full rounded-[3px] object-cover"
                   />
