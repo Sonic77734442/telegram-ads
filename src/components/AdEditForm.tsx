@@ -1,3 +1,4 @@
+import { mediaDisplayUrl } from "../utils/mediaDisplayUrl";
 import TelegramAdPreview from "./TelegramAdPreview";
 import MultiSelect from "./MultiSelect";
 import TagInput from "./TagInput";
@@ -128,9 +129,9 @@ export default function AdEditForm({
 			  {mediaUrl ? (
 				<div className="w-full h-[160px] bg-gray-100 border rounded-[4px] mb-2 overflow-hidden">
 				  {mediaType === "video" ? (
-					<video src={mediaUrl} controls className="w-full h-full object-cover" />
+					<video src={mediaDisplayUrl(mediaUrl)} controls className="w-full h-full object-cover" />
 				  ) : (
-					<img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+					<img src={mediaDisplayUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover" />
 				  )}
 				</div>
 			  ) : (

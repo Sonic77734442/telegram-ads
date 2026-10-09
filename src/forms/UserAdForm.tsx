@@ -1,3 +1,4 @@
+import { mediaDisplayUrl } from "../utils/mediaDisplayUrl";
 import AdStatusControl, { type FormAdStatus } from "../components/AdStatusControl";
 import { useRef, useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
@@ -392,9 +393,9 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <div className="rounded-md overflow-hidden border bg-gray-50">
               {mediaUrl ? (
                 mediaType === "video" ? (
-                  <video src={mediaUrl} controls className="w-full h-[160px] object-cover" />
+                  <video src={mediaDisplayUrl(mediaUrl)} controls className="w-full h-[160px] object-cover" />
                 ) : (
-                  <img src={mediaUrl} className="w-full h-[160px] object-cover" alt="Preview" />
+                  <img src={mediaDisplayUrl(mediaUrl)} className="w-full h-[160px] object-cover" alt="Preview" />
                 )
               ) : (
                 <div className="flex h-[96px] items-center justify-center text-[13px] text-gray-400">
