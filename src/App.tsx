@@ -7,6 +7,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdPageLayout from "./pages/AdPageLayout";
 import AdStats from "./pages/AdStats";
+import BudgetPage from "./pages/BudgetPage";
 
 const IS_LOCAL_ADMIN = import.meta.env.VITE_IS_LOCAL_ADMIN === "true";
 
@@ -14,6 +15,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/budget" element={<PrivateRoute><BudgetPage /></PrivateRoute>} />
 
       <Route
         path="/"

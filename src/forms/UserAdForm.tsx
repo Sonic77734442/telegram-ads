@@ -5,10 +5,9 @@ import MultiSelect from "../components/MultiSelect";
 import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
-import { supabase } from "../supabaseClient";
 import { uploadFile } from "../utils/uploadToSupabase";
 import { useAdId } from "../hooks/useAdId";
-import { fetchCampaignById } from "../lib/campaignApi";
+import { fetchCampaignById, saveCampaign, fetchAccountBalance } from "../lib/campaignApi";
 
 /* ──────────────── constants ──────────────── */
 const LANGS = ["English", "Russian", "Uzbek"];
@@ -86,6 +85,10 @@ const MEDIA_BUTTON_ICON =
 export default function ChannelAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState("");
   const targetLocked = Boolean(adId);
 
   /* form state */
@@ -140,16 +143,14 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         return;
       }
 
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("markup_percent")
-        .eq("client_id", clientId)
-        .maybeSingle();
-
-      if (!error && data && typeof data.markup_percent === "number") {
-        setMarkupPercent(Number(data.markup_percent) || 0);
+      try {
+        const account = await fetchAccountBalance();
+        setMarkupPercent(account.markup_percent);
+        setMarkupLoaded(true);
+        setFormError("");
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : "Не удалось загрузить настройки. Обновите страницу.");
       }
-      setMarkupLoaded(true);
     };
 
     loadMarkup();
@@ -175,7 +176,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   /* upload */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || uploading) return;
+    setUploading(true);
 
     try {
       const url = await uploadFile(file);
@@ -184,6 +186,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (error) {
       alert(`Не удалось загрузить файл: ${error instanceof Error ? error.message : "Попробуйте ещё раз"}`);
     } finally {
+      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -228,7 +231,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setPlacement(data.placement || "message");
 	  setLocations(data.locations || []);
     };
-    fetchAd();
+    fetchAd().catch((error) => setFormError(error.message || "Не удалось загрузить объявление."));
   }, [adId, markupLoaded]);
 
   /* clear */
@@ -268,29 +271,15 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   /* create/update */
   const onCreate = async () => {
-    if (!agreeTerms) {
-      alert("❌ Please agree with the Terms of Service before creating an ad.");
+    if (savingRef.current || uploading || !markupLoaded) return;
+    if (!adId && !agreeTerms) {
+      setFormError("Please agree with the Terms of Service before creating an ad.");
       return;
     }
-
-    if (!clientId) {
-      alert("❌ Ошибка: user_id отсутствует в localStorage");
-      return;
-    }
-
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
     const dailyBudgetNumber = Number(dailyBudget || 0);
     const scheduleEnabled = schedule || Boolean(startDate || endDate);
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("agency_id")
-      .eq("user_id", clientId)
-      .maybeSingle();
-
-    const agency_id = userData?.agency_id || null;
-
     const adData = {
       title,
       text,
@@ -322,34 +311,26 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       other_info: otherInfo,
       conversion_event: conversionEvent,
       type: "user",
-      updated_at: new Date().toISOString(),
-      client_id: clientId,
-      agency_id,
     };
-
-    if (adId) {
-      const { error } = await supabase.from("ad_campaigns").update(adData).eq("id", adId);
-      if (error) alert("Ошибка при обновлении: " + error.message);
-      else {
-        alert("✅ Кампания обновлена!");
-        navigate("/");
-      }
-      return;
-    }
-
-    const { error } = await supabase
-      .from("ad_campaigns")
-      .insert([{ ...adData, created_at: new Date().toISOString() }]);
-    if (error) alert("Ошибка при создании рекламы: " + error.message);
-    else {
-      alert("✅ Реклама успешно создана!");
+    savingRef.current = true;
+    setSaving(true);
+    setFormError("");
+    try {
+      await saveCampaign(adData, adId || undefined);
       navigate("/");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Не удалось сохранить объявление. Попробуйте ещё раз.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
   /* UI */
   return (
     <Container>
+      {uploading && <p role="status" className="my-4">Uploading media…</p>}
+      {formError && <p role="alert" className="my-4 rounded bg-red-50 p-3 text-red-700">{formError}</p>}
       <div className="flex gap-[82px]">
         {/* LEFT */}
         <form className="flex w-[330px] shrink-0 flex-col gap-[7px] text-[15px] leading-[18px]">
@@ -737,9 +718,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <button
             type="button"
             onClick={onCreate}
+            disabled={saving || uploading || !markupLoaded}
             className="h-[46px] w-[217px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold leading-5 text-white transition hover:bg-[#0d8de0]"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       ) : (
@@ -761,9 +743,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <button
               type="button"
               onClick={onCreate}
+              disabled={saving || uploading || !markupLoaded}
               className="h-[46px] w-[217px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold leading-5 text-white transition hover:bg-[#0d8de0]"
             >
-              Create Ad
+              {saving ? "Saving…" : "Create Ad"}
             </button>
           </div>
         </div>

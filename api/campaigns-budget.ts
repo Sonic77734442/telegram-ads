@@ -3,8 +3,8 @@ import { readSessionFromRequest } from "./auth-utils.js";
 
 function canMutateCampaign(session: any, campaign: any) {
   if (session.role === "admin") return true;
-  if (session.role === "client") return campaign.client_id === session.user_id;
-  if (session.role === "agency") return campaign.agency_id === session.agency_id;
+  if (session.role === "client") return Boolean(session.user_id) && campaign.client_id === session.user_id;
+  if (session.role === "agency") return Boolean(session.agency_id) && campaign.agency_id === session.agency_id;
   return false;
 }
 
@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
       // Scope comes only from the verified cookie, never from browser-supplied IDs.
       const { data, error } = await getSupabaseAdmin()
         .from("client_balances")
-        .select("balance")
+        .select("balance, markup_percent")
         .eq(column, id);
       if (error) {
         console.error("account balance lookup failed:", error.code);
@@ -40,7 +40,9 @@ export default async function handler(req: any, res: any) {
       if (!Number.isFinite(balance)) {
         return res.status(503).json({ error: "Balance temporarily unavailable" });
       }
-      return res.status(200).json({ balance });
+      const markup = session.role === "client" ? Number(data?.[0]?.markup_percent ?? 0) : 0;
+      if (!Number.isFinite(markup) || markup < 0) return res.status(503).json({ error: "Account settings temporarily unavailable" });
+      return res.status(200).json({ balance, markup_percent: markup });
     }
 
     const { ad_id, mode, amount } = req.body as {
