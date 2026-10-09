@@ -15,6 +15,7 @@ globalThis.__campaignTest = {
       const query = {
         select(){return this;},
         eq(k,v){filters.push([k,v]);return this;},
+        is(k,v){filters.push([k,v]);return this;},
         insert(v){operation='insert';values=v;return this;},
         update(v){operation='update';values=v;return this;},
         delete(){operation='delete';return this;},
@@ -22,8 +23,8 @@ globalThis.__campaignTest = {
         async execute(){
           if (dbError) return {data:null,error:dbError};
           if(operation==='insert') { const row={...values,id:`ad-${rows.length+1}`};rows.push(row);writes.push({operation,values,filters});return {data:row}; }
-          const row=rows.find(r=>filters.every(([k,v])=>r[k]===v));
-          if(operation==='select') return {data:row||null};
+          const row=rows.find(r=>filters.every(([k,v])=>v===null?r[k]==null:r[k]===v));
+          if(operation==='select') return {data:row?{...row}:null};
           writes.push({operation,values,filters});
           if(row && operation==='update') Object.assign(row,values);
           if(row && operation==='delete') rows=rows.filter(r=>r!==row);
@@ -41,7 +42,7 @@ const compiled=await build({entryPoints:['api/campaign.ts'],bundle:true,write:fa
   },
 }]});
 const {default:handler}=await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
-const valid=(type='channel')=>({title:'Test ad',text:'Test text',url:'https://t.me/example',type,cpm:1,budget:0,daily_views:1,status:'hold',countries:['Uzbekistan'],schedule_enabled:false});
+const valid=(type='channel')=>({title:'Test ad',text:'Test text',url:'https://t.me/example',type,cpm:1,budget:0,daily_views:1,countries:['Uzbekistan'],schedule_enabled:false});
 async function run(method='POST',body=valid(),query={}){
   const res={status(c){this.code=c;return this;},json(b){this.body=b;return this;},setHeader(){}};
   await handler({method,body,query},res);return res;
@@ -50,8 +51,8 @@ test.beforeEach(()=>{session={user_id:'client-a',agency_id:'agency-a',role:'clie
 for(const type of ['search','bot','user','channel']) test(`${type}: create, reload, edit and delete own campaign`,async()=>{
   const created=await run('POST',valid(type));assert.equal(created.code,201);
   const id=created.body.data.id;
-  assert.equal(rows[0].client_id,'client-a');assert.equal(rows[0].agency_id,'agency-a');assert.equal(rows[0].status,'On Hold');
-  assert.equal((await run('GET',null,{id})).body.data.status,'hold');
+  assert.equal(rows[0].client_id,'client-a');assert.equal(rows[0].agency_id,'agency-a');assert.equal(rows[0].status,'Moderate');
+  assert.equal((await run('GET',null,{id})).body.data.status,'moderate');
   assert.equal((await run('PATCH',{...valid(type),title:'Changed'},{id})).code,200);
   assert.equal((await run('GET',null,{id})).body.data.title,'Changed');
   assert.ok(writes[1].filters.some(([k,v])=>k==='client_id'&&v==='client-a'));

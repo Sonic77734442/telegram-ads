@@ -1,3 +1,5 @@
+import AdStatusControl from "./AdStatusControl";
+import { normalizeCampaignStatus } from "../../shared/campaign-status";
 import { useEffect, useMemo, useState } from "react";
 import { deleteCampaign } from "../lib/campaignApi";
 import { Link } from "react-router-dom";
@@ -453,6 +455,7 @@ const COLUMN_WIDTHS: Record<string, number> = {
 const ACTIONS_COLUMN_WIDTH = 43;
 
 export default function AdTable({
+  currentRole = "client",
   searchQuery = "",
 }: {
   currentRole?: string;
@@ -537,9 +540,10 @@ export default function AdTable({
   const [endDate, setEndDate] = useState<string>("");
 
   const openStatusModal = (ad: AdRow) => {
+    if (normalizeCampaignStatus(ad.status) === "Moderate" && currentRole !== "agency") return;
     setSelectedAd(ad);
     setIsStatusModalOpen(true);
-    setStatusValue(ad.status || "Active");
+    setStatusValue(normalizeCampaignStatus(ad.status) || "On Hold");
     setRunOnSchedule(false);
     setEndDate("");
   };
@@ -561,8 +565,10 @@ export default function AdTable({
         body: JSON.stringify({
           ad_id: selectedAd.id,
           status: statusValue, // "Active" | "On Hold"
-          run_on_schedule: runOnSchedule,
-          end_date: endDate || null,
+          ...(normalizeCampaignStatus(selectedAd.status) === "Moderate" ? {} : {
+            run_on_schedule: runOnSchedule,
+            end_date: endDate || null,
+          }),
         }),
       });
 
@@ -570,7 +576,7 @@ export default function AdTable({
 
       if (!resp.ok || json.error) {
         console.error("status api error:", json.error || json);
-        alert("Failed to update status");
+        alert(json.error || "Failed to update status");
         return;
       }
 
@@ -968,7 +974,7 @@ export default function AdTable({
                       // ==== STATUS (кликабельный) ====
                       if (col.id === "status") {
                         const normalizedStatus = String(ad.status || "Active").toLowerCase();
-                        const displayStatus =
+                        const displayStatus = normalizedStatus === "moderate" ? "Moderate" :
                           normalizedStatus === "hold" ||
                           normalizedStatus === "on hold" ||
                           normalizedStatus === "stopped"
@@ -980,13 +986,13 @@ export default function AdTable({
                             key={col.id as string}
                             className="h-[38px] overflow-hidden px-[10px] py-[3px] text-left align-middle"
                           >
-                            <button
+                            {normalizedStatus === "moderate" && currentRole !== "agency" ? <span title="На модерации — ожидает одобрения агентством" className="text-amber-700">Moderate</span> : <button
                               type="button"
                               onClick={() => openStatusModal(ad)}
                               className="inline-flex items-center whitespace-nowrap text-[13px] font-normal leading-[15px] text-[#0288db]"
                             >
                               {displayStatus}
-                            </button>
+                            </button>}
                           </td>
                         );
                       }
@@ -1183,29 +1189,9 @@ export default function AdTable({
             <div className="px-6 py-4 space-y-4 text-[13px] text-gray-800">
               {/* Status radio */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="Active"
-                    checked={statusValue === "Active"}
-                    onChange={() => setStatusValue("Active")}
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                  <span>Active</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="On Hold"
-                    checked={statusValue === "On Hold"}
-                    onChange={() => setStatusValue("On Hold")}
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                  <span>On Hold</span>
-                </label>
+                <AdStatusControl value={statusValue} role={currentRole}
+                  pendingReview={normalizeCampaignStatus(selectedAd.status) === "Moderate"}
+                  onChange={(value) => setStatusValue(normalizeCampaignStatus(value) || "On Hold")} />
 
                 {/* Set end date */}
                 <div className="mt-1">

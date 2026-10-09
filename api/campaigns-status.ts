@@ -1,14 +1,6 @@
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
-
-function normalizeStatus(status: string) {
-  const normalized = status.trim().toLowerCase();
-  if (normalized === "active") return "Active";
-  if (normalized === "hold" || normalized === "on hold" || normalized === "paused") {
-    return "On Hold";
-  }
-  return null;
-}
+import { moderationError, normalizeCampaignStatus } from "../shared/campaign-status.js";
 
 export default async function handler(req: any, res: any) {
   try {
@@ -32,7 +24,7 @@ export default async function handler(req: any, res: any) {
       schedule_enabled,
       end_date,
     } = req.body || {};
-    const nextStatus = typeof status === "string" ? normalizeStatus(status) : null;
+    const nextStatus = typeof status === "string" ? normalizeCampaignStatus(status) : null;
 
     if (!ad_id || typeof ad_id !== "string" || !nextStatus) {
       return res.status(400).json({ error: "Invalid payload" });
@@ -41,7 +33,7 @@ export default async function handler(req: any, res: any) {
     const supabase = getSupabaseAdmin();
     const { data: ad, error: fetchError } = await supabase
       .from("ad_campaigns")
-      .select("id, client_id, agency_id")
+      .select("id, client_id, agency_id, status")
       .eq("id", ad_id)
       .single();
 
@@ -55,6 +47,8 @@ export default async function handler(req: any, res: any) {
     if (session.role === "agency" && ad.agency_id !== session.agency_id) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    const denied = moderationError(session.role, ad.status, nextStatus);
+    if (denied) return res.status(403).json({ error: denied });
 
     const nextSchedule =
       typeof schedule_enabled === "boolean"
@@ -65,21 +59,26 @@ export default async function handler(req: any, res: any) {
 
     const update: Record<string, any> = {
       status: nextStatus,
-      end_date: end_date || null,
     };
+    if (end_date !== undefined) update.end_date = end_date || null;
 
     if (typeof nextSchedule === "boolean") {
       update.schedule_enabled = nextSchedule;
     }
 
-    const { error: updateError } = await supabase
+    let mutation = supabase
       .from("ad_campaigns")
       .update(update)
       .eq("id", ad_id);
+    if (session.role === "client") mutation = mutation.eq("client_id", session.user_id);
+    if (session.role === "agency") mutation = mutation.eq("agency_id", session.agency_id);
+    mutation = ad.status == null ? mutation.is("status", null) : mutation.eq("status", ad.status);
+    const { data: saved, error: updateError } = await mutation.select("id").maybeSingle();
 
     if (updateError) {
       return res.status(500).json({ error: updateError.message });
     }
+    if (!saved) return res.status(409).json({ error: "Статус изменился. Обновите страницу и повторите действие." });
 
     return res.status(200).json({ ok: true, update });
   } catch (e: any) {

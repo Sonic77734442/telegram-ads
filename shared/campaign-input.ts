@@ -35,8 +35,8 @@ export function campaignInput(body: unknown): Record<string, any> {
     out[key] = input[key];
   }
   const status = String(input.status || 'hold').trim().toLowerCase();
-  if (!['active','hold','on hold','paused'].includes(status)) throw new Error('Invalid status');
-  out.status = status === 'active' ? 'Active' : 'On Hold';
+  if (!['active','hold','on hold','paused','moderate'].includes(status)) throw new Error('Invalid status');
+  out.status = status === 'active' ? 'Active' : status === 'moderate' ? 'Moderate' : 'On Hold';
   for (const key of ['start_date','end_date']) {
     if (input[key] === undefined) continue;
     if (input[key] !== null && (typeof input[key] !== 'string' || !Number.isFinite(Date.parse(input[key])))) throw new Error(`Invalid ${key}`);
