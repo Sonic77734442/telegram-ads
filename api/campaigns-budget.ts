@@ -10,13 +10,37 @@ function canMutateCampaign(session: any, campaign: any) {
 
 export default async function handler(req: any, res: any) {
   try {
-    if (req.method !== "POST") {
+    if (req.method !== "POST" && req.method !== "GET") {
       return res.status(405).json({ error: "Method not allowed" });
     }
 
     const session = readSessionFromRequest(req);
     if (!session) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.method === "GET") {
+      res.setHeader("Cache-Control", "private, no-store");
+      if (session.role === "admin") return res.status(200).json({ balance: 0 });
+      const column = session.role === "client" ? "client_id" : "agency_id";
+      const id = session.role === "client" ? session.user_id : session.agency_id;
+      if ((session.role !== "client" && session.role !== "agency") || !id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      // Scope comes only from the verified cookie, never from browser-supplied IDs.
+      const { data, error } = await getSupabaseAdmin()
+        .from("client_balances")
+        .select("balance")
+        .eq(column, id);
+      if (error) {
+        console.error("account balance lookup failed:", error.code);
+        return res.status(503).json({ error: "Balance temporarily unavailable" });
+      }
+      const balance = (data || []).reduce((sum, row) => sum + Number(row.balance ?? 0), 0);
+      if (!Number.isFinite(balance)) {
+        return res.status(503).json({ error: "Balance temporarily unavailable" });
+      }
+      return res.status(200).json({ balance });
     }
 
     const { ad_id, mode, amount } = req.body as {
