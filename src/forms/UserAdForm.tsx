@@ -1,3 +1,4 @@
+import AdStatusControl, { type FormAdStatus } from "../components/AdStatusControl";
 import { useRef, useState, useEffect, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
@@ -85,6 +86,7 @@ const MEDIA_BUTTON_ICON =
 export default function ChannelAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const [reviewPending, setReviewPending] = useState(!adId);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -107,7 +109,7 @@ export default function ChannelAdForm() {
   const [budget, setBudget] = useState("0.00");
   const [dailyBudget, setDailyBudget] = useState("0.00");
   const [dailyViews, setDailyViews] = useState(1);
-  const [status, setStatus] = useState<"active" | "hold">("hold");
+  const [status, setStatus] = useState<FormAdStatus>("moderate");
   const [schedule, setSchedule] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [otherInfo, setOtherInfo] = useState("");
@@ -209,6 +211,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setDailyBudget(Number(dailyBudgetValue || 0).toFixed(2));
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
+      setReviewPending(String(data.status).toLowerCase() === "moderate");
       setSchedule(data.schedule_enabled || false);
       setOtherInfo(data.other_info || "");
       setConversionEvent(data.conversion_event || "");
@@ -244,7 +247,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     setBudget("0.00");
     setDailyBudget("0.00");
     setDailyViews(1);
-    setStatus("hold");
+    setStatus("moderate");
+    setReviewPending(true);
     setSchedule(false);
     setAgreeTerms(false);
     setMediaUrl("");
@@ -289,7 +293,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       budget: Number(budgetNumber.toFixed(4)),
       daily_budget: Number(dailyBudgetNumber.toFixed(4)),
       daily_views: dailyViews,
-      status,
+      status: !adId || (role !== "agency" && reviewPending) ? undefined : status,
       schedule_enabled: scheduleEnabled,
       start_date: startDate || null,
       end_date: endDate || null,
@@ -490,10 +494,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           </Field>
 
           <Field label="Ad status" info>
-            <div className="flex flex-col gap-2 pl-6">
-              <Radio label="Active" checked={status === "active"} onChange={() => setStatus("active")} />
-              <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
-            </div>
+            <AdStatusControl value={status} onChange={setStatus} role={role} isNew={!adId} pendingReview={reviewPending} />
           </Field>
 		<Field label="Start date" info>
 		  {showDatePicker ? (

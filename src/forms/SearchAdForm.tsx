@@ -1,3 +1,4 @@
+import AdStatusControl, { type FormAdStatus } from "../components/AdStatusControl";
 import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
@@ -11,6 +12,7 @@ import { fetchCampaignById, saveCampaign, fetchAccountBalance } from "../lib/cam
 export default function SearchAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const [reviewPending, setReviewPending] = useState(!adId);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
@@ -21,7 +23,7 @@ export default function SearchAdForm() {
   const [cpm, setCpm] = useState("1.00");
   const [budget, setBudget] = useState("8000.00");
   const [dailyViews, setDailyViews] = useState(4);
-  const [status, setStatus] = useState<"active" | "hold">("hold");
+  const [status, setStatus] = useState<FormAdStatus>("moderate");
   const [schedule, setSchedule] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [targetQueries, setTargetQueries] = useState<string[]>([]);
@@ -97,6 +99,7 @@ export default function SearchAdForm() {
       setBudget(Number(budgetValue || 0).toFixed(2));
       setDailyViews(data.daily_views || 1);
       setStatus(data.status || "hold");
+      setReviewPending(String(data.status).toLowerCase() === "moderate");
       setSchedule(data.schedule_enabled || false);
       setStartDate(data.start_date || "");
       setEndDate(data.end_date || "");
@@ -113,7 +116,8 @@ export default function SearchAdForm() {
     setCpm("1.00");
     setBudget("8000.00");
     setDailyViews(4);
-    setStatus("hold");
+    setStatus("moderate");
+    setReviewPending(true);
     setSchedule(false);
     setAgreeTerms(false);
     setTargetQueries([]);
@@ -140,7 +144,7 @@ export default function SearchAdForm() {
       cpm: Number(cpmNet.toFixed(4)),
       budget: Number(budgetNumber.toFixed(4)),
       daily_views: dailyViews,
-      status,
+      status: !adId || (role !== "agency" && reviewPending) ? undefined : status,
       schedule_enabled: scheduleEnabled,
       start_date: startDate || null,
       end_date: endDate || null,
@@ -218,10 +222,7 @@ export default function SearchAdForm() {
           </Field>
 
           <Field label="Initial status">
-            <div className="flex flex-col gap-[8px] px-[13px]">
-              <Radio label="Active" checked={status === "active"} onChange={() => setStatus("active")} />
-              <Radio label="On Hold" checked={status === "hold"} onChange={() => setStatus("hold")} />
-            </div>
+            <AdStatusControl value={status} onChange={setStatus} role={role} isNew={!adId} pendingReview={reviewPending} />
           </Field>
 
           {showDatePicker ? (
