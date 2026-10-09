@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import BotAdPreview from "../components/BotAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
-import { supabase } from "../supabaseClient";
 import TagInput from "../components/TagInput";
 import { useAdId } from "../hooks/useAdId";
-import { fetchCampaignById } from "../lib/campaignApi";
+import { fetchCampaignById, saveCampaign, fetchAccountBalance } from "../lib/campaignApi";
 
 export default function BotAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -36,16 +38,14 @@ export default function BotAdForm() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("markup_percent")
-        .eq("client_id", clientId)
-        .maybeSingle();
-
-      if (!error && data && typeof data.markup_percent === "number") {
-        setMarkupPercent(Number(data.markup_percent) || 0);
+      try {
+        const account = await fetchAccountBalance();
+        setMarkupPercent(account.markup_percent);
+        setMarkupLoaded(true);
+        setFormError("");
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : "Не удалось загрузить настройки. Обновите страницу.");
       }
-      setMarkupLoaded(true);
     };
 
     loadMarkup();
@@ -93,7 +93,7 @@ export default function BotAdForm() {
       setAgreeTerms(true);
     };
 
-    fetchAd();
+    fetchAd().catch((error) => setFormError(error.message || "Не удалось загрузить объявление."));
   }, [adId, markupLoaded, multiplier]);
 
   const onClear = () => {
@@ -111,18 +111,15 @@ export default function BotAdForm() {
   };
 
   const onCreate = async () => {
-    if (!agreeTerms) {
-      alert("Please agree with the Terms of Service before creating an ad.");
+    if (savingRef.current || !markupLoaded) return;
+    if (!adId && !agreeTerms) {
+      setFormError("Please agree with the Terms of Service before creating an ad.");
       return;
     }
-
-    if (!clientId) {
-      alert("Error: user_id is missing in localStorage");
-      return;
-    }
-
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+
+
     const adData = {
       title,
       text,
@@ -134,46 +131,18 @@ export default function BotAdForm() {
       schedule_enabled: schedule,
       target: targetBots.join(", "),
       type: "bot",
-      updated_at: new Date().toISOString(),
     };
-
-    if (adId) {
-      const { error } = await supabase
-        .from("ad_campaigns")
-        .update(adData)
-        .eq("id", adId);
-
-      if (error) alert("Update failed: " + error.message);
-      else {
-        alert("Campaign updated.");
-        navigate("/");
-      }
-      return;
-    }
-
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("agency_id")
-      .eq("user_id", clientId)
-      .maybeSingle();
-
-    if (userError) {
-      console.error("Failed to load agency_id:", userError.message);
-    }
-
-    const { error } = await supabase.from("ad_campaigns").insert([
-      {
-        ...adData,
-        created_at: new Date().toISOString(),
-        client_id: clientId,
-        agency_id: userData?.agency_id || null,
-      },
-    ]);
-
-    if (error) alert("Create failed: " + error.message);
-    else {
-      alert("Campaign created.");
+    savingRef.current = true;
+    setSaving(true);
+    setFormError("");
+    try {
+      await saveCampaign(adData, adId || undefined);
       navigate("/");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Не удалось сохранить объявление. Попробуйте ещё раз.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -188,6 +157,7 @@ export default function BotAdForm() {
 
   return (
     <Container>
+      {formError && <p role="alert" className="my-4 rounded bg-red-50 p-3 text-red-700">{formError}</p>}
       <div className="grid grid-cols-[330px_430px] gap-x-[82px] pt-[7px]">
         <form className="flex w-[330px] flex-col gap-[14px] text-[14px] leading-[18px]">
           <Field label="Ad title" info="Only displayed in the ad interface.">
@@ -339,9 +309,10 @@ export default function BotAdForm() {
           <button
             type="button"
             onClick={onCreate}
+            disabled={saving || !markupLoaded}
             className="h-[46px] w-[190px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold text-white hover:bg-[#078be3]"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       ) : (
@@ -370,10 +341,10 @@ export default function BotAdForm() {
             <button
               type="button"
               onClick={onCreate}
-              disabled={!canCreate}
+              disabled={!canCreate || saving || !markupLoaded}
               className="h-[46px] w-[190px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold text-white hover:bg-[#078be3] disabled:cursor-default disabled:text-white/60 disabled:hover:bg-[#119af5]"
             >
-              Create Ad
+              {saving ? "Saving…" : "Create Ad"}
             </button>
           </div>
         </div>

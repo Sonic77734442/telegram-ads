@@ -5,10 +5,9 @@ import MultiSelect from "../components/MultiSelect";
 import TagInput from "../components/TagInput";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
-import { supabase } from "../supabaseClient";
 import { uploadFile } from "../utils/uploadToSupabase";
 import { useAdId } from "../hooks/useAdId";
-import { fetchCampaignById } from "../lib/campaignApi";
+import { fetchCampaignById, saveCampaign, fetchAccountBalance } from "../lib/campaignApi";
 
 /* ──────────────── constants ──────────────── */
 const COUNTRIES = ["Kazakhstan", "Uzbekistan", "Russia", "Armenia"];
@@ -77,6 +76,10 @@ const MEDIA_BUTTON_ICON =
 export default function UserAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -112,7 +115,7 @@ export default function UserAdForm() {
   const [excludeChannels, setExcludeChannels] = useState<string[]>([]);
   const [politicsOnly, setPoliticsOnly] = useState(false);
   const [excludePolitics, setExcludePolitics] = useState(false);
-  
+
   /* ──────────────── date schedule states ──────────────── */
 const [showDatePicker, setShowDatePicker] = useState(false);
 const [startDate, setStartDate] = useState<string>("");
@@ -127,16 +130,14 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         return;
       }
 
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("markup_percent")
-        .eq("client_id", clientId)
-        .maybeSingle();
-
-      if (!error && data && typeof data.markup_percent === "number") {
-        setMarkupPercent(Number(data.markup_percent) || 0);
+      try {
+        const account = await fetchAccountBalance();
+        setMarkupPercent(account.markup_percent);
+        setMarkupLoaded(true);
+        setFormError("");
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : "Не удалось загрузить настройки. Обновите страницу.");
       }
-      setMarkupLoaded(true);
     };
 
     loadMarkup();
@@ -161,7 +162,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   /* ──────────────── upload handler ──────────────── */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || uploading) return;
+    setUploading(true);
 
     try {
       const url = await uploadFile(file);
@@ -170,6 +172,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (error) {
       alert(`Не удалось загрузить файл: ${error instanceof Error ? error.message : "Попробуйте ещё раз"}`);
     } finally {
+      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -209,7 +212,7 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setExTopics(data.ex_topics || []);
       setDevices(data.devices || ["All devices"]);
     };
-    fetchAd();
+    fetchAd().catch((error) => setFormError(error.message || "Не удалось загрузить объявление."));
   }, [adId, markupLoaded]);
 
   /* ──────────────── clear handler ──────────────── */
@@ -247,34 +250,16 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   /* ──────────────── create / update handler ──────────────── */
   const onCreate = async () => {
-    if (!agreeTerms) {
-      alert("❌ Please agree with the Terms of Service before creating an ad.");
+    if (savingRef.current || uploading || !markupLoaded) return;
+    if (!adId && !agreeTerms) {
+      setFormError("Please agree with the Terms of Service before creating an ad.");
       return;
     }
-
-    if (!clientId) {
-      alert("❌ Ошибка: user_id отсутствует в localStorage");
-      return;
-    }
-
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
     const dailyBudgetNumber = Number(dailyBudget || 0);
     const scheduleEnabled = schedule || Boolean(startDate || endDate);
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("agency_id")
-      .eq("user_id", clientId)
-      .maybeSingle();
-
-    const agency_id = userData?.agency_id || null;
-
-    // 🔹 если редактирование
-    if (adId) {
-      const { error } = await supabase
-        .from("ad_campaigns")
-        .update({
+    const adData = {
           title,
           text,
           url,
@@ -302,64 +287,26 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           other_info: otherInfo,
           conversion_event: conversionEvent,
           type: "channel",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", adId);
-
-      if (error) alert("Ошибка при обновлении: " + error.message);
-      else {
-        alert("✅ Кампания обновлена!");
-        navigate("/");
-      }
-      return;
-    }
-
-    // 🔹 если новая
-    const { error } = await supabase.from("ad_campaigns").insert([
-      {
-        title,
-        text,
-        url,
-        website_name: websiteName,
-        cpm: Number(cpmNet.toFixed(4)),
-        budget: Number(budgetNumber.toFixed(4)),
-        daily_budget: Number(dailyBudgetNumber.toFixed(4)),
-        daily_views: dailyViews,
-        status,
-        schedule_enabled: scheduleEnabled,
-        start_date: startDate || null,
-        end_date: endDate || null,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        button: adButton,
-        countries,
-        langs,
-        topics,
-        ex_topics: exTopics,
-        channels: targetChannels,
-        exclude_channels: excludeChannels,
-        devices,
-        politics_only: politicsOnly,
-        exclude_politics: excludePolitics,
-        other_info: otherInfo,
-        conversion_event: conversionEvent,
-        created_at: new Date().toISOString(),
-        client_id: clientId,
-        agency_id,
-        type: "channel",
-      },
-    ]);
-
-    if (error) alert("Ошибка при создании рекламы: " + error.message);
-    else {
-      alert("✅ Реклама успешно создана!");
+    };
+    savingRef.current = true;
+    setSaving(true);
+    setFormError("");
+    try {
+      await saveCampaign(adData, adId || undefined);
       navigate("/");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Не удалось сохранить объявление. Попробуйте ещё раз.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
   /* ──────────────── UI ──────────────── */
   return (
     <Container>
+      {uploading && <p role="status" className="my-4">Uploading media…</p>}
+      {formError && <p role="alert" className="my-4 rounded bg-red-50 p-3 text-red-700">{formError}</p>}
       <div className="flex gap-10 py-6">
         {/* Левая колонка */}
         <form className="w-[320px] flex flex-col gap-5 text-[13px]">
@@ -660,9 +607,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           <button
             type="button"
             onClick={onCreate}
+            disabled={saving || uploading || !markupLoaded}
             className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       ) : (
@@ -684,9 +632,10 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             <button
               type="button"
               onClick={onCreate}
+              disabled={saving || uploading || !markupLoaded}
               className="h-[46px] w-[217px] rounded-[6px] bg-[#22A3F5] text-[16px] font-bold text-white transition hover:bg-[#1D8ED5]"
             >
-              Create Ad
+              {saving ? "Saving…" : "Create Ad"}
             </button>
           </div>
         </div>

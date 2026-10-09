@@ -20,6 +20,10 @@ export default async function handler(req: any, res: any) {
     if (!session) {
       return res.status(401).json({ error: "Unauthorized" });
     }
+    if (!session.user_id || !["client", "agency", "admin"].includes(session.role) ||
+        (session.role === "agency" && !session.agency_id)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
 
     const {
       ad_id,

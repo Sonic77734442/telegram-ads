@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { deleteCampaign } from "../lib/campaignApi";
 import { Link } from "react-router-dom";
 
 const GEAR_ICON_SRC =
@@ -459,6 +459,7 @@ export default function AdTable({
   searchQuery?: string;
 }) {
   const [ads, setAds] = useState<AdRow[]>([]);
+  const [loadError, setLoadError] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<{ id: string; dir: "asc" | "desc" } | null>(
     null
@@ -480,7 +481,7 @@ export default function AdTable({
     if (mode === "increase") {
       setBudgetInput("");
     } else {
-      setBudgetInput((Number(ad.budget) || 0).toFixed(2));
+      setBudgetInput((Number(ad.daily_budget_base) || 0).toFixed(2));
     }
   };
 
@@ -597,9 +598,10 @@ export default function AdTable({
 
       if (json.error) {
         console.error("API campaigns error:", json.error);
-        setAds([]);
+        setLoadError(resp.status === 401 ? "Сессия истекла. Войдите заново." : "Не удалось загрузить объявления. Обновите страницу.");
         return;
       }
+      setLoadError("");
 
       const rows: AdRow[] = json.data.map((c: any) => ({
         id: c.id,
@@ -752,8 +754,9 @@ export default function AdTable({
     setOpenActionId(null);
     if (!window.confirm(`Delete "${ad.title || "Untitled"}"?`)) return;
 
-    const { error } = await supabase.from("ad_campaigns").delete().eq("id", ad.id);
-    if (error) {
+    try {
+      await deleteCampaign(ad.id);
+    } catch (error) {
       console.error("delete campaign error:", error);
       alert("Failed to delete ad");
       return;
@@ -770,6 +773,7 @@ export default function AdTable({
 
   return (
     <div>
+      {loadError && <p role="alert" className="my-4 text-center text-red-700">{loadError}</p>}
       {/* Хедер */}
       <div className="hidden"></div>
 

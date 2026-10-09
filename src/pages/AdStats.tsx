@@ -3,9 +3,8 @@ import TelegramAdPreview from "../components/TelegramAdPreview";
 import TelegramStatsChart, {
   getStatsPeriodLabel,
 } from "../components/TelegramStatsChart";
-import { supabase } from "../supabaseClient";
 import { AdIdContext } from "../contexts/AdIdContext";
-import { fetchCampaignById } from "../lib/campaignApi";
+import { fetchCampaignById, fetchAccountBalance } from "../lib/campaignApi";
 
 type Range = "days" | "5min";
 
@@ -150,13 +149,11 @@ const multiplier =
       const roleLocal = localStorage.getItem("role");
       const userId = localStorage.getItem("user_id");
       if (roleLocal === "client" && userId) {
-        const { data, error } = await supabase
-          .from("client_balances")
-          .select("markup_percent")
-          .eq("client_id", userId)
-          .maybeSingle();
-        if (!error && data && typeof data.markup_percent === "number") {
-          setMarkupPercent(data.markup_percent);
+        try {
+          const account = await fetchAccountBalance();
+          setMarkupPercent(account.markup_percent);
+        } catch (error) {
+          setAdLoadError(error instanceof Error ? error.message : "Не удалось загрузить настройки баланса.");
         }
       }
     };

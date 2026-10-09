@@ -31,7 +31,7 @@ async function run(options={}) {
 test.beforeEach(()=>{session={role:"client",user_id:"client-1",agency_id:"agency-1"};queryResult={data:[{balance:"2074"}],error:null};queries=[];});
 test("client receives their deposited balance using only the signed session scope",async()=>{
   const res=await run();assert.equal(res.code,200);assert.equal(res.body.balance,2074);
-  assert.deepEqual(queries,[["from","client_balances"],["select","balance"],["eq","client_id","client-1"]]);
+  assert.deepEqual(queries,[["from","client_balances"],["select","balance, markup_percent"],["eq","client_id","client-1"]]);
   assert.equal(res.headers["Cache-Control"],"private, no-store");
 });
 test("agency receives only the sum within their agency",async()=>{
@@ -44,6 +44,10 @@ test("missing scope and unknown role are rejected",async()=>{
   session.role="unexpected";assert.equal((await run()).code,403);assert.equal(queries.length,0);
 });
 test("empty account returns zero",async()=>{queryResult.data=[];assert.equal((await run()).body.balance,0);});
+test("client markup is returned as a number for forms and statistics",async()=>{
+  queryResult.data=[{balance:"2074",markup_percent:"4.5"}];
+  assert.equal((await run()).body.markup_percent,4.5);
+});
 test("lookup failure does not masquerade as zero",async()=>{queryResult={data:null,error:{code:"08006"}};const res=await run();assert.equal(res.code,503);assert.ok(!("balance" in res.body));});
 test("admin header keeps its existing zero without querying all accounts",async()=>{session.role="admin";assert.equal((await run()).body.balance,0);assert.equal(queries.length,0);});
 test("POST still rejects editing another client's campaign",async()=>{

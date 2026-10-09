@@ -1,17 +1,19 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Container from "../components/Container";
 import TagInput from "../components/TagInput";
 import SearchAdPreview from "../components/SearchAdPreview";
 import AdScheduleControl from "../components/AdScheduleControl";
-import { supabase } from "../supabaseClient";
 import { useAdId } from "../hooks/useAdId";
-import { fetchCampaignById } from "../lib/campaignApi";
+import { fetchCampaignById, saveCampaign, fetchAccountBalance } from "../lib/campaignApi";
 
 /* ──────────────── component ──────────────── */
 export default function SearchAdForm() {
   const navigate = useNavigate();
   const adId = useAdId();
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
   /* form state */
   const [title, setTitle] = useState("");
@@ -42,16 +44,14 @@ export default function SearchAdForm() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("client_balances")
-        .select("markup_percent")
-        .eq("client_id", clientId)
-        .maybeSingle();
-
-      if (!error && data && typeof data.markup_percent === "number") {
-        setMarkupPercent(Number(data.markup_percent) || 0);
+      try {
+        const account = await fetchAccountBalance();
+        setMarkupPercent(account.markup_percent);
+        setMarkupLoaded(true);
+        setFormError("");
+      } catch (error) {
+        setFormError(error instanceof Error ? error.message : "Не удалось загрузить настройки. Обновите страницу.");
       }
-      setMarkupLoaded(true);
     };
 
     loadMarkup();
@@ -103,7 +103,7 @@ export default function SearchAdForm() {
       setShowDatePicker(Boolean(data.start_date || data.end_date));
       setTargetQueries(parseTargetQueries(data.target));
     };
-    fetchAd();
+    fetchAd().catch((error) => setFormError(error.message || "Не удалось загрузить объявление."));
   }, [adId, markupLoaded]);
 
   /* clear */
@@ -125,28 +125,15 @@ export default function SearchAdForm() {
 
   /* create/update */
   const onCreate = async () => {
+    if (savingRef.current || !markupLoaded) return;
     if (!adId && !agreeTerms) {
-      alert("Please agree with the Terms of Service before creating an ad.");
+      setFormError("Please agree with the Terms of Service before creating an ad.");
       return;
     }
-
-    if (!clientId) {
-      alert("❌ Ошибка: user_id отсутствует в localStorage");
-      return;
-    }
-
     const cpmNet = role === "client" ? Number(cpm || 0) / multiplier : Number(cpm || 0);
     const budgetNumber = Number(budget || 0);
+
     const scheduleEnabled = schedule || Boolean(startDate || endDate);
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("agency_id")
-      .eq("user_id", clientId)
-      .maybeSingle();
-
-    const agency_id = userData?.agency_id || null;
-
     const adData = {
       title,
       url,
@@ -159,28 +146,18 @@ export default function SearchAdForm() {
       end_date: endDate || null,
       target: targetQueries.join(", "),
       type: "search",
-      updated_at: new Date().toISOString(),
-      client_id: clientId,
-      agency_id,
     };
-
-    if (adId) {
-      const { error } = await supabase.from("ad_campaigns").update(adData).eq("id", adId);
-      if (error) alert("Ошибка при обновлении: " + error.message);
-      else {
-        alert("✅ Кампания обновлена!");
-        navigate("/");
-      }
-      return;
-    }
-
-    const { error } = await supabase
-      .from("ad_campaigns")
-      .insert([{ ...adData, created_at: new Date().toISOString() }]);
-    if (error) alert("Ошибка при создании рекламы: " + error.message);
-    else {
-      alert("✅ Реклама успешно создана!");
+    savingRef.current = true;
+    setSaving(true);
+    setFormError("");
+    try {
+      await saveCampaign(adData, adId || undefined);
       navigate("/");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Не удалось сохранить объявление. Попробуйте ещё раз.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -196,6 +173,7 @@ export default function SearchAdForm() {
 
   return (
     <Container>
+      {formError && <p role="alert" className="my-4 rounded bg-red-50 p-3 text-red-700">{formError}</p>}
       <div className="grid grid-cols-[330px_430px] gap-x-[82px] pt-[7px]">
         {/* LEFT */}
         <form className="flex w-[330px] flex-col gap-[14px] text-[14px] leading-[18px]">
@@ -367,9 +345,10 @@ export default function SearchAdForm() {
           <button
             type="button"
             onClick={onCreate}
+            disabled={saving || !markupLoaded}
             className="h-[46px] w-[190px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold text-white transition hover:bg-[#078be3]"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       ) : (
@@ -398,10 +377,10 @@ export default function SearchAdForm() {
             <button
               type="button"
               onClick={onCreate}
-              disabled={!canCreate}
+              disabled={!canCreate || saving || !markupLoaded}
               className="h-[46px] w-[190px] rounded-[6px] bg-[#119af5] text-[14px] font-semibold text-white transition hover:bg-[#078be3] disabled:cursor-default disabled:text-white/60 disabled:hover:bg-[#119af5]"
             >
-              Create Ad
+              {saving ? "Saving…" : "Create Ad"}
             </button>
           </div>
         </div>
