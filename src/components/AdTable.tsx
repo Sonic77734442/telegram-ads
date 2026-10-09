@@ -653,7 +653,7 @@ export default function AdTable({
       setAds(rows);
     } catch (e) {
       console.error("Campaigns API exception:", e);
-      setAds([]);
+      setLoadError("Не удалось загрузить объявления. Проверьте соединение и обновите страницу.");
     }
   };
 

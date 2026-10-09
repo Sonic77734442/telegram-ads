@@ -211,6 +211,8 @@ const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       setTopics(data.topics || []);
       setExTopics(data.ex_topics || []);
       setDevices(data.devices || ["All devices"]);
+      setPoliticsOnly(data.politics_only || false);
+      setExcludePolitics(data.exclude_politics || false);
     };
     fetchAd().catch((error) => setFormError(error.message || "Не удалось загрузить объявление."));
   }, [adId, markupLoaded]);
