@@ -11,6 +11,10 @@ import BudgetPage from "./pages/BudgetPage";
 
 
 
+function AdminOnly() {
+  return localStorage.getItem("role") === "admin" ? <StatisticsAdmin /> : <Navigate to="/dashboard" replace />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -66,7 +70,7 @@ export default function App() {
           path="/admin"
           element={
             <PrivateRoute>
-              {localStorage.getItem("role") === "admin" ? <StatisticsAdmin /> : <Navigate to="/dashboard" replace />}
+              <AdminOnly />
             </PrivateRoute>
           }
         />
