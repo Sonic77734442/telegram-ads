@@ -1,3 +1,4 @@
+import { adminStats } from "../shared/admin-stats-handler.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
@@ -11,6 +12,8 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    if (req.query?.action === "admin") return await adminStats(req, res, session);
+    if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
     const { ad_id, range = "days" } = (req as any).query || {};
     if (!ad_id || typeof ad_id !== "string") {
       return res.status(400).json({ error: "ad_id is required" });
