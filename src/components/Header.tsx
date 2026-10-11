@@ -89,7 +89,8 @@ const Header = () => {
             <span className="mr-[18px]" title={balanceError ? "Не удалось загрузить баланс. Обновите страницу или попробуйте позже." : undefined}>
               Budget: {balanceError ? "Unavailable" : balance === null ? "…" : `€${balance.toFixed(2)}`}
             </span>
-            <div className="relative flex items-center">
+            {localStorage.getItem("role") === "admin" && <Link to="/admin" className="mr-4 text-sky-600">Статистика: ввод</Link>}
+<div className="relative flex items-center">
               <button
                 type="button"
                 onClick={() => setAccountMenuOpen((open) => !open)}

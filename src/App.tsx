@@ -4,12 +4,12 @@ import Dashboard from "./pages/Dashboard";
 import CreateAdPage from "./pages/CreateAdPage";
 import WelcomePage from "./pages/WelcomePage";
 import PrivateRoute from "./components/PrivateRoute";
-import AdminDashboard from "./pages/AdminDashboard";
+import StatisticsAdmin from "./pages/StatisticsAdmin";
 import AdPageLayout from "./pages/AdPageLayout";
 import AdStats from "./pages/AdStats";
 import BudgetPage from "./pages/BudgetPage";
 
-const IS_LOCAL_ADMIN = import.meta.env.VITE_IS_LOCAL_ADMIN === "true";
+
 
 export default function App() {
   return (
@@ -61,12 +61,12 @@ export default function App() {
         }
       />
 
-      {IS_LOCAL_ADMIN && (
+      {(
         <Route
           path="/admin"
           element={
             <PrivateRoute>
-              <AdminDashboard />
+              {localStorage.getItem("role") === "admin" ? <StatisticsAdmin /> : <Navigate to="/dashboard" replace />}
             </PrivateRoute>
           }
         />
