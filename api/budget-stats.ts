@@ -1,3 +1,4 @@
+import { loadStatRows } from '../shared/load-stat-rows.js';
 import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
@@ -5,6 +6,7 @@ import { readSessionFromRequest } from "./auth-utils.js";
 type Range = "days" | "5min";
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const session = readSessionFromRequest(req);
     if (!session) {
@@ -44,11 +46,7 @@ export default async function handler(req: any, res: any) {
       multiplier = 1 + Number(balance?.markup_percent || 0) / 100;
     }
 
-    const { data: rows, error } = await supabase
-      .from("ad_stats")
-      .select("timestamp, day, views, cpm")
-      .eq("ad_id", ad_id)
-      .order("timestamp", { ascending: true });
+    const { data: rows, error } = await loadStatRows(supabase, ad_id, "timestamp, day, views, cpm");
 
     if (error) {
       return res.status(500).json({ error: error.message });

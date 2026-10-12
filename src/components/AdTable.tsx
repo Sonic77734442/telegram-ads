@@ -1,3 +1,4 @@
+import { useStatisticsRefresh } from '../hooks/useStatisticsRefresh';
 import AdStatusControl from "./AdStatusControl";
 import { normalizeCampaignStatus } from "../../shared/campaign-status";
 import { useEffect, useMemo, useState } from "react";
@@ -461,6 +462,7 @@ export default function AdTable({
   currentRole?: string;
   searchQuery?: string;
 }) {
+  const statisticsRefresh = useStatisticsRefresh();
   const [ads, setAds] = useState<AdRow[]>([]);
   const [loadError, setLoadError] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
@@ -666,7 +668,7 @@ export default function AdTable({
   useEffect(() => {
     fetchAds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statisticsRefresh]);
 
   // ---- инициализация видимых колонок ----
   useEffect(() => {

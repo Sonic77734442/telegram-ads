@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../api/supabaseAdmin.js';
+import { distributeDaily } from './distribution.js';
 import { checkDailyStats } from './manual-stats.js';
 export async function adminStats(req: any, res: any, session: any) {
   res.setHeader('Cache-Control', 'private, no-store');
@@ -18,13 +19,22 @@ export async function adminStats(req: any, res: any, session: any) {
   if(typeof ad_id!=='string'||!/^[\da-f-]{36}$/i.test(ad_id)||typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day))||new Date(day).toISOString().slice(0,10)!==day)
     return res.status(400).json({error:'Выберите объявление и корректную дату.'});
   const params:any={p_ad:ad_id,p_day:day};
-  if(req.method==='POST') {
+  let rpcName='admin_daily_statistics';
+  if(req.method==='POST' && input.mode==='cancel-distribution') {
+    if(typeof input.revision!=='string')return res.status(400).json({error:'Загрузите день заново.'});
+    rpcName='admin_schedule_statistics';Object.assign(params,{p_actor:session.user_id,p_revision:input.revision,p_cancel:true});
+  } else if(req.method==='POST') {
     const {views,clicks,cpm,revision}=input;
     const checked=checkDailyStats(views,clicks,cpm,Number.MAX_SAFE_INTEGER,0,0);
     if(checked.errors.length||typeof revision!=='string') return res.status(400).json({error:checked.errors[0]||'Сначала загрузите данные за день.'});
-    Object.assign(params,{p_views:views,p_clicks:clicks,p_cpm:cpm,p_revision:revision,p_actor:session.user_id,p_save:true});
+    if(input.mode==='distribution') {
+      try {params.p_slots=distributeDaily(ad_id,day,input.start,input.end,views,clicks);}
+      catch(e){return res.status(400).json({error:(e as Error).message});}
+      rpcName='admin_schedule_statistics';
+      Object.assign(params,{p_views:views,p_clicks:clicks,p_cpm:cpm,p_revision:revision,p_actor:session.user_id});
+    } else Object.assign(params,{p_views:views,p_clicks:clicks,p_cpm:cpm,p_revision:revision,p_actor:session.user_id,p_save:true});
   }
-  const {data,error}=await db.rpc('admin_daily_statistics',params);
+  const {data,error}=await db.rpc(rpcName,params);
   if(error) {
     if(error.code==='P0001') return res.status(409).json({error:error.message});
     console.error('admin statistics',error.code);

@@ -1,3 +1,4 @@
+import { loadStatRows } from '../shared/load-stat-rows.js';
 import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
@@ -7,6 +8,7 @@ const TELEGRAM_DESTINATION_RE =
   /^(?:tg:\/\/|https?:\/\/(?:www\.)?(?:t\.me|telegram\.me|telegram\.dog)(?:\/|$))/i;
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const roundMoney = (value: number) =>
       Number.isFinite(value)
@@ -191,10 +193,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const sumStatsAmount = async (adId: string, month?: string | null) => {
-      const { data: statsRows, error: statsError } = await supabase
-        .from("ad_stats")
-        .select("views, cpm, day, timestamp")
-        .eq("ad_id", adId);
+      const { data: statsRows, error: statsError } = await loadStatRows(supabase, adId, "views, cpm, day, timestamp");
 
       if (statsError || !statsRows) {
         if (statsError) console.error("ad_stats sum error:", statsError);

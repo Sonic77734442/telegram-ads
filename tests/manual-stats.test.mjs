@@ -32,3 +32,23 @@ const good={ad_id:'00000000-0000-0000-0000-000000000002',day:'2026-10-01',views:
 test('agency and client cannot call admin writes',async()=>{rpcCalls=0;for(const role of ['agency','client'])assert.equal((await call(role,good)).code,403);assert.equal(rpcCalls,0)});
 test('invalid dates and metrics never reach storage',async()=>{rpcCalls=0;for(const b of [{...good,day:'2026-02-30'},{...good,views:-1},{...good,clicks:1001},{...good,revision:null}])assert.equal((await call('admin',b)).code,400);assert.equal(rpcCalls,0)});
 test('admin writes delegate to atomic budget-checked RPC',async()=>{assert.equal((await call('admin',good)).code,200)});
+
+test('distribution is generated on server and preserves exact requested totals',async()=>{
+ let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{}}};
+ const r=await call('admin',{...good,mode:'distribution',start:'09:00',end:'23:00',slots:[{views:999999}]});
+ assert.equal(r.code,200);assert.equal(called.name,'admin_schedule_statistics');
+ assert.equal(called.params.p_slots.reduce((n,s)=>n+s.views,0),1000);
+ assert.equal(called.params.p_slots.reduce((n,s)=>n+s.clicks,0),10);
+ assert.equal(called.params.p_actor,'owner');
+});
+test('invalid distribution time is rejected before storage',async()=>{
+ let called=false;globalThis.__manual.db.rpc=async()=>{called=true;return {data:{}}};
+ assert.equal((await call('admin',{...good,mode:'distribution',start:'23:00',end:'09:00'})).code,400);assert.equal(called,false);
+});
+test('only admin can cancel a plan and revision is passed to storage',async()=>{
+ let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{}}};
+ const body={ad_id:good.ad_id,day:good.day,revision:'current',mode:'cancel-distribution'};
+ for(const role of ['agency','client'])assert.equal((await call(role,body)).code,403);
+ assert.equal(called,undefined);assert.equal((await call('admin',body)).code,200);
+ assert.equal(called.params.p_cancel,true);assert.equal(called.params.p_revision,'current');
+});
