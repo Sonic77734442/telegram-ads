@@ -45,7 +45,8 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({ balance, markup_percent: markup });
     }
 
-    const { ad_id, mode, amount } = req.body as {
+    const { ad_id, mode, amount, request_id } = req.body as {
+      request_id?: string;
       ad_id?: string;
       mode?: "increase" | "edit";
       amount?: number;
@@ -77,11 +78,15 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    if (mode === "increase") {
+      if (typeof request_id !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(request_id)) return res.status(400).json({error:'Обновите страницу и повторите пополнение.'});
+      const {error} = await supabase.rpc('increase_campaign_budget',{p_ad:ad_id,p_actor:session.user_id,p_amount:amount,p_request:request_id});
+      if(error) return res.status(error.code==='P0001'?409:503).json({error:error.code==='P0001'?error.message:'Не удалось выделить бюджет. Попробуйте ещё раз.'});
+      return res.status(200).json({ok:true});
+    }
     const update: Record<string, any> = {};
 
-    if (mode === "increase") {
-      update.budget = Number(ad.budget ?? 0) + amount;
-    }
+
 
     if (mode === "edit") {
       update.daily_budget = amount;
