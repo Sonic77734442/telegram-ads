@@ -523,7 +523,7 @@ export default function AdTable({
 
       if (!resp.ok || json.error) {
         console.error("budget api error:", json.error || json);
-        alert("Failed to update budget");
+        alert(json.error || "Failed to update budget");
         return;
       }
 
@@ -1150,7 +1150,7 @@ export default function AdTable({
                     (Number(selectedAd.budget) || 0) -
                       (Number(selectedAd.spend_raw) || 0)
                   ).toFixed(2)}{" "}
-                  remaining today
+                  remaining in total budget. 0 = no daily limit.
                 </p>
               )}
             </div>

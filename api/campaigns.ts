@@ -173,12 +173,13 @@ export default async function handler(req: any, res: any) {
       const { data: actionRows, error: actionsError } = await supabase
         .from("ad_campaigns")
         .select(
-          "id, actions, type, target, countries, locations, langs, topics, channels, devices, politics_only"
+          "id, actions, daily_budget, type, target, countries, locations, langs, topics, channels, devices, politics_only"
         )
         .in("id", campaignIds);
 
       if (actionsError) {
         console.error("Error loading raw campaign actions:", actionsError);
+        return res.status(503).json({ error: "Campaign settings temporarily unavailable" });
       } else {
         for (const actionRow of actionRows || []) {
           rawCampaignById.set(actionRow.id, actionRow);
@@ -244,14 +245,9 @@ export default async function handler(req: any, res: any) {
           ? Number(row.budget_net)
           : Number(row.budget ?? 0);
 
-      const dailyBudgetClientRaw =
-        row.daily_budget_client !== undefined && row.daily_budget_client !== null
-          ? Number(row.daily_budget_client)
-          : null;
-      const dailyBudgetNet =
-        row.daily_budget_net !== undefined && row.daily_budget_net !== null
-          ? Number(row.daily_budget_net)
-          : Number(row.daily_budget ?? 0);
+      // The compatibility view can expose a constant/stale daily limit.
+      // Read the same base field that campaigns-budget updates.
+      const dailyBudgetNet = Number(rawCampaign.daily_budget ?? 0);
 
       // если вьюха отдает spend_client — используем его как источник истины, чтобы не делать двойной markup
       let spendNetRaw: number;
@@ -356,10 +352,7 @@ export default async function handler(req: any, res: any) {
           : isClientMode
           ? Number((budgetNet * markupMultiplier).toFixed(2))
           : budgetNet;
-      const dailyBudgetClient =
-        dailyBudgetClientRaw !== null
-          ? dailyBudgetClientRaw
-          : isClientMode
+      const dailyBudgetClient = isClientMode
           ? Number((dailyBudgetNet * markupMultiplier).toFixed(2))
           : dailyBudgetNet;
 
