@@ -1,3 +1,5 @@
+import { loadStatRows } from '../shared/load-stat-rows.js';
+import { statDay } from "../shared/stat-amount.js";
 import { adminStats } from "../shared/admin-stats-handler.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
@@ -6,6 +8,7 @@ type Range = "days" | "5min";
 const VIDEO_OPEN_RATE = 31_789 / 5_625_000;
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const session = readSessionFromRequest(req);
     if (!session) {
@@ -40,11 +43,7 @@ export default async function handler(req: any, res: any) {
     }
     const isVideo = String(campaignRow.media_type || "").toLowerCase() === "video";
 
-    const { data: statsRows, error: statsError } = await supabase
-      .from("ad_stats")
-      .select("timestamp, views, clicks")
-      .eq("ad_id", ad_id)
-      .order("timestamp", { ascending: true });
+    const { data: statsRows, error: statsError } = await loadStatRows(supabase, ad_id, "timestamp, day, views, clicks");
 
     if (statsError) {
       console.error("ad_stats load error", statsError);
@@ -67,7 +66,7 @@ export default async function handler(req: any, res: any) {
 
     const byDay = new Map<string, { views: number; clicks: number; video_opens: number }>();
     for (const row of statsRows || []) {
-      const day = String(row.timestamp || "").slice(0, 10);
+      const day = statDay(row);
       if (!day) continue;
 
       const current = byDay.get(day) || { views: 0, clicks: 0, video_opens: 0 };

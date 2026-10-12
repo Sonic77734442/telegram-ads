@@ -1,3 +1,4 @@
+import { loadStatRows } from '../shared/load-stat-rows.js';
 import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
@@ -18,6 +19,7 @@ function toCSV(rows: Record<string, unknown>[], headers: string[]) {
 }
 
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const session = readSessionFromRequest(req);
     if (!session) {
@@ -69,11 +71,7 @@ export default async function handler(req: any, res: any) {
     let suffix = String(range === "5min" ? "5min" : "days");
 
     if (type === "stats" || type === "budget") {
-      const { data: statsRows, error: statsError } = await supabase
-        .from("ad_stats")
-        .select("timestamp, day, views, clicks, cpm")
-        .eq("ad_id", ad_id)
-        .order("timestamp", { ascending: true });
+      const { data: statsRows, error: statsError } = await loadStatRows(supabase, ad_id, "timestamp, day, views, clicks, cpm");
 
       if (statsError) {
         return res.status(500).json({ error: statsError.message });
@@ -155,10 +153,7 @@ export default async function handler(req: any, res: any) {
       }>;
 
       if (sourceRows.length === 0) {
-        const { data: fallbackRows, error: fallbackError } = await supabase
-          .from("ad_stats")
-          .select("timestamp, day, views, cpm")
-          .eq("ad_id", ad_id);
+        const { data: fallbackRows, error: fallbackError } = await loadStatRows(supabase, ad_id, "timestamp, day, views, cpm");
         if (fallbackError) {
           return res.status(500).json({ error: fallbackError.message });
         }

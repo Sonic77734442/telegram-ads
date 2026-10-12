@@ -1,3 +1,4 @@
+import { useStatisticsRefresh } from '../hooks/useStatisticsRefresh';
 import { useEffect, useMemo, useState, useContext } from "react";
 import TelegramAdPreview from "../components/TelegramAdPreview";
 import TelegramStatsChart, {
@@ -17,6 +18,7 @@ type BudgetPoint5m = { ts: string; amount: number };
 type ReportRow = { day: string; views: number; amount: number };
 
 export default function AdStats() {
+  const statisticsRefresh = useStatisticsRefresh();
   const adId = useContext(AdIdContext);
 
   // meta
@@ -220,7 +222,7 @@ const multiplier =
         setStatsData(statsRange === "days" ? await loadReportForStatsChart() : []);
       }
     })();
-  }, [adId, statsRange, monthTabs, selectedMonth]);
+  }, [adId, statsRange, monthTabs, selectedMonth, statisticsRefresh]);
 
   useEffect(() => {
     if (!adId) return;
@@ -232,7 +234,7 @@ const multiplier =
         setBudgetData([]);
       }
     })();
-  }, [adId, statsRange]);
+  }, [adId, statsRange, statisticsRefresh]);
 
    // load reports (table)
   useEffect(() => {
@@ -246,7 +248,7 @@ const multiplier =
         setReports([]);
       }
     })();
-  }, [adId, selectedMonth]);
+  }, [adId, selectedMonth, statisticsRefresh]);
 
 
   const downloadServerCSV = (

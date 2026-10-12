@@ -10,7 +10,7 @@ globalThis.__statSchema={
     select(columns){
       if(table==='ad_stats')for(const key of columns.split(',').map(s=>s.trim()))assert.ok(['timestamp','day','views','clicks','cpm'].includes(key),`unknown ad_stats column ${key}`);
       return this;
-    },eq(){return this;},order(){return this;},
+    },eq(){return this;},order(){return this;},range(){return this;},
     async single(){return {data:{client_id:'client',agency_id:'agency',media_type:'image',cpm:99}};},
     async maybeSingle(){return {data:{markup_percent:50}};},
     then(resolve){return Promise.resolve({data:table==='ad_stats'?stats:[],error:null}).then(resolve);},

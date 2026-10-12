@@ -1,9 +1,11 @@
+import { loadStatRows } from '../shared/load-stat-rows.js';
 import { statAmount, statDay } from "../shared/stat-amount.js";
 import { getSupabaseAdmin } from "./supabaseAdmin.js";
 import { readSessionFromRequest } from "./auth-utils.js";
 
 // api/reports.ts
 export default async function handler(req: any, res: any) {
+  res.setHeader('Cache-Control', 'private, no-store');
   try {
     const roundMoney = (value: number) =>
       Number.isFinite(value)
@@ -80,10 +82,7 @@ export default async function handler(req: any, res: any) {
 
     // Fallback for search/bot campaigns without reports: try ad_stats amount by day.
     if (rows.length === 0) {
-      const { data: statsRows, error: statsError } = await supabase
-        .from("ad_stats")
-        .select("timestamp, day, views, cpm")
-        .eq("ad_id", ad_id);
+      const { data: statsRows, error: statsError } = await loadStatRows(supabase, ad_id, "timestamp, day, views, cpm");
 
       if (!statsError && Array.isArray(statsRows) && statsRows.length > 0) {
         const byDay = new Map<string, { views: number; amount: number }>();
