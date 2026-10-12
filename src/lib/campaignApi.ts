@@ -14,14 +14,18 @@ export async function fetchCampaignById(id: string) {
   return (await accountRequest(`/api/campaign?id=${encodeURIComponent(id)}`)).data;
 }
 
+const pendingCreates = new Map<string,string>();
 export async function saveCampaign(values: Record<string, unknown>, id?: string) {
-  return (await accountRequest(id ? `/api/campaign?id=${encodeURIComponent(id)}` : "/api/campaign", {
-    method: id ? "PATCH" : "POST", body: JSON.stringify(values),
-  })).data;
+  const body=JSON.stringify(values);
+  if(!id&&!pendingCreates.has(body))pendingCreates.set(body,crypto.randomUUID());
+  const result=await accountRequest(id ? `/api/campaign?id=${encodeURIComponent(id)}` : '/api/campaign', {
+    method:id?'PATCH':'POST',body,headers:id?{}:{'Idempotency-Key':pendingCreates.get(body)!},
+  });
+  pendingCreates.delete(body);window.dispatchEvent(new Event('account-balance-changed'));return result.data;
 }
-
 export async function deleteCampaign(id: string) {
-  return accountRequest(`/api/campaign?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+ const result=await accountRequest(`/api/campaign?id=${encodeURIComponent(id)}`,{method:'DELETE'});
+ window.dispatchEvent(new Event('account-balance-changed'));return result;
 }
 
 export async function fetchAccountBalance(): Promise<{balance: number; markup_percent: number}> {

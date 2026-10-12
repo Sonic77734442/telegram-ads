@@ -45,12 +45,14 @@ const Header = () => {
     void fetchBalance();
     const interval = window.setInterval(fetchBalance, 30000);
     window.addEventListener("focus", fetchBalance);
+    window.addEventListener("account-balance-changed", fetchBalance);
     document.addEventListener("visibilitychange", fetchBalance);
     return () => {
       stopped = true;
       controller.abort();
       window.clearInterval(interval);
       window.removeEventListener("focus", fetchBalance);
+      window.removeEventListener("account-balance-changed", fetchBalance);
       document.removeEventListener("visibilitychange", fetchBalance);
     };
   }, [location.pathname]);

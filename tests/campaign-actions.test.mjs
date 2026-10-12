@@ -22,7 +22,7 @@ globalThis.__campaignTest = {
         single(){return this.execute();}, maybeSingle(){return this.execute();},
         async execute(){
           if (dbError) return {data:null,error:dbError};
-          if(operation==='insert') { const row={...values,id:`ad-${rows.length+1}`};rows.push(row);writes.push({operation,values,filters});return {data:row}; }
+          if(operation==='insert') { const row={...values,id:values.id||`ad-${rows.length+1}`};rows.push(row);writes.push({operation,values,filters});return {data:row}; }
           const row=rows.find(r=>filters.every(([k,v])=>v===null?r[k]==null:r[k]===v));
           if(operation==='select') return {data:row?{...row}:null};
           writes.push({operation,values,filters});
@@ -43,9 +43,9 @@ const compiled=await build({entryPoints:['api/campaign.ts'],bundle:true,write:fa
 }]});
 const {default:handler}=await import(`data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString('base64')}`);
 const valid=(type='channel')=>({title:'Test ad',text:'Test text',url:'https://t.me/example',type,cpm:1,budget:0,daily_views:1,countries:['Uzbekistan'],schedule_enabled:false});
-async function run(method='POST',body=valid(),query={}){
+async function run(method='POST',body=valid(),query={},headers={}){
   const res={status(c){this.code=c;return this;},json(b){this.body=b;return this;},setHeader(){}};
-  await handler({method,body,query},res);return res;
+  await handler({method,body,query,headers},res);return res;
 }
 test.beforeEach(()=>{session={user_id:'client-a',agency_id:'agency-a',role:'client'};rows=[];writes=[];dbError=null;signedPaths=[];});
 for(const type of ['search','bot','user','channel']) test(`${type}: create, reload, edit and delete own campaign`,async()=>{
@@ -104,4 +104,10 @@ test('upload authorizations use random per-user ASCII keys and reject unsupporte
   assert.equal((await run('POST',{contentType:'text/html'},{action:'media-upload'})).code,400);
   session=null;assert.equal((await run('POST',{contentType:'image/jpeg'},{action:'media-upload'})).code,401);
 });
+test('repeated creation request returns original campaign without a second allocation',async()=>{
+ const headers={'idempotency-key':'00000000-0000-0000-0000-000000000004'};
+ const first=await run('POST',valid(),{},headers),second=await run('POST',valid(),{},headers);
+ assert.equal(first.code,201);assert.equal(second.code,201);assert.equal(first.body.data.id,second.body.data.id);assert.equal(writes.length,1);
+});
+test('wallet rejection reaches the campaign form',async()=>{dbError={code:'P0001',message:'Недостаточно средств'};const r=await run();assert.equal(r.code,409);assert.equal(r.body.error,'Недостаточно средств')});
 test.after(()=>delete globalThis.__campaignTest);

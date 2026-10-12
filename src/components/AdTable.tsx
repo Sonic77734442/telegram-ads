@@ -1,7 +1,7 @@
 import { useStatisticsRefresh } from '../hooks/useStatisticsRefresh';
 import AdStatusControl from "./AdStatusControl";
 import { normalizeCampaignStatus } from "../../shared/campaign-status";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { deleteCampaign } from "../lib/campaignApi";
 import { Link } from "react-router-dom";
 
@@ -477,10 +477,14 @@ export default function AdTable({
     null
   );
   const [selectedAd, setSelectedAd] = useState<AdRow | null>(null);
+  const budgetRequestId = useRef('');
+  const budgetSavingRef = useRef(false);
+  const [budgetSaving,setBudgetSaving] = useState(false);
   const [budgetInput, setBudgetInput] = useState<string>("");
 
   const openBudgetModal = (mode: "increase" | "edit", ad: AdRow) => {
     setSelectedAd(ad);
+    budgetRequestId.current=crypto.randomUUID();
     setBudgetModalMode(mode);
 
     if (mode === "increase") {
@@ -496,7 +500,7 @@ export default function AdTable({
   };
 
   const handleBudgetSubmit = async () => {
-    if (!selectedAd || !budgetModalMode) return;
+    if (!selectedAd || !budgetModalMode || budgetSavingRef.current) return;
 
     const raw = budgetInput.replace(",", ".").trim();
     const amount = Number(raw || 0);
@@ -506,6 +510,7 @@ export default function AdTable({
       return;
     }
 
+    budgetSavingRef.current=true;setBudgetSaving(true);
     try {
       const resp = await fetch("/api/campaigns-budget", {
         method: "POST",
@@ -514,6 +519,7 @@ export default function AdTable({
         },
         body: JSON.stringify({
           ad_id: selectedAd.id,
+          request_id: budgetRequestId.current,
           mode: budgetModalMode, // "increase" | "edit"
           amount,
         }),
@@ -527,12 +533,13 @@ export default function AdTable({
         return;
       }
 
+      window.dispatchEvent(new Event("account-balance-changed"));
       await fetchAds();
       closeBudgetModal();
     } catch (e) {
       console.error("budget api exception:", e);
       alert("Failed to update budget");
-    }
+    } finally {budgetSavingRef.current=false;setBudgetSaving(false);}
   };
 
   // ===== STATUS MODAL =====
@@ -1136,12 +1143,14 @@ export default function AdTable({
                   type="number"
                   step="0.01"
                   value={budgetInput}
-                  onChange={(e) => setBudgetInput(e.target.value)}
+                  disabled={budgetSaving}
+                  onChange={(e) => {setBudgetInput(e.target.value);budgetRequestId.current=crypto.randomUUID();}}
                   placeholder={budgetModalMode === "increase" ? "0.00" : ""}
                   className="flex-1 rounded-md border border-[#2a9cf0] px-3 py-2 text-[15px] outline-none focus:ring-2 focus:ring-[#2a9cf0]/50"
                 />
               </div>
 
+              {budgetModalMode === "increase" && <p className="text-[12px] text-gray-500">The allocated amount will be deducted from your account balance.</p>}
               {budgetModalMode === "edit" && (
                 <p className="text-[12px] text-gray-500">
                   €{" "}
@@ -1158,6 +1167,7 @@ export default function AdTable({
             <div className="flex justify-end gap-4 border-t px-6 py-3 text-[13px]">
               <button
                 type="button"
+                disabled={budgetSaving}
                 onClick={closeBudgetModal}
                 className="text-[#2481cc] hover:underline"
               >
@@ -1165,10 +1175,11 @@ export default function AdTable({
               </button>
               <button
                 type="button"
+                disabled={budgetSaving}
                 onClick={handleBudgetSubmit}
                 className="rounded bg-[#1890ff] px-4 py-1.5 text-white font-semibold hover:bg-[#1273cc]"
               >
-                {budgetModalMode === "increase" ? "Add to budget" : "Save"}
+                {budgetSaving ? "Saving…" : budgetModalMode === "increase" ? "Add to budget" : "Save"}
               </button>
             </div>
           </div>

@@ -54,7 +54,11 @@ export default async function handler(req: any, res: any) {
       let values;
       try { values = campaignInput(req.body); }
       catch (error) { return res.status(400).json({ error: (error as Error).message }); }
+      const creationId = req.headers?.['idempotency-key'];
+      if (creationId !== undefined && (typeof creationId !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(creationId))) return res.status(400).json({error:'Некорректный идентификатор запроса.'});
+      if(creationId){const {data:existing}=await supabase.from('ad_campaigns').select('id,client_id').eq('id',creationId).maybeSingle();if(existing){if(existing.client_id!==session.user_id)return res.status(409).json({error:'Повторите создание объявления.'});return res.status(201).json({data:{id:existing.id}});}}
       const { data, error } = await supabase.from("ad_campaigns").insert({
+        ...(creationId ? {id:creationId} : {}),
         ...values,
         status: "Moderate",
         client_id: session.user_id,
@@ -63,6 +67,8 @@ export default async function handler(req: any, res: any) {
         updated_at: new Date().toISOString(),
       }).select("id").single();
       if (error) {
+        if(error.code==='23505' && creationId){const {data:existing}=await supabase.from('ad_campaigns').select('id,client_id').eq('id',creationId).maybeSingle();if(existing?.client_id===session.user_id)return res.status(201).json({data:{id:existing.id}});}
+        if(error.code==='P0001')return res.status(409).json({error:error.message});
         console.error("campaign create error:", error.code);
         return res.status(503).json({ error: "Не удалось сохранить объявление. Попробуйте ещё раз." });
       }
@@ -114,6 +120,7 @@ export default async function handler(req: any, res: any) {
         ? mutation.is("status", null) : mutation.eq("status", data.status);
       const { data: saved, error: saveError } = await mutation.select("id").maybeSingle();
       if (saveError) {
+        if(saveError.code==='P0001')return res.status(409).json({error:saveError.message});
         console.error("campaign mutation error:", saveError.code);
         return res.status(503).json({ error: "Не удалось сохранить изменения. Попробуйте ещё раз." });
       }
