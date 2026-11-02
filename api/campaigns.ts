@@ -194,22 +194,23 @@ export default async function handler(req: any, res: any) {
     }
 
     const sumStatsAmount = async (adId: string, month?: string | null) => {
-      const { data: statsRows, error: statsError } = await loadStatRows(supabase, adId, "views, cpm, day, timestamp");
+      const { data: statsRows, error: statsError } = await loadStatRows(supabase, adId, "views, clicks, cpm, day, timestamp");
 
       if (statsError || !statsRows) {
         if (statsError) console.error("ad_stats sum error:", statsError);
-        return { views: 0, amount: 0 };
+        return { views: 0, clicks: null, amount: 0 };
       }
 
       return statsRows.reduce(
-        (sum: { views: number; amount: number }, r: any) => {
+        (sum: { views: number; clicks: number; amount: number }, r: any) => {
           const ts = statDay(r);
           if (month && !ts.startsWith(`${month}-`)) return sum;
           sum.views += Number(r.views ?? 0);
+          sum.clicks += Number(r.clicks ?? 0);
           sum.amount += statAmount(r);
           return sum;
         },
-        { views: 0, amount: 0 }
+        { views: 0, clicks: 0, amount: 0 }
       );
     };
 
@@ -224,9 +225,9 @@ export default async function handler(req: any, res: any) {
     for (const row of rows) {
       const rawCampaign = rawCampaignById.get(row.id) || {};
       let views = Number(row.views ?? 0);
-      const clicks = Number(row.clicks ?? row.actions ?? 0);
+      let clicks = Number(row.clicks ?? 0);
 
-      // поддержка вьюхи с полями *_net / *_client и наследие
+      // РїРѕРґРґРµСЂР¶РєР° РІСЊСЋС…Рё СЃ РїРѕР»СЏРјРё *_net / *_client Рё РЅР°СЃР»РµРґРёРµ
       const cpmClientRaw =
         row.cpm_client !== undefined && row.cpm_client !== null
           ? Number(row.cpm_client)
@@ -249,7 +250,7 @@ export default async function handler(req: any, res: any) {
       // Read the same base field that campaigns-budget updates.
       const dailyBudgetNet = Number(rawCampaign.daily_budget ?? 0);
 
-      // если вьюха отдает spend_client — используем его как источник истины, чтобы не делать двойной markup
+      // РµСЃР»Рё РІСЊСЋС…Р° РѕС‚РґР°РµС‚ spend_client вЂ” РёСЃРїРѕР»СЊР·СѓРµРј РµРіРѕ РєР°Рє РёСЃС‚РѕС‡РЅРёРє РёСЃС‚РёРЅС‹, С‡С‚РѕР±С‹ РЅРµ РґРµР»Р°С‚СЊ РґРІРѕР№РЅРѕР№ markup
       let spendNetRaw: number;
       let spendClientRaw: number;
 
@@ -265,6 +266,7 @@ export default async function handler(req: any, res: any) {
       // If we have manual stats (ad_stats), prefer them for lifetime CPM/spend.
       if (!ym) {
         const statsTotals = await sumStatsAmount(row.id, null);
+        clicks = statsTotals.clicks ?? clicks;
         if (statsTotals.views > 0) {
           views = statsTotals.views;
         }

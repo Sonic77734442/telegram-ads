@@ -1,5 +1,6 @@
 import { distributionWindow } from '../../shared/distribution';
 import { DistributionPreview } from "../components/DistributionPreview";
+import CampaignActionsEditor from '../components/CampaignActionsEditor';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { accountRequest } from '../lib/campaignApi';
@@ -77,6 +78,7 @@ export default function StatisticsAdmin(){
     {loading&&<p role="status" className="mt-4 text-sm">Загрузка статистики…</p>}
    </section>
    {entry&&<>
+    <CampaignActionsEditor key={adId} adId={adId} initialActions={entry.campaign.actions??0}/>
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
      <h2 className="text-lg font-medium">2. Показатели за день</h2>
      {entry.plan&&<div className="my-4 rounded-lg bg-sky-50 p-4 text-sm"><strong>Расписание: {{running:'выполняется',blocked:'приостановлено бюджетом',complete:'завершено',cancelled:'остановлено'}[entry.plan.status as string] || entry.plan.status}</strong><p>Опубликовано {entry.plan.published_views} из {entry.plan.views} показов, {entry.plan.published_clicks} из {entry.plan.clicks} кликов.</p>{entry.plan.reason&&<p>{entry.plan.reason}</p>}{planActive&&<button type="button" disabled={busy} onClick={stop} className="mt-2 text-red-700 underline">Остановить распределение</button>}</div>}

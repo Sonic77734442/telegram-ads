@@ -195,7 +195,7 @@ export default function AdminDashboard() {
         .from("ad_campaigns")
         .update({
           views: totalViews,
-          actions: totalClicks,
+
         })
         .eq("id", statAdId);
 

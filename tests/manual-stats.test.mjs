@@ -24,7 +24,7 @@ test('invalid numbers, clicks above views and zero CPM cannot save',()=>{
  for(const args of [[1.5,0,2],[10,11,2],[10,0,0],[NaN,0,2],[10,0,Infinity]])assert.ok(checkDailyStats(...args,100,10,0).errors.length);
 });
 let role='admin',rpcCalls=0;
-globalThis.__manual={db:{rpc:async()=>{rpcCalls++;return {data:{saved:true}}}}};
+globalThis.__manual={db:{from(){return {select(){return this},eq(){return this},single:async()=>({data:{actions:0}})}},rpc:async()=>{rpcCalls++;return {data:{campaign:{},saved:true}}}}};
 const h=await build({entryPoints:['shared/admin-stats-handler.ts'],bundle:true,write:false,platform:'node',format:'esm',plugins:[{name:'mock',setup(b){b.onLoad({filter:/supabaseAdmin\.ts$/},()=>({loader:'js',contents:'export const getSupabaseAdmin=()=>globalThis.__manual.db'}));}}]});
 const {adminStats}=await import(`data:text/javascript;base64,${Buffer.from(h.outputFiles[0].text).toString('base64')}`);
 async function call(role,body){const res={status(c){this.code=c;return this},json(b){this.body=b;return this},setHeader(){}};await adminStats({method:'POST',body},res,{role,user_id:'owner'});return res;}
@@ -34,7 +34,7 @@ test('invalid dates and metrics never reach storage',async()=>{rpcCalls=0;for(co
 test('admin writes delegate to atomic budget-checked RPC',async()=>{assert.equal((await call('admin',good)).code,200)});
 
 test('distribution is generated on server and preserves exact requested totals',async()=>{
- let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{}}};
+ let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{campaign:{}}}};
  const r=await call('admin',{...good,mode:'distribution',start:'09:00',end:'23:00',slots:[{views:999999}]});
  assert.equal(r.code,200);assert.equal(called.name,'admin_schedule_statistics');
  assert.equal(called.params.p_slots.reduce((n,s)=>n+s.views,0),1000);
@@ -42,13 +42,28 @@ test('distribution is generated on server and preserves exact requested totals',
  assert.equal(called.params.p_actor,'owner');
 });
 test('invalid distribution time is rejected before storage',async()=>{
- let called=false;globalThis.__manual.db.rpc=async()=>{called=true;return {data:{}}};
+ let called=false;globalThis.__manual.db.rpc=async()=>{called=true;return {data:{campaign:{}}}};
  assert.equal((await call('admin',{...good,mode:'distribution',start:'23:00',end:'09:00'})).code,400);assert.equal(called,false);
 });
 test('only admin can cancel a plan and revision is passed to storage',async()=>{
- let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{}}};
+ let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{campaign:{}}}};
  const body={ad_id:good.ad_id,day:good.day,revision:'current',mode:'cancel-distribution'};
  for(const role of ['agency','client'])assert.equal((await call(role,body)).code,403);
  assert.equal(called,undefined);assert.equal((await call('admin',body)).code,200);
  assert.equal(called.params.p_cancel,true);assert.equal(called.params.p_revision,'current');
+});
+
+test('actions requires admin and validates integers independently of day statistics',async()=>{
+ let called;globalThis.__manual.db.rpc=async(name,params)=>{called={name,params};return {data:{actions:7}}};
+ const body={ad_id:good.ad_id,mode:'actions',actions:7,expected_actions:0};
+ for(const role of ['client','agency'])assert.equal((await call(role,body)).code,403);
+ for(const actions of [-1,1.5,'7',2147483648])assert.equal((await call('admin',{...body,actions})).code,400);
+ assert.equal(called,undefined);
+ const r=await call('admin',body);assert.equal(r.code,200);assert.equal(r.body.data.actions,7);
+ assert.deepEqual(called,{name:'admin_campaign_actions',params:{p_ad:good.ad_id,p_actions:7,p_expected:0,p_actor:'owner'}});
+});
+test('stale actions is reported without claiming success',async()=>{
+ globalThis.__manual.db.rpc=async()=>({error:{code:'P0001',message:'Actions changed'}});
+ const r=await call('admin',{ad_id:good.ad_id,mode:'actions',actions:9,expected_actions:0});
+ assert.equal(r.code,409);assert.equal(r.body.error,'Actions changed');
 });
